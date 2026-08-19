@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-19T13:21:38.265812+00:00",
+  "updated_at": "2026-08-19T14:08:46.232826+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 61,
   "files": [
@@ -68,7 +68,7 @@
     {
       "file": "alembic/versions/6eb961e36b55_initial_schema.py",
       "layer": "migrations",
-      "hash": "7cd984005be1",
+      "hash": "14d4bf12d901",
       "docstring": "initial_schema",
       "classes": [],
       "functions": [
@@ -3162,13 +3162,53 @@
     {
       "file": "scripts/generate_secrets.py",
       "layer": "config",
-      "hash": "b8ae85c16aa0",
-      "error": "SyntaxError: invalid non-printable character U+FEFF (generate_secrets.py, line 1)",
+      "hash": "064b34e17221",
+      "docstring": "Generate Secure Keys and Passwords for WB FBS Manager",
       "classes": [],
-      "functions": [],
+      "functions": [
+        {
+          "name": "generate_fernet_key",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Generate 32-byte URL-safe base64-encoded Fernet key."
+        },
+        {
+          "name": "generate_random_token",
+          "is_async": false,
+          "args": [
+            "length"
+          ],
+          "decorators": [],
+          "docstring": "Generate cryptographically secure random hex string."
+        },
+        {
+          "name": "generate_password",
+          "is_async": false,
+          "args": [
+            "length"
+          ],
+          "decorators": [],
+          "docstring": "Generate secure password for DB/Redis."
+        },
+        {
+          "name": "main",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
       "endpoints": [],
       "celery_tasks": [],
-      "db_tables": []
+      "db_tables": [],
+      "imports": [
+        "cryptography.fernet",
+        "os",
+        "pathlib",
+        "secrets",
+        "sys"
+      ]
     },
     {
       "file": "tests/test_agent_delegation_sync.py",

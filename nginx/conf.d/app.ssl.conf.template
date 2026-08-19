@@ -3,8 +3,9 @@
 # HTTP -> HTTPS Redirect & Let's Encrypt Challenge
 server {
     listen 80;
-    listen [::]:80;
     server_name ${DOMAIN_NAME};
+
+    resolver 127.0.0.11 valid=30s ipv6=off;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -17,9 +18,10 @@ server {
 
 # HTTPS Main Server
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
     server_name ${DOMAIN_NAME};
+
+    resolver 127.0.0.11 valid=30s ipv6=off;
 
     # SSL Certificates (Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
@@ -40,7 +42,7 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
-    # Static frontend files (served directly by Nginx for high performance)
+    # Static frontend files (served directly by Nginx)
     location /static/ {
         alias /app/frontend/;
         expires 7d;

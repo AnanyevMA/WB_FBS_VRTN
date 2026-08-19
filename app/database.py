@@ -52,7 +52,10 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db() -> None:
-    """Create all tables and sync missing columns for SQLite development."""
+    """Create all tables and sync missing columns for SQLite/PostgreSQL development."""
+    # Ensure all ORM models are registered in metadata
+    import app.models  # noqa: F401
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

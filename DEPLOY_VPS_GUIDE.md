@@ -57,7 +57,7 @@ git commit -m "feat: initial production-ready commit for GitHub and VPS"
 # 5. Создайте репозиторий на GitHub (например, wb-fbs-manager)
 # 6. Привяжите удаленный репозиторий и отправьте код:
 git branch -M main
-git remote add origin https://github.com/ВАШ_АККАУНТ/wb-fbs-manager.git
+git remote add origin https://github.com/AnanyevMA/WB_FBS_VRTN.git
 git push -u origin main
 ```
 
@@ -76,7 +76,7 @@ ssh root@IP_ВАШЕГО_СЕРВЕРА
 ```bash
 mkdir -p /opt
 cd /opt
-git clone https://github.com/ВАШ_АККАУНТ/wb-fbs-manager.git wb-fbs
+git clone https://github.com/AnanyevMA/WB_FBS_VRTN.git wb-fbs
 cd /opt/wb-fbs
 ```
 

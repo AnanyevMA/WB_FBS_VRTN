@@ -1,6 +1,6 @@
 ﻿# WB FBS Manager 🚀
 
-[![CI Test & Build](https://github.com/your-org/wb-fbs-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/wb-fbs-manager/actions/workflows/ci.yml)
+[![CI Test & Build](https://github.com/AnanyevMA/WB_FBS_VRTN/actions/workflows/ci.yml/badge.svg)](https://github.com/AnanyevMA/WB_FBS_VRTN/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
@@ -40,7 +40,7 @@
 
 ### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/your-org/wb-fbs-manager.git
+git clone https://github.com/AnanyevMA/WB_FBS_VRTN.git
 cd wb-fbs-manager
 ```
 
@@ -71,7 +71,7 @@ docker compose up -d
 
 ```bash
 # 1. Клонировать на сервер в /opt/wb-fbs
-git clone https://github.com/your-org/wb-fbs-manager.git /opt/wb-fbs
+git clone https://github.com/AnanyevMA/WB_FBS_VRTN.git /opt/wb-fbs
 cd /opt/wb-fbs
 
 # 2. Запустить скрипт настройки VPS (создаст Swap 2GB, установит Docker, настроит UFW и Fail2ban)

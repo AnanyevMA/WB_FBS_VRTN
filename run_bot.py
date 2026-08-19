@@ -1,11 +1,6 @@
 """
-Run Telegram Bot Locally — WB FBS Manager
-Запуск Telegram-бота в режиме polling для локальной проверки и обработки команд/кнопок.
-
-Использование:
-  python run_bot.py                # Запуск polling
-  python run_bot.py --test-notify  # Отправить тестовое уведомление и запуститься
-  python run_bot.py --check-only   # Только проверить токен и соединение
+Run Telegram Bot — WB FBS Manager
+Запуск Telegram-бота в режиме polling для обработки команд и кнопок.
 """
 import argparse
 import asyncio
@@ -127,30 +122,48 @@ async def main():
     parser.add_argument("--check-only", action="store_true", help="Check bot connection and exit")
     args = parser.parse_args()
 
-    logger.info("🔍 Looking for active sellers with Telegram configuration in DB...")
-    sellers = get_active_sellers_with_tokens()
+    while True:
+        logger.info("🔍 Looking for active sellers with Telegram configuration in DB...")
+        try:
+            sellers = get_active_sellers_with_tokens()
+        except Exception as e:
+            logger.warning(f"Error querying database for sellers: {e}")
+            sellers = []
 
-    if not sellers:
-        logger.error("❌ No active sellers with valid Telegram tokens found in the database!")
-        sys.exit(1)
-
-    logger.info(f"Found {len(sellers)} seller(s) with Telegram configured.")
-
-    for seller, token in sellers:
-        logger.info(f"Checking seller '{seller.name}' (ID: {seller.id})...")
-        ok = await check_bot(token, seller.name)
-        if not ok:
+        if not sellers:
+            logger.info("ℹ️ No active sellers with Telegram bot tokens found in DB yet. Waiting 60 seconds...")
+            if args.check_only:
+                logger.info("Check-only flag provided, exiting.")
+                sys.exit(0)
+            await asyncio.sleep(60)
             continue
+
+        logger.info(f"Found {len(sellers)} seller(s) with Telegram configured.")
+        connected = False
+
+        for seller, token in sellers:
+            logger.info(f"Checking seller '{seller.name}' (ID: {seller.id})...")
+            ok = await check_bot(token, seller.name)
+            if not ok:
+                continue
+
+            if args.check_only:
+                continue
+
+            if args.test_notify and seller.telegram_chat_ids:
+                await send_test_notification(token, seller.telegram_chat_ids, str(seller.id))
+
+            # Start polling for the primary active seller
+            connected = True
+            await run_polling(token, seller)
+            break
 
         if args.check_only:
-            continue
+            break
 
-        if args.test_notify and seller.telegram_chat_ids:
-            await send_test_notification(token, seller.telegram_chat_ids, str(seller.id))
-
-        # Start polling for the primary active seller
-        await run_polling(token, seller)
-        break
+        if not connected:
+            logger.warning("⚠️ No valid bot tokens could connect. Re-checking in 60s...")
+            await asyncio.sleep(60)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 services:
-  # в”Ђв”Ђв”Ђ PostgreSQL (Low-Memory Tuning for 1GB VPS) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── PostgreSQL (Low-Memory Tuning for 1GB VPS) ───────────────
   postgres:
     image: postgres:16-alpine
     container_name: wbfbs_postgres
@@ -15,6 +15,10 @@ services:
       -c maintenance_work_mem=16MB
       -c max_connections=30
       -c effective_cache_size=128MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=4MB
+      -c min_wal_size=32MB
+      -c max_wal_size=128MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,9 +29,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.35'
           memory: 160M
         reservations:
-          memory: 64M
+          memory: 48M
     logging:
       driver: "json-file"
       options:
@@ -36,12 +41,12 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Redis (Max 64MB LRU) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── Redis (RAM-only broker, No heavy AOF disk thrashing) ──────
   redis:
     image: redis:7-alpine
     container_name: wbfbs_redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly no --save 300 1 --maxmemory 64mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -52,9 +57,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 80M
+          cpus: '0.15'
+          memory: 64M
         reservations:
-          memory: 32M
+          memory: 24M
     logging:
       driver: "json-file"
       options:
@@ -63,7 +69,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ FastAPI Backend в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── FastAPI Backend ──────────────────────────────────────────
   api:
     build:
       context: .
@@ -79,10 +85,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 100
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 50
     deploy:
       resources:
         limits:
+          cpus: '0.50'
           memory: 160M
         reservations:
           memory: 64M
@@ -94,7 +101,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Celery Worker (Agents) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── Celery Worker (Agents) ───────────────────────────────────
   worker:
     build:
       context: .
@@ -110,13 +117,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=100 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance,qa_testing
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=50 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance,qa_testing
     deploy:
       resources:
         limits:
+          cpus: '0.50'
           memory: 180M
         reservations:
-          memory: 80M
+          memory: 64M
     logging:
       driver: "json-file"
       options:
@@ -125,7 +133,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Celery Beat (Scheduler) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── Celery Beat (Scheduler) ──────────────────────────────────
   scheduler:
     build:
       context: .
@@ -144,9 +152,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 80M
+          cpus: '0.10'
+          memory: 64M
         reservations:
-          memory: 32M
+          memory: 24M
     logging:
       driver: "json-file"
       options:
@@ -155,7 +164,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Telegram Bot Service в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── Telegram Bot Service ─────────────────────────────────────
   bot:
     build:
       context: .
@@ -172,9 +181,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 90M
+          cpus: '0.20'
+          memory: 80M
         reservations:
-          memory: 40M
+          memory: 32M
     logging:
       driver: "json-file"
       options:
@@ -183,7 +193,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Nginx Reverse Proxy & Static Files в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── Nginx Reverse Proxy & Static Files ───────────────────────
   nginx:
     image: nginx:1.27-alpine
     container_name: wbfbs_nginx
@@ -201,9 +211,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 40M
+          cpus: '0.15'
+          memory: 32M
         reservations:
-          memory: 16M
+          memory: 12M
     logging:
       driver: "json-file"
       options:
@@ -212,7 +223,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Certbot (SSL Auto-renewal) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  # ─── Certbot (SSL Auto-renewal) ───────────────────────────────
   certbot:
     image: certbot/certbot:latest
     container_name: wbfbs_certbot
@@ -224,7 +235,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 40M
+          cpus: '0.05'
+          memory: 32M
     logging:
       driver: "json-file"
       options:
@@ -233,7 +245,7 @@ services:
     networks:
       - internal_net
 
-  # в”Ђв”Ђв”Ђ Flower (Optional Monitoring вЂ” run with --profile monitoring)
+  # ─── Flower (Optional Monitoring — run with --profile monitoring)
   flower:
     build:
       context: .
@@ -250,7 +262,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 90M
+          cpus: '0.20'
+          memory: 80M
     logging:
       driver: "json-file"
       options:

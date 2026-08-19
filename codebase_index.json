@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-19T22:49:32.332189+00:00",
+  "updated_at": "2026-08-19T22:52:37.795699+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 61,
   "files": [
@@ -3087,8 +3087,8 @@
     {
       "file": "run_bot.py",
       "layer": "config",
-      "hash": "9fdd8dbd2cf3",
-      "docstring": "Run Telegram Bot Locally — WB FBS Manager",
+      "hash": "29603049c182",
+      "docstring": "Run Telegram Bot — WB FBS Manager",
       "classes": [],
       "functions": [
         {

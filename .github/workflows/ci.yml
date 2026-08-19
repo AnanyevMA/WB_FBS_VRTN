@@ -23,17 +23,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
-      - name: Setup environment
-        run: |
-          cp .env.example .env
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
+          pip install pytest pytest-asyncio httpx
 
       - name: Run pytest test suite
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./wbfbs.db
+          DATABASE_URL_SYNC: sqlite:///./wbfbs.db
+          SECRET_KEY: ci-test-secret-key-32-chars-long-abcdef
+          JWT_SECRET_KEY: ci-test-jwt-secret-key-32-chars-long
+          ENCRYPTION_KEY: jK4hdZuYiftat9StWo41NqsmE9HHzxj5I6tMNq4LgnA=
         run: |
           pytest tests/ -v
 

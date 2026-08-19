@@ -1,0 +1,113 @@
+# 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
+
+> **Автоматически сгенерированный индекс кодовой базы**  
+> **Дата актуализации**: 2026-08-19 13:21:38 UTC | **Файлов проиндексировано**: 61  
+> **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
+
+---
+
+## 1. Архитектурные Слои и Модули
+
+### 🗄️ База Данных & ORM Модели (`app/models/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`app/models/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/__init__.py) | — | — | Модуль кодовой базы |
+| [`app/models/audit.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/audit.py) | `AuditLog` | — | Модуль кодовой базы |
+| [`app/models/kiz.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/kiz.py) | `KizOperationType`, `KizOperation`, `KizProductInfo` | — | Модуль кодовой базы |
+| [`app/models/order.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/order.py) | `OrderStatus`, `KizStatus`, `Order` | — | Модуль кодовой базы |
+| [`app/models/seller.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/seller.py) | `Seller` | — | Модуль кодовой базы |
+| [`app/models/supply.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/supply.py) | `SupplyStatus`, `Supply` | — | Модуль кодовой базы |
+
+### 📐 Pydantic Схемы & Контракты (`app/schemas/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`app/schemas/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/schemas/__init__.py) | — | — | Модуль кодовой базы |
+| [`app/schemas/order.py`](file:///D:/PyCharm_Projects/WB FBS/app/schemas/order.py) | `OrderBase`, `OrderResponse`, `OrderListItem`, `KIZAttachRequest`, `KIZValidationResponse` | — | Модуль кодовой базы |
+| [`app/schemas/seller.py`](file:///D:/PyCharm_Projects/WB FBS/app/schemas/seller.py) | `DigestSettings`, `SellerBase`, `SellerCreate`, `SellerUpdate`, `SellerResponse`, `SellerListItem` | — | Модуль кодовой базы |
+
+### 🌐 FastAPI Роутеры & Эндпоинты (`app/api/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`app/api/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/__init__.py) | — | — | Модуль кодовой базы |
+| [`app/api/audit.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/audit.py) | — | `GET /sellers/{seller_id}/audit` → `list_audit_logs`<br>`GET /audit` → `list_audit_logs` | Модуль кодовой базы |
+| [`app/api/debug.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/debug.py) | — | `GET /status` → `get_debug_status`<br>`POST /seed-mock-data` → `seed_mock_data`<br>`POST /simulate-order-flow` → `simulate_order_flow` | Debug & Testing Router — Отладочный модуль для симуляции и генерации тестовых данных |
+| [`app/api/kiz.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz.py) | — | `POST /orders/{order_id}/kiz` → `attach_kiz`<br>`POST /kiz/attach` → `attach_kiz`<br>`POST /kiz/lookup` → `lookup_kiz`<br>`DELETE /orders/{order_id}/kiz` → `detach_kiz`<br>`GET /orders/{order_id}/kiz/validate` → `validate_kiz`<br>`POST /kiz/withdraw` → `withdraw_kiz`<br>`POST /kiz/return` → `return_kiz`<br>`POST /kiz/prepare-document` → `prepare_kiz_document`<br>`POST /kiz/submit-signed-document` → `submit_signed_kiz_document`<br>`GET /kiz/operations` → `list_kiz_operations` | Модуль кодовой базы |
+| [`app/api/orders.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/orders.py) | — | `GET /stats` → `get_dashboard_stats`<br>`GET ` → `list_orders`<br>`GET /{order_id}` → `get_order`<br>`POST /{order_id}/kiz-check` → `check_order_kiz_status`<br>`POST /{order_id}/cancel` → `cancel_order`<br>`POST /{order_id}/mark-assembling` → `mark_assembling`<br>`GET /{order_id}/sticker` → `get_sticker`<br>`POST /sync` → `refresh_orders`<br>`POST /refresh` → `refresh_orders` | Модуль кодовой базы |
+| [`app/api/qa.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/qa.py) | — | `POST /run-tests` → `run_qa_tests` | QA Router — Эндпоинты запуска автоматического тестировщика |
+| [`app/api/sellers.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/sellers.py) | — | `POST ` → `create_seller`<br>`GET ` → `list_sellers`<br>`GET /{seller_id}` → `get_seller`<br>`PATCH /{seller_id}` → `update_seller`<br>`DELETE /{seller_id}` → `deactivate_seller`<br>`POST /{seller_id}/test-connection` → `test_connection`<br>`POST /{seller_id}/toggle-polling` → `toggle_polling`<br>`GET /{seller_id}/pending-summary` → `get_pending_summary` | Модуль кодовой базы |
+| [`app/api/supplies.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/supplies.py) | — | `GET ` → `list_supplies`<br>`POST /sync` → `sync_supplies`<br>`POST /refresh` → `sync_supplies`<br>`POST ` → `create_supply`<br>`GET /{supply_id}` → `get_supply`<br>`GET /{supply_id}/barcode` → `get_supply_barcode`<br>`POST /create-from-pending` → `create_supply_from_pending` | Модуль кодовой базы |
+
+### ⚙️ Бизнес-Логика & Клиенты API (`app/services/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`app/services/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/__init__.py) | — | — | WB FBS Manager — README |
+| [`app/services/codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/codebase_indexer.py) | `CodebaseIndexer` | — | Codebase Semantic & Symbol Indexer — WB FBS Manager |
+| [`app/services/crypto_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/crypto_service.py) | `CryptoSignatureError` | `sign_document`, `_find_cryptopro_bin`, `sign_document`, `_mock_signature`, +еще 1 | КриптоПро Digital Signature Service |
+| [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | — | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
+| [`app/services/encryption.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/encryption.py) | `EncryptionService` | `_get_fernet`, `encrypt`, `decrypt` | Encryption Service — шифрование чувствительных данных (токены API, credentials) |
+| [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
+| [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `parse_kiz_code`, `resolve_kiz_product_info` | Модуль кодовой базы |
+| [`app/services/telegram_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/telegram_service.py) | `TelegramService` | `get_telegram_service` | Telegram Notification Service — отправка Push-уведомлений менеджерам |
+| [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `is_kiz_required` | Wildberries Marketplace API Client. |
+
+### 🤖 Мультиагентный Слой Celery (`app/agents/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`app/agents/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/__init__.py) | — | — | Agents package for WB FBS Manager Celery tasks. |
+| [`app/agents/archive_processor.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/archive_processor.py) | — | ⚙️ `app.agents.archive_processor.process_all_archives`<br>⚙️ `app.agents.archive_processor.process_seller_archive`<br>⚙️ `app.agents.archive_processor.sync_order_statuses` | Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота |
+| [`app/agents/cleanup.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cleanup.py) | — | ⚙️ `app.agents.cleanup.cleanup_old_audit_logs` | Cleanup Agent — WB FBS Manager |
+| [`app/agents/cz_return.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_return.py) | — | ⚙️ `app.agents.cz_return.return_order_kiz` | CZ Return Agent — Возврат КИЗ в оборот при возврате товара |
+| [`app/agents/cz_token_refresher.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_token_refresher.py) | — | ⚙️ `app.agents.cz_token_refresher.refresh_all_tokens` | Chestny Znak Token Refresher Agent — WB FBS Manager |
+| [`app/agents/cz_withdrawal.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_withdrawal.py) | — | ⚙️ `app.agents.cz_withdrawal.withdraw_order_kiz`<br>⚙️ `app.agents.cz_withdrawal.process_seller_archive` | CZ Withdrawal Celery Agent — Вывод КИЗ из оборота |
+| [`app/agents/kb_sync_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/kb_sync_agent.py) | — | ⚙️ `app.agents.kb_sync_agent.sync_knowledge_base` | Knowledge Base & Codebase Synchronization Agent — WB FBS Manager |
+| [`app/agents/morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/morning_digest.py) | — | ⚙️ `app.agents.morning_digest.send_morning_digest` | Morning Digest Agent — WB FBS Manager |
+| [`app/agents/notifier.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/notifier.py) | — | ⚙️ `app.agents.notifier.notify_new_order`<br>⚙️ `app.agents.notifier.notify_batch_orders`<br>⚙️ `app.agents.notifier.send_cz_status_notification`<br>⚙️ `app.agents.notifier.send_supply_notification`<br>⚙️ `app.agents.notifier.send_alert` | Notifier Agent — отправка уведомлений через Telegram |
+| [`app/agents/order_poller.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/order_poller.py) | — | ⚙️ `app.agents.order_poller.get_order_sticker`<br>⚙️ `app.agents.order_poller.poll_all_sellers` | Order Polling Agent — WB FBS Manager |
+| [`app/agents/qa_test_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/qa_test_agent.py) | `QATestingError` | ⚙️ `app.agents.qa_test_agent.run_system_regression_tests` | QA Testing Agent — Автоматический агент-тестировщик системы |
+| [`app/agents/supply_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/supply_agent.py) | — | ⚙️ `app.agents.supply_agent.create_supply_for_seller` | Supply Manager Agent — создание и управление поставками WB FBS |
+
+### 🧠 Ядро Системы & Конфигурация (`app/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`app/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/__init__.py) | — | — | WB FBS Manager Application |
+| [`app/agent_manifest.py`](file:///D:/PyCharm_Projects/WB FBS/app/agent_manifest.py) | `AgentPoLPMatrix`, `AgentConfig`, `GlobalPoLPPolicy`, `ArbitrationRules`, `AgentsManifest`, `PoLPEnforcer` | `load_manifest` | Agent Configuration & PoLP Manifest Module — WB FBS Manager |
+| [`app/bot.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot.py) | — | `_get_active_seller`, `get_main_reply_keyboard`, `create_bot_router` | Telegram Bot Handler & Dispatcher — WB FBS Manager |
+| [`app/celery_app.py`](file:///D:/PyCharm_Projects/WB FBS/app/celery_app.py) | — | — | Celery Application Configuration — WB FBS Manager |
+| [`app/config.py`](file:///D:/PyCharm_Projects/WB FBS/app/config.py) | `Settings` | `get_settings` | Application Configuration — WB FBS Manager |
+| [`app/database.py`](file:///D:/PyCharm_Projects/WB FBS/app/database.py) | `Base` | `get_db`, `init_db` | Database setup — async SQLAlchemy engine + session factory |
+| [`app/main.py`](file:///D:/PyCharm_Projects/WB FBS/app/main.py) | — | `GET /` → `root`<br>`GET /health` → `health_check` | Модуль кодовой базы |
+
+### 🖥️ Пользовательский Интерфейс (`frontend/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`frontend/index.html`](file:///D:/PyCharm_Projects/WB FBS/frontend/index.html) | — | `apiFetch`, `cancelOrder`, `checkKizLiveStatus`, `checkPluginLoaded`, +еще 42 | Single Page Application Dashboard (HTML/CSS/JS) |
+
+### 🧪 Набор Автотестов (`tests/`)
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`tests/test_agent_delegation_sync.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_agent_delegation_sync.py) | — | `test_agent_task_registration_and_queues`, `test_celery_beat_schedule_synchronization`, `test_qa_agent_execution_and_audit_logging` | Integration test for Agent Task Delegation, Audit Logging, and Workflow Synchronization. |
+| [`tests/test_agent_manifest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_agent_manifest.py) | — | `test_load_manifest`, `test_development_rules_holistic_and_test_policies`, `test_polp_enforcer_global_forbidden`, `test_polp_enforcer_agent_permissions` | Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer. |
+| [`tests/test_codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_codebase_indexer.py) | — | `test_codebase_indexer_scan_and_save`, `test_codebase_indexer_fast_symbol_query`, `test_lookup_code_symbol_helper`, `test_codebase_indexing_rule_in_manifest`, +еще 1 | Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule. |
+| [`tests/test_cz_client_and_queues.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_and_queues.py) | — | `test_encryption_service_compatibility`, `test_cz_client_authenticate_flow`, `test_cz_client_suz_endpoints_and_cises_info`, `test_agent_task_queue_decorators_match_manifest`, +еще 1 | Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService. |
+| [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |
+| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_kiz_product_info_model_and_validation`, +еще 3 | Модуль кодовой базы |
+| [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
+| [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_return_document_building`, `test_cz_client_withdraw_and_return_execution`, +еще 2 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
+| [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
+| [`tests/test_polling_and_digest_schema.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_polling_and_digest_schema.py) | `TestDigestSettings`, `TestSellerCreatePollingInterval`, `TestSellerUpdateDigest`, `TestSellerResponseComputedInterval` | — | Tests: polling interval + digest settings — seller schema validation. |
+| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status` | Модуль кодовой базы |
+
+### 📄 Системные Конфигурации & Скрипты
+
+| Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
+|---|---|---|---|
+| [`run_bot.py`](file:///D:/PyCharm_Projects/WB FBS/run_bot.py) | — | `get_active_sellers_with_tokens`, `check_bot`, `send_test_notification`, `run_polling`, +еще 1 | Run Telegram Bot Locally — WB FBS Manager |
+| [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | — | Модуль кодовой базы |

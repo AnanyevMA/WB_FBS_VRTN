@@ -1,0 +1,405 @@
+{
+  "version": "1.0.0",
+  "system": "WB FBS Manager Knowledge Base",
+  "updated_at": "2026-08-19T13:21:36.233761+00:00",
+  "description": "High-level two-tier semantic routing and lookup index. Agents must query this index to locate the exact document before loading full content.",
+  "categories": [
+    {
+      "id": "wb_api",
+      "name": "Wildberries Marketplace API (FBS v3)",
+      "description": "Wildberries Marketplace API (FBS v3)"
+    },
+    {
+      "id": "chestny_znak_api",
+      "name": "Честный Знак (ГИС МТ & СУЗ-Облако 3.0.38 / True API)",
+      "description": "Честный Знак (ГИС МТ & СУЗ-Облако 3.0.38 / True API)"
+    },
+    {
+      "id": "solutions_and_recipes",
+      "name": "Архитектурные решения и Рецепты",
+      "description": "Архитектурные решения и Рецепты"
+    },
+    {
+      "id": "troubleshooting",
+      "name": "Диагностика и Справочник Ошибок",
+      "description": "Диагностика и Справочник Ошибок"
+    }
+  ],
+  "documents": [
+    {
+      "id": "wb_01_overview_and_auth",
+      "category": "wb_api",
+      "title": "Wildberries Marketplace API v3: Авторизация, Лимиты и Мультиселлеринг",
+      "file": "docs/wb_api/01_overview_and_auth.md",
+      "summary": "Аутентификация через Bearer token, правила Rate Limiting (300 req/min), политика ретраев (tenacity) и изоляция токенов в мультиселлере.",
+      "tags": [
+        "wb",
+        "auth",
+        "token",
+        "rate_limit",
+        "multitenant",
+        "security"
+      ],
+      "endpoints": [
+        "https://marketplace-api.wildberries.ru"
+      ],
+      "covered_errors": [
+        "401 Unauthorized",
+        "429 Too Many Requests"
+      ]
+    },
+    {
+      "id": "wb_02_orders_workflow",
+      "category": "wb_api",
+      "title": "Wildberries Marketplace API v3: Жизненный цикл сборочных заданий (Orders)",
+      "file": "docs/wb_api/02_orders_workflow.md",
+      "summary": "Получение новых заказов (/api/v3/orders/new), выгрузка архива заказов (/api/v3/orders), генерация стикеров (/api/v3/orders/stickers) и отмена заданий.",
+      "tags": [
+        "wb",
+        "orders",
+        "stickers",
+        "fbs",
+        "assembly",
+        "cancel"
+      ],
+      "endpoints": [
+        "GET /api/v3/orders/new",
+        "GET /api/v3/orders/new",
+        "POST /api/v3/orders/stickers",
+        "GET /api/v3/orders",
+        "PATCH /api/v3/orders/{orderId}/cancel",
+        "PATCH /api/v3/orders/12345678/cancel"
+      ],
+      "covered_errors": [
+        "400 Bad Request",
+        "404 Order Not Found"
+      ]
+    },
+    {
+      "id": "wb_03_kiz_and_meta",
+      "category": "wb_api",
+      "title": "Wildberries Marketplace API v3: Привязка КИЗ (SGTIN) и Валидация Метаданных",
+      "file": "docs/wb_api/03_kiz_and_meta.md",
+      "summary": "Передача маркировки SGTIN к сборочному заданию (/meta/sgtin), опрос статуса валидации (/orders/meta) и исключение ошибки 409 Conflict.",
+      "tags": [
+        "wb",
+        "kiz",
+        "sgtin",
+        "meta",
+        "validation",
+        "marking"
+      ],
+      "endpoints": [
+        "PUT /api/v3/orders/{orderId}/meta/sgtin",
+        "PUT /api/v3/orders/12345678/meta/sgtin",
+        "POST /api/marketplace/v3/orders/meta",
+        "POST /cises/info",
+        "PUT /meta/sgtin"
+      ],
+      "covered_errors": [
+        "409 Conflict",
+        "MetaValidationFail"
+      ]
+    },
+    {
+      "id": "wb_04_supplies_and_shipment",
+      "category": "wb_api",
+      "title": "Wildberries Marketplace API v3: Управление поставками (Supplies) и Отгрузка",
+      "file": "docs/wb_api/04_supplies_and_shipment.md",
+      "summary": "Создание поставок WB-GI-*, добавление заказов в поставку, генерация ШК поставки и закрытие/передача в доставку (/deliver).",
+      "tags": [
+        "wb",
+        "supplies",
+        "deliver",
+        "barcode",
+        "shipment",
+        "qr"
+      ],
+      "endpoints": [
+        "POST /api/v3/supplies",
+        "PUT /api/v3/supplies/WB",
+        "GET /api/v3/supplies/WB",
+        "GET /api/v3/supplies/WB",
+        "PATCH /api/v3/supplies/WB"
+      ],
+      "covered_errors": [
+        "409 Supply Already Delivered",
+        "400 Supply Not Empty"
+      ]
+    },
+    {
+      "id": "cz_01_auth_and_cryptography",
+      "category": "chestny_znak_api",
+      "title": "Честный Знак: Аутентификация True API и Подпись УКЭП (КриптоПро)",
+      "file": "docs/chestny_znak_api/01_auth_and_cryptography.md",
+      "summary": "Двухэтапная авторизация (challenge -> УКЭП подпись -> sessionToken), формирование открепленной CMS-подписи в X-Signature (Секция 2.3.1 СУЗ 3.0.38).",
+      "tags": [
+        "cz",
+        "auth",
+        "ukep",
+        "cryptopro",
+        "gost",
+        "cms",
+        "x-signature"
+      ],
+      "endpoints": [
+        "GET /api/v3/true",
+        "POST /api/v3/true",
+        "GET /api/v3/true",
+        "POST /api/v3/true"
+      ],
+      "covered_errors": [
+        "401 Token Expired",
+        "Invalid Signature",
+        "CryptoPro Thumbprint Missing"
+      ]
+    },
+    {
+      "id": "cz_02_suz_emission_and_orders",
+      "category": "chestny_znak_api",
+      "title": "СУЗ-Облако 5.0 (API 3.0.38): Заказ и Эмиссия Кодов Маркировки",
+      "file": "docs/chestny_znak_api/02_suz_emission_and_orders.md",
+      "summary": "Создание заказа на эмиссию (/api/v3/order, templateId 10, ТГ lp), проверка статуса массива КМ, выгрузка блоков КМ и отчет об использовании.",
+      "tags": [
+        "suz",
+        "emission",
+        "km",
+        "gtin",
+        "templateId",
+        "light_industry",
+        "utilisation"
+      ],
+      "endpoints": [
+        "POST /api/v3/order?omsId={omsId}",
+        "GET /api/v3/order/status?omsId={omsId}&orderId={orderId}",
+        "GET /api/v3/codes?omsId={omsId}&orderId={orderId}&gtin={gtin}&quantity={quantity}",
+        "POST /api/v3/report/utilisation?omsId={omsId}"
+      ],
+      "covered_errors": [
+        "400 Order Rejected",
+        "Limit Exceeded",
+        "Invalid GTIN"
+      ]
+    },
+    {
+      "id": "cz_03_true_api_withdrawal",
+      "category": "chestny_znak_api",
+      "title": "True API ГИС МТ: Вывод КИЗ из Оборота (Дистанционная Продажа)",
+      "file": "docs/chestny_znak_api/03_true_api_withdrawal.md",
+      "summary": "Формирование и подписание документа LP_SHIP_GOODS (/doc/create), расчет цен в копейках, указание ФИАС/КПП склада и асинхронный опрос статуса.",
+      "tags": [
+        "cz",
+        "true_api",
+        "withdrawal",
+        "lp_ship_goods",
+        "fias",
+        "kpp",
+        "dropout"
+      ],
+      "endpoints": [
+        "GET /api/v3/true",
+        "GET /api/v3/true"
+      ],
+      "covered_errors": [
+        "KIZ Not In Circulation",
+        "Document Rejected",
+        "Invalid Price"
+      ]
+    },
+    {
+      "id": "cz_04_true_api_returns",
+      "category": "chestny_znak_api",
+      "title": "True API ГИС МТ: Возврат КИЗ в Оборот при Отменах и Возвратах",
+      "file": "docs/chestny_znak_api/04_true_api_returns.md",
+      "summary": "Формирование документа LP_RETURN_GOODS для повторного ввода КИЗ в оборот после возврата покупателем на ПВЗ или отмены доставки.",
+      "tags": [
+        "cz",
+        "true_api",
+        "returns",
+        "lp_return_goods",
+        "reintroduce"
+      ],
+      "endpoints": [
+        "POST /api/v1/sellers/{id}/kiz/return"
+      ],
+      "covered_errors": [
+        "KIZ Already In Circulation",
+        "Owner Mismatch"
+      ]
+    },
+    {
+      "id": "cz_05_kiz_structure_and_validation",
+      "category": "chestny_znak_api",
+      "title": "Спецификация GS1 DataMatrix и Онлайн-Валидация КИЗ",
+      "file": "docs/chestny_znak_api/05_kiz_structure_and_validation.md",
+      "summary": "Структура GS1 DataMatrix (AI 01 GTIN, 21 SN, 91 Key, 92 Crypto, разделитель GS ASCII 29), парсинг и валидация через /cises/info.",
+      "tags": [
+        "cz",
+        "datamatrix",
+        "gs1",
+        "sgtin",
+        "cises_info",
+        "scanner",
+        "gs_separator"
+      ],
+      "endpoints": [
+        "PUT /meta/sgtin",
+        "POST /api/v3/true"
+      ],
+      "covered_errors": [
+        "Invalid Barcode Format",
+        "KIZ Expired",
+        "KIZ Blocked"
+      ]
+    },
+    {
+      "id": "cz_06_true_api_v719_reference",
+      "category": "chestny_znak_api",
+      "title": "Честный Знак: True API ГИС МТ v719.0 (Спецификация от 18.08.2026)",
+      "file": "docs/chestny_znak_api/06_true_api_v719_reference.md",
+      "summary": "Навигатор и технический справочник по официальной спецификации True API v719.0: блокировки ОГВ (MZ, VETRF, RD, FSSP), LP_SHIP_GOODS, LP_RETURN_GOODS, /cises/info, квитанции и ошибки.",
+      "tags": [
+        "cz",
+        "true_api",
+        "gis_mt",
+        "v719",
+        "reference",
+        "cises_info",
+        "ogvs",
+        "withdrawal",
+        "returns"
+      ],
+      "endpoints": [
+        "GET /api/v3/true",
+        "POST /api/v3/true",
+        "POST /api/v3/true",
+        "POST /api/v3/true",
+        "POST /api/v3/true",
+        "GET /api/v3/true",
+        "GET /api/v3/true",
+        "POST /api/v3/true",
+        "PUT /api/v3/orders/{orderId}/meta/sgtin",
+        "GET /auth/key",
+        "POST /auth/simpleSignIn",
+        "POST /doc/create",
+        "POST /cises/info",
+        "GET /doc/{id}/info",
+        "GET /documents/receipts/{id}"
+      ],
+      "covered_errors": [
+        "401 Token Expired",
+        "409 Conflict",
+        "KIZ Not In Circulation",
+        "OGV Blocked",
+        "Invalid Signature"
+      ]
+    },
+    {
+      "id": "sol_01_end_to_end_pipeline",
+      "category": "solutions_and_recipes",
+      "title": "Сквозной Интеграционный Пайплайн: WB FBS + Честный Знак",
+      "file": "docs/solutions_and_recipes/01_end_to_end_fbs_cz_pipeline.md",
+      "summary": "Пошаговый сценарий от получения заказа WB до передачи на СЦ и автоматического выбытия КИЗ в ГИС МТ. Полная архитектурная схема.",
+      "tags": [
+        "architecture",
+        "pipeline",
+        "fbs",
+        "end_to_end",
+        "workflow",
+        "blueprint"
+      ],
+      "endpoints": [
+        "GET /api/v3/orders/new",
+        "POST /api/v3/orders/stickers",
+        "POST /cises/info",
+        "PUT /meta/sgtin",
+        "PUT /supplies/{id}/orders/{id}",
+        "GET /supplies/{id}/barcode",
+        "PATCH /supplies/{id}/deliver",
+        "POST /api/v3/true",
+        "GET /api/v3/orders/new",
+        "PUT /api/v3/orders/{orderId}/meta/sgtin",
+        "PATCH /api/v3/supplies/{id}/deliver"
+      ],
+      "covered_errors": [
+        "Pipeline Desynchronization",
+        "Race Conditions"
+      ]
+    },
+    {
+      "id": "sol_02_multiagent_coordination",
+      "category": "solutions_and_recipes",
+      "title": "Мультиагентный Слой, PoLP и Распределенный Арбитраж",
+      "file": "docs/solutions_and_recipes/02_multiagent_coordination_and_polp.md",
+      "summary": "Координация 10 агентов Celery, приоритеты очередей, распределенные блокировки Redis (redis_lock) и матрица прав доступа PoLP.",
+      "tags": [
+        "agents",
+        "celery",
+        "redis_lock",
+        "polp",
+        "arbitration",
+        "security"
+      ],
+      "endpoints": [
+        "Internal Celery Bus"
+      ],
+      "covered_errors": [
+        "Lock Timeout",
+        "PoLP Permission Denied",
+        "Queue Starvation"
+      ]
+    },
+    {
+      "id": "sol_03_deployment_and_crypto",
+      "category": "solutions_and_recipes",
+      "title": "Развертывание КриптоПро CSP и Сертификатов в Docker/Linux",
+      "file": "docs/solutions_and_recipes/03_deployment_and_crypto_setup.md",
+      "summary": "Инструкция по установке КриптоПро CSP 5.0, импорту ГОСТ-сертификатов, настройке pycades / cprocsp и переменных окружения .env.",
+      "tags": [
+        "deploy",
+        "docker",
+        "cryptopro",
+        "certificates",
+        "csp",
+        "linux"
+      ],
+      "endpoints": [
+        "Host / Container Setup"
+      ],
+      "covered_errors": [
+        "Certificate Not Found",
+        "CSP License Expired",
+        "Driver Error"
+      ]
+    },
+    {
+      "id": "tb_01_error_catalog",
+      "category": "troubleshooting",
+      "title": "Справочник и Каталог Ошибок (WB API, ГИС МТ, КриптоПро)",
+      "file": "docs/troubleshooting/01_error_catalog_and_resolutions.md",
+      "summary": "Исчерпывающая таблица диагностических кодов ошибок (409 Conflict, 429 Too Many Requests, 401 Unauthorized, CryptoPro -2146893816) с готовыми решениями.",
+      "tags": [
+        "troubleshooting",
+        "errors",
+        "409_conflict",
+        "429_rate_limit",
+        "cryptopro_errors",
+        "rejected"
+      ],
+      "endpoints": [
+        "PATCH /api/v3/supplies/{id}/deliver",
+        "GET /api/v3/supplies/{id}/orders",
+        "PUT /api/v3/orders/{orderId}/meta/sgtin",
+        "POST /api/v1/sellers/{id}/test",
+        "POST /api/v3/true"
+      ],
+      "covered_errors": [
+        "409 Conflict",
+        "429 Rate Limit",
+        "401 Unauthorized",
+        "X-Signature Invalid",
+        "KIZ Owner Mismatch"
+      ]
+    }
+  ]
+}

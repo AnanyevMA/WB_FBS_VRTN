@@ -1,0 +1,4105 @@
+{
+  "version": "1.0.0",
+  "system": "WB FBS Manager Codebase Symbol Index",
+  "updated_at": "2026-08-19T13:21:38.265812+00:00",
+  "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
+  "total_files": 61,
+  "files": [
+    {
+      "file": "alembic/env.py",
+      "layer": "migrations",
+      "hash": "5b8734f059e5",
+      "docstring": "Alembic env.py — Миграции для WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_url",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "run_migrations_offline",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Run migrations in 'offline' mode."
+        },
+        {
+          "name": "do_run_migrations",
+          "is_async": false,
+          "args": [
+            "connection"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "run_async_migrations",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": "Run migrations in 'online' async mode."
+        },
+        {
+          "name": "run_migrations_online",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "app.config",
+        "app.database",
+        "app.models",
+        "asyncio",
+        "logging.config",
+        "sqlalchemy",
+        "sqlalchemy.engine",
+        "sqlalchemy.ext.asyncio"
+      ]
+    },
+    {
+      "file": "alembic/versions/6eb961e36b55_initial_schema.py",
+      "layer": "migrations",
+      "hash": "7cd984005be1",
+      "docstring": "initial_schema",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/__init__.py",
+      "layer": "core",
+      "hash": "d38e4370fce2",
+      "docstring": "WB FBS Manager Application",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
+    },
+    {
+      "file": "app/agent_manifest.py",
+      "layer": "core",
+      "hash": "6bd683790740",
+      "docstring": "Agent Configuration & PoLP Manifest Module — WB FBS Manager",
+      "classes": [
+        {
+          "name": "AgentPoLPMatrix",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "AgentConfig",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "GlobalPoLPPolicy",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ArbitrationRules",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "AgentsManifest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": [
+            "get_agent",
+            "list_agent_ids"
+          ]
+        },
+        {
+          "name": "PoLPEnforcer",
+          "bases": [],
+          "docstring": "Enforces file path access rights and resource constraints based on PoLP matrix.",
+          "methods": [
+            "__init__",
+            "_normalize_path",
+            "is_forbidden_globally",
+            "can_read",
+            "can_write",
+            "can_delete",
+            "get_table_permission"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "load_manifest",
+          "is_async": false,
+          "args": [
+            "manifest_path"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "fnmatch",
+        "json",
+        "logging",
+        "pathlib",
+        "pydantic",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/agents/__init__.py",
+      "layer": "agents",
+      "hash": "365e2b31dafb",
+      "docstring": "Agents package for WB FBS Manager Celery tasks.",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
+    },
+    {
+      "file": "app/agents/archive_processor.py",
+      "layer": "agents",
+      "hash": "6eeaf128883f",
+      "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
+      "classes": [],
+      "functions": [
+        {
+          "name": "process_all_archives",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Ежедневный запуск: скачивает и обрабатывает архив WB для каждого активного продавца."
+        },
+        {
+          "name": "process_seller_archive",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Обрабатывает архив WB для одного продавца."
+        },
+        {
+          "name": "sync_order_statuses",
+          "is_async": false,
+          "args": [
+            "seller_id"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Синхронизация статусов заказов с WB API через POST /api/v3/orders/status."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.archive_processor.process_all_archives",
+          "function": "process_all_archives",
+          "docstring": "Ежедневный запуск: скачивает и обрабатывает архив WB для каждого активного продавца."
+        },
+        {
+          "name": "app.agents.archive_processor.process_seller_archive",
+          "function": "process_seller_archive",
+          "docstring": "Обрабатывает архив WB для одного продавца."
+        },
+        {
+          "name": "app.agents.archive_processor.sync_order_statuses",
+          "function": "sync_order_statuses",
+          "docstring": "Синхронизация статусов заказов с WB API через POST /api/v3/orders/status."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.celery_app",
+        "app.config",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "asyncio",
+        "datetime",
+        "io",
+        "logging",
+        "pandas",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/agents/cleanup.py",
+      "layer": "agents",
+      "hash": "2b030fb1feea",
+      "docstring": "Cleanup Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "cleanup_old_audit_logs",
+          "is_async": false,
+          "args": [
+            "days_to_keep"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Delete audit log entries older than 90 days (or specified days_to_keep)."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.cleanup.cleanup_old_audit_logs",
+          "function": "cleanup_old_audit_logs",
+          "docstring": "Delete audit log entries older than 90 days (or specified days_to_keep)."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/cz_return.py",
+      "layer": "agents",
+      "hash": "44b66da34209",
+      "docstring": "CZ Return Agent — Возврат КИЗ в оборот при возврате товара",
+      "classes": [],
+      "functions": [
+        {
+          "name": "return_order_kiz",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "order_id",
+            "kiz_code"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Возврат КИЗ в оборот при возврате товара покупателем."
+        },
+        {
+          "name": "_do_return",
+          "is_async": true,
+          "args": [
+            "inn",
+            "token",
+            "cert_thumbprint",
+            "kiz_codes",
+            "wb_order_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_log_audit",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id",
+            "agent",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.cz_return.return_order_kiz",
+          "function": "return_order_kiz",
+          "docstring": "Возврат КИЗ в оборот при возврате товара покупателем."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "asyncio",
+        "concurrent.futures",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/cz_token_refresher.py",
+      "layer": "agents",
+      "hash": "ae049b4fd453",
+      "docstring": "Chestny Znak Token Refresher Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "refresh_all_tokens",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Refresh CZ tokens for all active sellers before expiration."
+        },
+        {
+          "name": "_refresh_seller_cz_token",
+          "is_async": true,
+          "args": [
+            "inn",
+            "cert_thumbprint"
+          ],
+          "decorators": [],
+          "docstring": "Execute auth flow with GIS MT True API to receive fresh token."
+        },
+        {
+          "name": "_log_audit",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id",
+            "agent",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": "Write structured audit log entry."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.cz_token_refresher.refresh_all_tokens",
+          "function": "refresh_all_tokens",
+          "docstring": "Refresh CZ tokens for all active sellers before expiration."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.agents.notifier",
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/cz_withdrawal.py",
+      "layer": "agents",
+      "hash": "0bfd1a3ab67d",
+      "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
+      "classes": [],
+      "functions": [
+        {
+          "name": "withdraw_order_kiz",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "order_id",
+            "kiz_code",
+            "price_kopecks",
+            "wb_order_data"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Вывод КИЗ из оборота для конкретного заказа."
+        },
+        {
+          "name": "_do_withdrawal",
+          "is_async": true,
+          "args": [
+            "inn",
+            "token",
+            "cert_thumbprint",
+            "kiz_codes",
+            "price_kopecks",
+            "mod_fias",
+            "mod_kpp",
+            "wb_order_id"
+          ],
+          "decorators": [],
+          "docstring": "Async withdrawal using CZClient."
+        },
+        {
+          "name": "process_seller_archive",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "archive_data"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Process WB archive data for batch CZ withdrawal."
+        },
+        {
+          "name": "_log_audit",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id",
+            "agent",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": "Write audit log entry."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.cz_withdrawal.withdraw_order_kiz",
+          "function": "withdraw_order_kiz",
+          "docstring": "Вывод КИЗ из оборота для конкретного заказа."
+        },
+        {
+          "name": "app.agents.cz_withdrawal.process_seller_archive",
+          "function": "process_seller_archive",
+          "docstring": "Process WB archive data for batch CZ withdrawal."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.notifier",
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "asyncio",
+        "concurrent.futures",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/kb_sync_agent.py",
+      "layer": "agents",
+      "hash": "02cf330dd1bf",
+      "docstring": "Knowledge Base & Codebase Synchronization Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_knowledge_base",
+          "is_async": false,
+          "args": [
+            "self",
+            "force_rebuild"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Periodic task to validate and maintain the project Knowledge Base and Codebase Index."
+        },
+        {
+          "name": "lookup_kb_solution",
+          "is_async": false,
+          "args": [
+            "query",
+            "category",
+            "tags",
+            "endpoint",
+            "error_code",
+            "limit"
+          ],
+          "decorators": [],
+          "docstring": "Helper function for other agents to fast-query the knowledge base index."
+        },
+        {
+          "name": "lookup_code_symbol",
+          "is_async": false,
+          "args": [
+            "symbol",
+            "layer",
+            "file_keyword",
+            "endpoint_keyword",
+            "table_name",
+            "limit"
+          ],
+          "decorators": [],
+          "docstring": "Helper function for other agents to fast-query code symbols, endpoints, and models without loading full files."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.kb_sync_agent.sync_knowledge_base",
+          "function": "sync_knowledge_base",
+          "docstring": "Periodic task to validate and maintain the project Knowledge Base and Codebase Index."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models",
+        "app.services.codebase_indexer",
+        "app.services.kb_service",
+        "datetime",
+        "logging",
+        "pathlib",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/morning_digest.py",
+      "layer": "agents",
+      "hash": "4aee1535dc12",
+      "docstring": "Morning Digest Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_seller_digest_due",
+          "is_async": false,
+          "args": [
+            "seller",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": "Return True if the seller's digest should fire right now."
+        },
+        {
+          "name": "send_morning_digest",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Checks all active sellers and sends a morning digest to those whose"
+        },
+        {
+          "name": "_log_audit",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.morning_digest.send_morning_digest",
+          "function": "send_morning_digest",
+          "docstring": "Checks all active sellers and sends a morning digest to those whose"
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "asyncio",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "uuid",
+        "zoneinfo"
+      ]
+    },
+    {
+      "file": "app/agents/notifier.py",
+      "layer": "agents",
+      "hash": "c9293d8a851d",
+      "docstring": "Notifier Agent — отправка уведомлений через Telegram",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_get_seller",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_log_audit",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "notify_new_order",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "order_id",
+            "order_data"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Send Telegram notification about new order."
+        },
+        {
+          "name": "notify_batch_orders",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "orders_payload"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Пакетное уведомление о N новых заказах (для N ≥ 2 за один цикл опроса)."
+        },
+        {
+          "name": "send_cz_status_notification",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "order_id",
+            "success",
+            "doc_id",
+            "error"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Send Telegram notification about CZ operation status."
+        },
+        {
+          "name": "send_supply_notification",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "supply_id",
+            "orders_count"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Send Telegram notification about supply delivery."
+        },
+        {
+          "name": "send_alert",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "agent",
+            "message"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Send error alert to seller's admin."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.notifier.notify_new_order",
+          "function": "notify_new_order",
+          "docstring": "Send Telegram notification about new order."
+        },
+        {
+          "name": "app.agents.notifier.notify_batch_orders",
+          "function": "notify_batch_orders",
+          "docstring": "Пакетное уведомление о N новых заказах (для N ≥ 2 за один цикл опроса)."
+        },
+        {
+          "name": "app.agents.notifier.send_cz_status_notification",
+          "function": "send_cz_status_notification",
+          "docstring": "Send Telegram notification about CZ operation status."
+        },
+        {
+          "name": "app.agents.notifier.send_supply_notification",
+          "function": "send_supply_notification",
+          "docstring": "Send Telegram notification about supply delivery."
+        },
+        {
+          "name": "app.agents.notifier.send_alert",
+          "function": "send_alert",
+          "docstring": "Send error alert to seller's admin."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "asyncio",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/order_poller.py",
+      "layer": "agents",
+      "hash": "db18c9b1724a",
+      "docstring": "Order Polling Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_order_sticker",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "order_id"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Download and save sticker for a specific order."
+        },
+        {
+          "name": "_check_kiz_required",
+          "is_async": false,
+          "args": [
+            "order_raw"
+          ],
+          "decorators": [],
+          "docstring": "Determine if KIZ / SGTIN marking is required for an order."
+        },
+        {
+          "name": "poll_seller_orders",
+          "is_async": false,
+          "args": [
+            "seller",
+            "session"
+          ],
+          "decorators": [],
+          "docstring": "Poll new WB orders for a single seller."
+        },
+        {
+          "name": "poll_all_sellers",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Poll new WB orders for ALL active sellers, respecting per-seller polling intervals."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.order_poller.get_order_sticker",
+          "function": "get_order_sticker",
+          "docstring": "Download and save sticker for a specific order."
+        },
+        {
+          "name": "app.agents.order_poller.poll_all_sellers",
+          "function": "poll_all_sellers",
+          "docstring": "Poll new WB orders for ALL active sellers, respecting per-seller polling intervals."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.agents.notifications",
+        "app.agents.notifier",
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models",
+        "app.services.encryption",
+        "app.services.security",
+        "app.services.wb_client",
+        "asyncio",
+        "celery",
+        "datetime",
+        "inspect",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/qa_test_agent.py",
+      "layer": "agents",
+      "hash": "4927e167c37b",
+      "docstring": "QA Testing Agent — Автоматический агент-тестировщик системы",
+      "classes": [
+        {
+          "name": "QATestingError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Exception raised when system regression tests fail.",
+          "methods": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "run_system_regression_tests",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Автоматически проверить работоспособность всех ключевых систем:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.qa_test_agent.run_system_regression_tests",
+          "function": "run_system_regression_tests",
+          "docstring": "Автоматически проверить работоспособность всех ключевых систем:"
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.services.crypto_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "json",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/supply_agent.py",
+      "layer": "agents",
+      "hash": "4249204002bc",
+      "docstring": "Supply Manager Agent — создание и управление поставками WB FBS",
+      "classes": [],
+      "functions": [
+        {
+          "name": "create_supply_for_seller",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "order_ids",
+            "supply_name"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Создаёт поставку WB и добавляет в неё указанные заказы."
+        },
+        {
+          "name": "_create_and_deliver_supply",
+          "is_async": true,
+          "args": [
+            "wb_token",
+            "order_ids",
+            "supply_name"
+          ],
+          "decorators": [],
+          "docstring": "Async supply creation and delivery."
+        },
+        {
+          "name": "_log_audit",
+          "is_async": false,
+          "args": [
+            "db",
+            "seller_id",
+            "agent",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.supply_agent.create_supply_for_seller",
+          "function": "create_supply_for_seller",
+          "docstring": "Создаёт поставку WB и добавляет в неё указанные заказы."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.agents.notifier",
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.supply",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "asyncio",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/api/__init__.py",
+      "layer": "api",
+      "hash": "f7ff302fd49c",
+      "docstring": "",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
+    },
+    {
+      "file": "app/api/audit.py",
+      "layer": "api",
+      "hash": "53191f155e6e",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "list_audit_logs",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "page",
+            "page_size",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/audit')",
+            "router.get('/audit')"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/audit",
+          "handler": "list_audit_logs",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/audit",
+          "handler": "list_audit_logs",
+          "docstring": ""
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "fastapi",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/debug.py",
+      "layer": "api",
+      "hash": "ec5653ef71fb",
+      "docstring": "Debug & Testing Router — Отладочный модуль для симуляции и генерации тестовых данных",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_debug_status",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "router.get('/status')"
+          ],
+          "docstring": "Получить системную статистику для отладки."
+        },
+        {
+          "name": "seed_mock_data",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "router.post('/seed-mock-data')"
+          ],
+          "docstring": "Сгенерировать тестового селлера и 5 образцовых FBS заказов."
+        },
+        {
+          "name": "simulate_order_flow",
+          "is_async": true,
+          "args": [
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/simulate-order-flow')"
+          ],
+          "docstring": "Симулировать сквозной процесс: сборка -> привязка КИЗ -> выбытие."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/status",
+          "handler": "get_debug_status",
+          "docstring": "Получить системную статистику для отладки."
+        },
+        {
+          "method": "POST",
+          "path": "/seed-mock-data",
+          "handler": "seed_mock_data",
+          "docstring": "Сгенерировать тестового селлера и 5 образцовых FBS заказов."
+        },
+        {
+          "method": "POST",
+          "path": "/simulate-order-flow",
+          "handler": "simulate_order_flow",
+          "docstring": "Симулировать сквозной процесс: сборка -> привязка КИЗ -> выбытие."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.supply",
+        "app.services.encryption",
+        "datetime",
+        "fastapi",
+        "random",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/api/kiz.py",
+      "layer": "api",
+      "hash": "e3a48b9baf7a",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "attach_kiz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "req",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/orders/{order_id}/kiz')",
+            "router.post('/kiz/attach')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "lookup_kiz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "req",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/lookup')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "detach_kiz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.delete('/orders/{order_id}/kiz')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "validate_kiz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/orders/{order_id}/kiz/validate')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "withdraw_kiz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_ids",
+            "price_kopecks",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/withdraw')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "return_kiz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_ids",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/return')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "prepare_kiz_document",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/prepare-document')"
+          ],
+          "docstring": "Формирует канонический JSON-документ (LK_RECEIPT или LP_RETURN) для подписания"
+        },
+        {
+          "name": "submit_signed_kiz_document",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/submit-signed-document')"
+          ],
+          "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
+        },
+        {
+          "name": "list_kiz_operations",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/kiz/operations')"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/orders/{order_id}/kiz",
+          "handler": "attach_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/attach",
+          "handler": "attach_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/lookup",
+          "handler": "lookup_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "DELETE",
+          "path": "/orders/{order_id}/kiz",
+          "handler": "detach_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/orders/{order_id}/kiz/validate",
+          "handler": "validate_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/withdraw",
+          "handler": "withdraw_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/return",
+          "handler": "return_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/prepare-document",
+          "handler": "prepare_kiz_document",
+          "docstring": "Формирует канонический JSON-документ (LK_RECEIPT или LP_RETURN) для подписания"
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/submit-signed-document",
+          "handler": "submit_signed_kiz_document",
+          "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
+        },
+        {
+          "method": "GET",
+          "path": "/kiz/operations",
+          "handler": "list_kiz_operations",
+          "docstring": ""
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.agents.notifier",
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.schemas.order",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/api/orders.py",
+      "layer": "api",
+      "hash": "979dbc92a5b9",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_dashboard_stats",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/stats')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "list_orders",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "status",
+            "kiz_status",
+            "q",
+            "date_from",
+            "date_to",
+            "page",
+            "page_size",
+            "db"
+          ],
+          "decorators": [
+            "router.get('')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_order",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{order_id}')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "check_order_kiz_status",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{order_id}/kiz-check')"
+          ],
+          "docstring": "Live verification of KIZ status in ГИС МТ (Честный Знак)."
+        },
+        {
+          "name": "cancel_order",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{order_id}/cancel')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "mark_assembling",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{order_id}/mark-assembling')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_sticker",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{order_id}/sticker')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "refresh_orders",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sync')",
+            "router.post('/refresh')"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/stats",
+          "handler": "get_dashboard_stats",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "",
+          "handler": "list_orders",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/{order_id}",
+          "handler": "get_order",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/{order_id}/kiz-check",
+          "handler": "check_order_kiz_status",
+          "docstring": "Live verification of KIZ status in ГИС МТ (Честный Знак)."
+        },
+        {
+          "method": "POST",
+          "path": "/{order_id}/cancel",
+          "handler": "cancel_order",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/{order_id}/mark-assembling",
+          "handler": "mark_assembling",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/{order_id}/sticker",
+          "handler": "get_sticker",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/sync",
+          "handler": "refresh_orders",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/refresh",
+          "handler": "refresh_orders",
+          "docstring": ""
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.database",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.supply",
+        "app.schemas.order",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.wb_client",
+        "datetime",
+        "decimal",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/api/qa.py",
+      "layer": "api",
+      "hash": "a8fc8a29eded",
+      "docstring": "QA Router — Эндпоинты запуска автоматического тестировщика",
+      "classes": [],
+      "functions": [
+        {
+          "name": "run_qa_tests",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "router.post('/run-tests')"
+          ],
+          "docstring": "Запустить сквозной регрессионный тест системы."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/run-tests",
+          "handler": "run_qa_tests",
+          "docstring": "Запустить сквозной регрессионный тест системы."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.qa_test_agent",
+        "fastapi"
+      ]
+    },
+    {
+      "file": "app/api/sellers.py",
+      "layer": "api",
+      "hash": "068425051dd7",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_apply_polling_interval",
+          "is_async": false,
+          "args": [
+            "seller",
+            "data"
+          ],
+          "decorators": [],
+          "docstring": "Convert polling_interval_minutes → polling_interval_seconds and write to seller."
+        },
+        {
+          "name": "_apply_digest_settings",
+          "is_async": false,
+          "args": [
+            "seller",
+            "data"
+          ],
+          "decorators": [],
+          "docstring": "Apply digest settings from nested 'digest' object or flat fields."
+        },
+        {
+          "name": "create_seller",
+          "is_async": true,
+          "args": [
+            "seller_in",
+            "db"
+          ],
+          "decorators": [
+            "router.post('')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "list_sellers",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "router.get('')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_seller",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{seller_id}')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "update_seller",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "seller_in",
+            "db"
+          ],
+          "decorators": [
+            "router.patch('/{seller_id}')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "deactivate_seller",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.delete('/{seller_id}')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_connection",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{seller_id}/test-connection')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "toggle_polling",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "enabled",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{seller_id}/toggle-polling')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_pending_summary",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{seller_id}/pending-summary')"
+          ],
+          "docstring": "Быстрая сводка необработанных заказов продавца."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "",
+          "handler": "create_seller",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "",
+          "handler": "list_sellers",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/{seller_id}",
+          "handler": "get_seller",
+          "docstring": ""
+        },
+        {
+          "method": "PATCH",
+          "path": "/{seller_id}",
+          "handler": "update_seller",
+          "docstring": ""
+        },
+        {
+          "method": "DELETE",
+          "path": "/{seller_id}",
+          "handler": "deactivate_seller",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/{seller_id}/test-connection",
+          "handler": "test_connection",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/{seller_id}/toggle-polling",
+          "handler": "toggle_polling",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/{seller_id}/pending-summary",
+          "handler": "get_pending_summary",
+          "docstring": "Быстрая сводка необработанных заказов продавца."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.schemas.seller",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "datetime",
+        "fastapi",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/supplies.py",
+      "layer": "api",
+      "hash": "efebd5b912f0",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "list_supplies",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "sync_supplies",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sync')",
+            "router.post('/refresh')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "create_supply",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_ids",
+            "name",
+            "db"
+          ],
+          "decorators": [
+            "router.post('')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_supply",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "supply_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{supply_id}')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_supply_barcode",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "supply_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{supply_id}/barcode')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "create_supply_from_pending",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "supply_name",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/create-from-pending')"
+          ],
+          "docstring": "Создаёт поставку из всех необработанных заказов (NEW / ASSEMBLING без supply_id)."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "",
+          "handler": "list_supplies",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/sync",
+          "handler": "sync_supplies",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/refresh",
+          "handler": "sync_supplies",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "",
+          "handler": "create_supply",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/{supply_id}",
+          "handler": "get_supply",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/{supply_id}/barcode",
+          "handler": "get_supply_barcode",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/create-from-pending",
+          "handler": "create_supply_from_pending",
+          "docstring": "Создаёт поставку из всех необработанных заказов (NEW / ASSEMBLING без supply_id)."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.supply_agent",
+        "app.database",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.supply",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "datetime",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/bot.py",
+      "layer": "core",
+      "hash": "fd374e8648b2",
+      "docstring": "Telegram Bot Handler & Dispatcher — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_get_active_seller",
+          "is_async": false,
+          "args": [
+            "db",
+            "chat_id"
+          ],
+          "decorators": [],
+          "docstring": "Find active seller in DB, optionally matching chat_id."
+        },
+        {
+          "name": "get_main_reply_keyboard",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Main menu reply keyboard (for private chats only)."
+        },
+        {
+          "name": "create_bot_router",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Creates aiogram router with all command and callback handlers."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "aiogram.client.default",
+        "aiogram.enums",
+        "aiogram.filters",
+        "aiogram.types",
+        "app.config",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.supply",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "datetime",
+        "decimal",
+        "logging",
+        "random",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/celery_app.py",
+      "layer": "core",
+      "hash": "b48c15a7c96f",
+      "docstring": "Celery Application Configuration — WB FBS Manager",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "celery",
+        "celery.schedules",
+        "kombu"
+      ]
+    },
+    {
+      "file": "app/config.py",
+      "layer": "core",
+      "hash": "c57fd04a6bd2",
+      "docstring": "Application Configuration — WB FBS Manager",
+      "classes": [
+        {
+          "name": "Settings",
+          "bases": [
+            "BaseSettings"
+          ],
+          "docstring": "",
+          "methods": [
+            "cz_effective_url",
+            "model_post_init"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_settings",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "lru_cache"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "functools",
+        "pydantic_settings",
+        "socket"
+      ]
+    },
+    {
+      "file": "app/database.py",
+      "layer": "core",
+      "hash": "6b97f515ce25",
+      "docstring": "Database setup — async SQLAlchemy engine + session factory",
+      "classes": [
+        {
+          "name": "Base",
+          "bases": [
+            "DeclarativeBase"
+          ],
+          "docstring": "Base declarative class for all ORM models.",
+          "methods": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": "FastAPI dependency — yields an async DB session."
+        },
+        {
+          "name": "init_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": "Create all tables and sync missing columns for SQLite development."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.orm"
+      ]
+    },
+    {
+      "file": "app/main.py",
+      "layer": "core",
+      "hash": "ec8c75767952",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "lifespan",
+          "is_async": true,
+          "args": [
+            "app"
+          ],
+          "decorators": [
+            "asynccontextmanager"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "root",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "app.get('/')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "health_check",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "app.get('/health')"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/",
+          "handler": "root",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/health",
+          "handler": "health_check",
+          "docstring": ""
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api",
+        "app.config",
+        "app.database",
+        "contextlib",
+        "fastapi",
+        "fastapi.middleware.cors",
+        "fastapi.responses",
+        "fastapi.staticfiles",
+        "logging"
+      ]
+    },
+    {
+      "file": "app/models/__init__.py",
+      "layer": "models",
+      "hash": "5e14a0ff6980",
+      "docstring": "",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.supply"
+      ]
+    },
+    {
+      "file": "app/models/audit.py",
+      "layer": "models",
+      "hash": "1ccf37a5d5de",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "AuditLog",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "audit_logs"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "sqlalchemy",
+        "sqlalchemy.dialects.postgresql",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/models/kiz.py",
+      "layer": "models",
+      "hash": "fa11dc239204",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "KizOperationType",
+          "bases": [
+            "enum.Enum"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "KizOperation",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "KizProductInfo",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "Информация о товаре, полученная по коду маркировки (КИЗ / SGTIN / DataMatrix).",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "kiz_operations",
+        "kiz_product_info"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "enum",
+        "sqlalchemy",
+        "sqlalchemy.dialects.postgresql",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/models/order.py",
+      "layer": "models",
+      "hash": "ddf3d4cd76d5",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "OrderStatus",
+          "bases": [
+            "enum.Enum"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "KizStatus",
+          "bases": [
+            "enum.Enum"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "Order",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "orders"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "decimal",
+        "enum",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/models/seller.py",
+      "layer": "models",
+      "hash": "b12e79717944",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "Seller",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "sellers"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "sqlalchemy",
+        "sqlalchemy.dialects.postgresql",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/models/supply.py",
+      "layer": "models",
+      "hash": "d14e800d5a96",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "SupplyStatus",
+          "bases": [
+            "enum.Enum"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "Supply",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "supplies"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "enum",
+        "sqlalchemy",
+        "sqlalchemy.dialects.postgresql",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/schemas/__init__.py",
+      "layer": "schemas",
+      "hash": "f7ff302fd49c",
+      "docstring": "",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
+    },
+    {
+      "file": "app/schemas/order.py",
+      "layer": "schemas",
+      "hash": "a26d02e824e5",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "OrderBase",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "OrderResponse",
+          "bases": [
+            "OrderBase"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "OrderListItem",
+          "bases": [
+            "OrderBase"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "KIZAttachRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "KIZValidationResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "datetime",
+        "pydantic",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/schemas/seller.py",
+      "layer": "schemas",
+      "hash": "a1329e143809",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "DigestSettings",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Настройки утреннего дайджеста для продавца.",
+          "methods": [
+            "validate_timezone"
+          ]
+        },
+        {
+          "name": "SellerBase",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "SellerCreate",
+          "bases": [
+            "SellerBase"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "SellerUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": [
+            "validate_timezone"
+          ]
+        },
+        {
+          "name": "SellerResponse",
+          "bases": [
+            "SellerBase"
+          ],
+          "docstring": "",
+          "methods": [
+            "model_validate"
+          ]
+        },
+        {
+          "name": "SellerListItem",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": [
+            "model_validate"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "datetime",
+        "pydantic",
+        "typing",
+        "zoneinfo"
+      ]
+    },
+    {
+      "file": "app/services/__init__.py",
+      "layer": "services",
+      "hash": "522721946551",
+      "docstring": "WB FBS Manager — README",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
+    },
+    {
+      "file": "app/services/codebase_indexer.py",
+      "layer": "services",
+      "hash": "be0d0d2a2ec7",
+      "docstring": "Codebase Semantic & Symbol Indexer — WB FBS Manager",
+      "classes": [
+        {
+          "name": "CodebaseIndexer",
+          "bases": [],
+          "docstring": "Automated AST-based code scanner, indexer, and query engine.",
+          "methods": [
+            "__init__",
+            "_determine_layer",
+            "_parse_python_file",
+            "_parse_frontend_file",
+            "_format_node",
+            "scan_project",
+            "save_index",
+            "load_index",
+            "query"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "ast",
+        "datetime",
+        "hashlib",
+        "json",
+        "logging",
+        "pathlib",
+        "re",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/crypto_service.py",
+      "layer": "services",
+      "hash": "309fb7962863",
+      "docstring": "КриптоПро Digital Signature Service",
+      "classes": [
+        {
+          "name": "CryptoSignatureError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Error during document signing.",
+          "methods": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "sign_document",
+          "is_async": true,
+          "args": [
+            "data",
+            "cert_thumbprint"
+          ],
+          "decorators": [],
+          "docstring": "Sign a document body using КриптоПро УКЭП."
+        },
+        {
+          "name": "_find_cryptopro_bin",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Find CryptoPro executable (csptest or cryptcp) on Windows/Linux."
+        },
+        {
+          "name": "sign_document",
+          "is_async": true,
+          "args": [
+            "data",
+            "cert_thumbprint",
+            "attached"
+          ],
+          "decorators": [],
+          "docstring": "Sign a document body using КриптоПро УКЭП."
+        },
+        {
+          "name": "_mock_signature",
+          "is_async": false,
+          "args": [
+            "data"
+          ],
+          "decorators": [],
+          "docstring": "Mock signature for development/testing when КриптоПро is not available."
+        },
+        {
+          "name": "is_cryptopro_available",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Check if КриптоПро is installed and accessible."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "asyncio",
+        "base64",
+        "hashlib",
+        "logging",
+        "os",
+        "subprocess",
+        "tempfile",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/cz_client.py",
+      "layer": "services",
+      "hash": "3bc6c89c199d",
+      "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
+      "classes": [
+        {
+          "name": "CZAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Base error for Честный Знак / СУЗ API.",
+          "methods": [
+            "__init__"
+          ]
+        },
+        {
+          "name": "CZUnauthorizedError",
+          "bases": [
+            "CZAPIError"
+          ],
+          "docstring": "Token expired or invalid.",
+          "methods": []
+        },
+        {
+          "name": "CZDocumentError",
+          "bases": [
+            "CZAPIError"
+          ],
+          "docstring": "Document creation/processing error.",
+          "methods": []
+        },
+        {
+          "name": "CZClient",
+          "bases": [],
+          "docstring": "Async client for ГИС МТ (True API) and СУЗ-Облако 5.0 (API 3.0.38).",
+          "methods": [
+            "__init__",
+            "__aenter__",
+            "__aexit__",
+            "_get_headers",
+            "_ensure_client",
+            "authenticate",
+            "_request",
+            "create_order_emission",
+            "get_order_status",
+            "get_emission_codes",
+            "report_utilisation",
+            "_build_withdrawal_document",
+            "_build_return_document",
+            "_create_document",
+            "get_document_status",
+            "wait_for_document",
+            "withdraw_from_circulation",
+            "build_withdrawal_payload",
+            "build_return_payload",
+            "submit_signed_document",
+            "return_to_circulation",
+            "get_cises_info",
+            "get_cises_short_list",
+            "get_document_receipt",
+            "get_seller_mod_list",
+            "check_mod_status",
+            "check_kiz_status",
+            "close"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.services.crypto_service",
+        "asyncio",
+        "base64",
+        "datetime",
+        "httpx",
+        "json",
+        "logging",
+        "tenacity",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/services/encryption.py",
+      "layer": "services",
+      "hash": "32d6fa175d8a",
+      "docstring": "Encryption Service — шифрование чувствительных данных (токены API, credentials)",
+      "classes": [
+        {
+          "name": "EncryptionService",
+          "bases": [],
+          "docstring": "Class wrapper for Encryption & Decryption service.",
+          "methods": [
+            "encrypt",
+            "decrypt"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "_get_fernet",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Create Fernet instance from settings encryption key."
+        },
+        {
+          "name": "encrypt",
+          "is_async": false,
+          "args": [
+            "value"
+          ],
+          "decorators": [],
+          "docstring": "Encrypt a plaintext string. Returns base64-encoded ciphertext."
+        },
+        {
+          "name": "decrypt",
+          "is_async": false,
+          "args": [
+            "value"
+          ],
+          "decorators": [],
+          "docstring": "Decrypt a Fernet-encrypted string. Returns plaintext."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "base64",
+        "cryptography.fernet",
+        "logging"
+      ]
+    },
+    {
+      "file": "app/services/kb_service.py",
+      "layer": "services",
+      "hash": "9f8b7b54d516",
+      "docstring": "Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager",
+      "classes": [
+        {
+          "name": "KBService",
+          "bases": [],
+          "docstring": "Knowledge Base Management & Query Service.",
+          "methods": [
+            "__init__",
+            "load_index",
+            "search",
+            "get_document_content",
+            "validate_integrity",
+            "rebuild_index"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "datetime",
+        "json",
+        "logging",
+        "pathlib",
+        "re",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/kiz_service.py",
+      "layer": "services",
+      "hash": "9670b22bd2cc",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "parse_kiz_code",
+          "is_async": false,
+          "args": [
+            "raw_code"
+          ],
+          "decorators": [],
+          "docstring": "Разбирает код маркировки GS1 DataMatrix / SGTIN / КИЗ."
+        },
+        {
+          "name": "resolve_kiz_product_info",
+          "is_async": true,
+          "args": [
+            "kiz_code",
+            "seller",
+            "order",
+            "db",
+            "force_refresh"
+          ],
+          "decorators": [],
+          "docstring": "Получает и сохраняет полную информацию о товаре по коду КИЗ (SGTIN)."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "datetime",
+        "logging",
+        "re",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/services/telegram_service.py",
+      "layer": "services",
+      "hash": "972fe939e6b6",
+      "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
+      "classes": [
+        {
+          "name": "TelegramService",
+          "bases": [],
+          "docstring": "Сервис отправки уведомлений в Telegram.",
+          "methods": [
+            "__init__",
+            "_get_bot",
+            "close",
+            "send_new_order_notification",
+            "send_kiz_required_alert",
+            "send_cz_withdrawal_status",
+            "send_supply_delivered",
+            "send_error_alert",
+            "send_batch_orders_notification",
+            "send_morning_digest",
+            "send_text",
+            "_broadcast"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "get_telegram_service",
+          "is_async": false,
+          "args": [
+            "bot_token"
+          ],
+          "decorators": [],
+          "docstring": "Factory function."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "aiogram.client.default",
+        "aiogram.enums",
+        "aiogram.exceptions",
+        "aiogram.types",
+        "asyncio",
+        "datetime",
+        "logging",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_client.py",
+      "layer": "services",
+      "hash": "3da838a30710",
+      "docstring": "Wildberries Marketplace API Client.",
+      "classes": [
+        {
+          "name": "WBAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Base exception for WB API errors.",
+          "methods": []
+        },
+        {
+          "name": "WBUnauthorizedError",
+          "bases": [
+            "WBAPIError"
+          ],
+          "docstring": "401 Unauthorized.",
+          "methods": []
+        },
+        {
+          "name": "WBRateLimitError",
+          "bases": [
+            "WBAPIError"
+          ],
+          "docstring": "429 Too Many Requests.",
+          "methods": []
+        },
+        {
+          "name": "WBMetaValidationError",
+          "bases": [
+            "WBAPIError"
+          ],
+          "docstring": "409 Conflict, typically MetaValidationFail (e.g. KIZ not attached before delivery).",
+          "methods": []
+        },
+        {
+          "name": "WBClient",
+          "bases": [],
+          "docstring": "Wildberries API Client.",
+          "methods": [
+            "__init__",
+            "__aenter__",
+            "__aexit__",
+            "close",
+            "_request",
+            "get_new_orders",
+            "get_orders",
+            "get_orders_status",
+            "cancel_order",
+            "get_stickers",
+            "set_order_sgtin",
+            "get_orders_meta",
+            "get_supplies",
+            "create_supply",
+            "add_order_to_supply",
+            "get_supply_orders",
+            "deliver_supply",
+            "get_supply_barcode",
+            "get_cards_catalog"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "is_kiz_required",
+          "is_async": false,
+          "args": [
+            "subject",
+            "tnved",
+            "order_raw"
+          ],
+          "decorators": [],
+          "docstring": "Определяет обязательность маркировки «Честный Знак» (КИЗ / SGTIN)."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "asyncio",
+        "datetime",
+        "httpx",
+        "logging",
+        "tenacity",
+        "typing"
+      ]
+    },
+    {
+      "file": "run_bot.py",
+      "layer": "config",
+      "hash": "9fdd8dbd2cf3",
+      "docstring": "Run Telegram Bot Locally — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_active_sellers_with_tokens",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Retrieve all active sellers that have a Telegram bot token configured."
+        },
+        {
+          "name": "check_bot",
+          "is_async": true,
+          "args": [
+            "token",
+            "seller_name"
+          ],
+          "decorators": [],
+          "docstring": "Check if bot token is valid and log bot info."
+        },
+        {
+          "name": "send_test_notification",
+          "is_async": true,
+          "args": [
+            "token",
+            "chat_ids",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": "Send a test order notification."
+        },
+        {
+          "name": "run_polling",
+          "is_async": true,
+          "args": [
+            "token",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": "Start polling loop for single bot."
+        },
+        {
+          "name": "main",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "aiogram.client.default",
+        "aiogram.enums",
+        "app.bot",
+        "app.config",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "argparse",
+        "asyncio",
+        "logging",
+        "random",
+        "signal",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sys",
+        "typing"
+      ]
+    },
+    {
+      "file": "scripts/generate_secrets.py",
+      "layer": "config",
+      "hash": "b8ae85c16aa0",
+      "error": "SyntaxError: invalid non-printable character U+FEFF (generate_secrets.py, line 1)",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": []
+    },
+    {
+      "file": "tests/test_agent_delegation_sync.py",
+      "layer": "tests",
+      "hash": "a1607c7e14ae",
+      "docstring": "Integration test for Agent Task Delegation, Audit Logging, and Workflow Synchronization.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_agent_task_registration_and_queues",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_celery_beat_schedule_synchronization",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_qa_agent_execution_and_audit_logging",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "app.agents.qa_test_agent",
+        "app.celery_app",
+        "pathlib"
+      ]
+    },
+    {
+      "file": "tests/test_agent_manifest.py",
+      "layer": "tests",
+      "hash": "69e0bb204861",
+      "docstring": "Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_load_manifest",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_development_rules_holistic_and_test_policies",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify both holistic_impact_analysis and post_change_test_analysis rules exist."
+        },
+        {
+          "name": "test_polp_enforcer_global_forbidden",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_polp_enforcer_agent_permissions",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "json",
+        "pathlib"
+      ]
+    },
+    {
+      "file": "tests/test_codebase_indexer.py",
+      "layer": "tests",
+      "hash": "0c8499eef099",
+      "docstring": "Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_codebase_indexer_scan_and_save",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that CodebaseIndexer parses the codebase and writes codebase_index.json & CODEBASE_MAP.md."
+        },
+        {
+          "name": "test_codebase_indexer_fast_symbol_query",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify fast token-efficient lookup for classes, functions, and endpoints."
+        },
+        {
+          "name": "test_lookup_code_symbol_helper",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify the lookup helper used by agents."
+        },
+        {
+          "name": "test_codebase_indexing_rule_in_manifest",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that token_efficient_codebase_indexing rule is enforced in agents_config.json."
+        },
+        {
+          "name": "test_kb_and_code_sync_execution",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that sync_knowledge_base Celery task syncs both docs and codebase."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "app.agents.kb_sync_agent",
+        "app.services.codebase_indexer",
+        "json",
+        "pathlib",
+        "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_cz_client_and_queues.py",
+      "layer": "tests",
+      "hash": "b4cdbe0c5c85",
+      "docstring": "Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_encryption_service_compatibility",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify EncryptionService class methods work identically to standalone functions."
+        },
+        {
+          "name": "test_cz_client_authenticate_flow",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 2-step challenge-response authentication in CZClient."
+        },
+        {
+          "name": "test_cz_client_suz_endpoints_and_cises_info",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify SUZ 3.0.38 emission endpoints and True API cises/info."
+        },
+        {
+          "name": "test_agent_task_queue_decorators_match_manifest",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify all Celery task objects have queue decorator parameters matching agents_config.json."
+        },
+        {
+          "name": "test_seller_oms_and_cert_thumbprint_fields",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify Seller model and schemas support cz_oms_id and cryptopro_cert_thumbprint."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "app.celery_app",
+        "app.models.seller",
+        "app.schemas.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "pathlib",
+        "pytest",
+        "unittest.mock"
+      ]
+    },
+    {
+      "file": "tests/test_kb_agent.py",
+      "layer": "tests",
+      "hash": "06eae830732a",
+      "docstring": "Unit & Integration Tests for Knowledge Base Service and KB Sync Agent.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_kb_service_index_loading_and_structure",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that INDEX.json is loaded and contains valid categories and documents."
+        },
+        {
+          "name": "test_kb_two_tier_fast_search",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify fast two-tier searching by error code, endpoint, tags, and keywords."
+        },
+        {
+          "name": "test_kb_get_document_content",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify loading specific document content directly by id or relative path."
+        },
+        {
+          "name": "test_kb_integrity_validation",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that all markdown files exist and have healthy links."
+        },
+        {
+          "name": "test_kb_sync_agent_execution",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that the Celery agent task executes and returns valid status."
+        },
+        {
+          "name": "test_lookup_kb_solution_helper",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify the lookup helper used by other agents."
+        },
+        {
+          "name": "test_kb_sync_agent_manifest_registration",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify kb_sync_agent is registered in agents_config.json with correct permissions."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "app.agents.kb_sync_agent",
+        "app.services.kb_service",
+        "pathlib",
+        "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_service.py",
+      "layer": "tests",
+      "hash": "e00882e4753f",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_parse_kiz_code_standard",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_with_parentheses",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_with_crypto_tail",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_kiz_product_info_model_and_validation",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_kiz_ogv_blocking_validation",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that True API v719.0 OGV blocker codes (RD, FSSP, MZ, VETRF) invalidate KIZ."
+        },
+        {
+          "name": "test_attach_kiz_endpoint_syncs_kiz_cz_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that attach_kiz API endpoint populates order.kiz_cz_status and validates state."
+        },
+        {
+          "name": "test_check_order_kiz_status_detects_conflict",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that check_order_kiz_status sets KizStatus.ERROR when mark is RETIRED on active order."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz",
+        "app.api.orders",
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.schemas.order",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_signing_endpoints.py",
+      "layer": "tests",
+      "hash": "babb0184f7bf",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_prepare_and_submit_kiz_document_endpoints",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.main",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "datetime",
+        "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_withdrawal_return.py",
+      "layer": "tests",
+      "hash": "ef99e647e85f",
+      "docstring": "Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_kiz_structure_validation",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify SGTIN structure: AI(01) 14-digit GTIN + AI(21) Serial number."
+        },
+        {
+          "name": "test_withdrawal_document_building_with_fias",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify LK_RECEIPT document structure containing FIAS ID and OTHER primary doc."
+        },
+        {
+          "name": "test_return_document_building",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify LP_RETURN document structure for customer return."
+        },
+        {
+          "name": "test_cz_client_withdraw_and_return_execution",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test full async execution of withdrawal and return through True API mock."
+        },
+        {
+          "name": "test_celery_withdrawal_and_return_agent_tasks",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify Celery task execution with DB state transitions and audit logging."
+        },
+        {
+          "name": "test_full_lifecycle_return_then_withdrawal_distance_sale",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Эмуляция полного бизнес-процесса для КИЗ 0104630199254371215LgcIxnWSgssC:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "datetime",
+        "json",
+        "pytest",
+        "random",
+        "sqlalchemy.orm",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_morning_digest.py",
+      "layer": "tests",
+      "hash": "a284421d9fd9",
+      "docstring": "Tests: morning_digest agent — timezone-aware fire logic, Telegram message content,",
+      "classes": [
+        {
+          "name": "TestSellerDigestDue",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "_make_seller",
+            "_utc",
+            "test_fires_at_correct_hour_moscow",
+            "test_does_not_fire_wrong_hour",
+            "test_fires_at_correct_hour_vladivostok",
+            "test_30_min_bucket_allows_early_match",
+            "test_30_min_bucket_miss_after_30_min",
+            "test_invalid_timezone_falls_back_to_moscow"
+          ]
+        },
+        {
+          "name": "TestMorningDigestTelegramContent",
+          "bases": [],
+          "docstring": "Verify text content built by send_morning_digest / send_batch_orders_notification.",
+          "methods": [
+            "test_empty_orders_message_contains_no_orders_text",
+            "test_orders_present_message_has_count_kiz_and_keyboard",
+            "test_batch_notification_groups_orders_and_total"
+          ]
+        },
+        {
+          "name": "TestManifestMorningDigestRegistered",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_morning_digest_in_manifest",
+            "test_morning_digest_queue_is_notifications",
+            "test_development_rules_loaded_via_extra",
+            "test_manifest_version_1_1_or_higher"
+          ]
+        },
+        {
+          "name": "TestCeleryBeatMorningDigest",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_morning_digest_in_beat_schedule",
+            "test_morning_digest_scheduled_every_30min"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "_stub_aiogram",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stub out aiogram so tests run without the package installed."
+        },
+        {
+          "name": "_make_telegram_svc",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "app.agents.morning_digest",
+        "app.celery_app",
+        "app.services.telegram_service",
+        "datetime",
+        "json",
+        "pathlib",
+        "pytest",
+        "sys",
+        "types",
+        "unittest.mock"
+      ]
+    },
+    {
+      "file": "tests/test_polling_and_digest_schema.py",
+      "layer": "tests",
+      "hash": "fcaee6e3ebbc",
+      "docstring": "Tests: polling interval + digest settings — seller schema validation.",
+      "classes": [
+        {
+          "name": "TestDigestSettings",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_defaults",
+            "test_valid_russian_timezones",
+            "test_invalid_timezone_raises",
+            "test_hour_bounds",
+            "test_minute_bounds"
+          ]
+        },
+        {
+          "name": "TestSellerCreatePollingInterval",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "_base",
+            "test_default_no_interval",
+            "test_valid_interval_1",
+            "test_valid_interval_60",
+            "test_interval_below_min_raises",
+            "test_interval_above_max_raises",
+            "test_nested_digest_object"
+          ]
+        },
+        {
+          "name": "TestSellerUpdateDigest",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_flat_digest_fields_valid",
+            "test_flat_digest_timezone_invalid_raises",
+            "test_flat_polling_interval_valid",
+            "test_flat_polling_interval_bounds",
+            "test_empty_update_is_valid"
+          ]
+        },
+        {
+          "name": "TestSellerResponseComputedInterval",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "_make_seller_obj",
+            "test_60_seconds_gives_1_minute",
+            "test_300_seconds_gives_5_minutes",
+            "test_zero_seconds_gives_1_minute_minimum"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.schemas.seller",
+        "datetime",
+        "pydantic",
+        "pytest",
+        "types"
+      ]
+    },
+    {
+      "file": "tests/test_wb_order_status.py",
+      "layer": "tests",
+      "hash": "509bc7cee960",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_wb_client_get_orders_status_endpoint",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify WBClient.get_orders_status makes correct POST request to /api/v3/orders/status."
+        },
+        {
+          "name": "test_refresh_orders_syncs_wb_status_and_supplier_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that refresh_orders fetches WB statuses and updates Order.wb_status / supplier_status."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.orders",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "datetime",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "frontend/index.html",
+      "layer": "frontend",
+      "hash": "1880b854b40b",
+      "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "apiFetch",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "cancelOrder",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "checkKizLiveStatus",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "checkPluginLoaded",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "closeModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "createSupply",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "deleteSeller",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "editSeller",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "executeKizClientSigning",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "getCzStatusBadge",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "getStatusBadge",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "getWbStatusBadge",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "initApp",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "initCryptoProPlugin",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadAuditLogs",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadCadesScript",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadDashboard",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadOrders",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadSellers",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadSellersForDropdown",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "loadSupplies",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "markOrderAssembling",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "navigateTo",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "onCertSelected",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "openAddSellerModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "openAttachKizModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "openBatchKizSigningModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "openCreateSupplyModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "openKizSigningModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "openModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "populateCertificatesDropdown",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "processKizScan",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "saveSeller",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "seedMockData",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "showSeedBanner",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "showSupplyBarcode",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "showToast",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "signDataWithCryptoPro",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "submitKizViaServerFallback",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "submitModalKizAttach",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "syncSuppliesFromWB",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "testConnectionFor",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "testSellerConnection",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "togglePollingFor",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "triggerCzAction",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "viewOrderDetail",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "routes": [
+        "/",
+        "/audit",
+        "/kiz",
+        "/orders",
+        "/sellers",
+        "/supplies"
+      ],
+      "modals": [
+        "attachKizModal",
+        "attachKizModalTitle",
+        "barcodeModal",
+        "barcodeModalBody",
+        "barcodeModalTitle",
+        "kizSigningModal",
+        "kizSigningModalTitle",
+        "modalAttachOrderId",
+        "modalAttachOrderInfo",
+        "modalKizInput",
+        "orderDetailModal",
+        "sellerModal",
+        "sellerModalTitle",
+        "submitModalAttachKizBtn",
+        "supplyModal"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+.github
+
+# Virtual Environments
+.venv
+venv
+ENV
+env
+
+# Tests and docs
+tests
+docs
+.pytest_cache
+.coverage
+htmlcov
+
+# Python Cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Local database and secrets
+.env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+wbfbs.db
+
+# Certificates and keys
+certs/*
+!certs/.gitkeep
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs and Backups
+logs/*
+backups/*
+*.log
+*.sql.gz
+
+# System files
+.DS_Store
+Thumbs.db

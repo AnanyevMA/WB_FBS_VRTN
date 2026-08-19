@@ -1,0 +1,2827 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB FBS Менеджер — Управление Заказами и Честный Знак</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Colors */
+            --bg-base: #0f172a;
+            --bg-surface: rgba(30, 41, 59, 0.7);
+            --bg-surface-hover: rgba(51, 65, 85, 0.8);
+            --primary: #7c3aed;
+            --primary-hover: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(148, 163, 184, 0.15);
+            
+            /* Status Colors */
+            --status-new: #3b82f6;
+            --status-assembling: #eab308;
+            --status-delivering: #f97316;
+            --status-delivered: #22c55e;
+            --status-cancelled: #ef4444;
+            
+            --status-kiz-pending: #94a3b8;
+            --status-kiz-attached: #3b82f6;
+            --status-kiz-withdrawn: #22c55e;
+            --status-kiz-error: #ef4444;
+
+            /* Effects */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --glass-blur: blur(12px);
+            --transition: all 0.25s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(124, 58, 237, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.25; }
+        p { line-height: 1.5; }
+        a { color: var(--primary); text-decoration: none; transition: var(--transition); }
+        a:hover { color: var(--primary-hover); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg-surface-hover); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Layout */
+        #app {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-surface);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .sidebar-nav {
+            padding: 16px 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-surface-hover);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: rgba(124, 58, 237, 0.25);
+            color: #c4b5fd;
+            border: 1px solid rgba(124, 58, 237, 0.4);
+        }
+
+        /* Main Content */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* Topbar */
+        .topbar {
+            height: 72px;
+            background: var(--bg-surface);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .tenant-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tenant-selector label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .tenant-selector select {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition);
+            min-width: 220px;
+        }
+
+        .tenant-selector select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-surface-hover);
+            color: var(--text-main);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 16px;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-size: 14px;
+        }
+
+        /* Seed Banner */
+        .seed-banner {
+            background: rgba(124, 58, 237, 0.15);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        /* Cards */
+        .glass-card {
+            background: var(--bg-surface);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+        }
+
+        .glass-card:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(148, 163, 184, 0.25);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            font-size: 18px;
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--primary-hover);
+            padding: 8px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-trend {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-trend.up { color: var(--status-delivered); }
+        .stat-trend.down { color: var(--status-cancelled); }
+        .stat-trend.neutral { color: var(--text-muted); }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            backdrop-filter: var(--glass-blur);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr {
+            transition: var(--transition);
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        /* Order Statuses */
+        .badge.bg-new { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge.bg-assembling { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .badge.bg-assembled { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge.bg-delivering { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .badge.bg-delivered { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge.bg-cancelled { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge.bg-sorted { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+
+        /* KIZ Statuses */
+        .badge.kiz-pending { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.2); }
+        .badge.kiz-attached { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge.kiz-validated { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge.kiz-withdrawn { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge.kiz-returned { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .badge.kiz-error { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            font-family: inherit;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(124, 58, 237, 0.35);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        .btn-success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-success:hover {
+            background: rgba(34, 197, 94, 0.25);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
+
+        .form-control::placeholder {
+            color: rgba(148, 163, 184, 0.4);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 650px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95) translateY(15px);
+            transition: var(--transition);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: #1e293b;
+            z-index: 10;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            position: sticky;
+            bottom: 0;
+            background: #1e293b;
+        }
+
+        /* Toasts */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: #1e293b;
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            padding: 14px 18px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 320px;
+            max-width: 450px;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success { border-left: 4px solid var(--status-delivered); }
+        .toast.error { border-left: 4px solid var(--status-cancelled); }
+        .toast.info { border-left: 4px solid var(--status-new); }
+
+        .toast-icon { font-size: 18px; }
+        .toast.success .toast-icon { color: var(--status-delivered); }
+        .toast.error .toast-icon { color: var(--status-cancelled); }
+
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+        .toast-msg { color: var(--text-muted); font-size: 13px; }
+
+        /* Loader */
+        .loader {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        .btn.loading .loader { display: block; }
+        .btn.loading .btn-text { display: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scanner Specific */
+        .scanner-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 36px 24px;
+        }
+
+        .scanner-input-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 650px;
+            margin-bottom: 28px;
+        }
+
+        .scanner-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 20px 24px;
+            padding-left: 56px;
+            font-size: 20px;
+            color: var(--text-main);
+            box-shadow: 0 0 25px rgba(124, 58, 237, 0.25);
+            transition: var(--transition);
+            font-family: monospace;
+        }
+
+        .scanner-input:focus {
+            outline: none;
+            box-shadow: 0 0 35px rgba(124, 58, 237, 0.45);
+            background: rgba(15, 23, 42, 0.95);
+        }
+
+        .scanner-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: var(--primary);
+        }
+
+        .scan-history {
+            width: 100%;
+            max-width: 850px;
+        }
+
+        /* Filter bar */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        /* Sticker Preview */
+        .sticker-preview {
+            background: white;
+            color: black;
+            padding: 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                transform: translateX(-100%);
+                height: 100vh;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .topbar { padding: 0 16px; }
+            .content-area { padding: 16px; }
+            .tenant-selector select { min-width: 140px; }
+        }
+        
+        .mobile-toggle { display: none; }
+        @media (max-width: 768px) {
+            .mobile-toggle { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">WB</div>
+            <div>
+                <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">FBS Менеджер</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Честный Знак & WB</div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item active" data-route="/">
+                <span>📊</span> Дашборд
+            </div>
+            <div class="nav-item" data-route="/orders">
+                <span>📦</span> Заказы (FBS)
+            </div>
+            <div class="nav-item" data-route="/kiz">
+                <span>🔍</span> Сканер КИЗ
+            </div>
+            <div class="nav-item" data-route="/supplies">
+                <span>🚚</span> Поставки
+            </div>
+            <div class="nav-item" data-route="/sellers">
+                <span>👥</span> Продавцы
+            </div>
+            <div class="nav-item" data-route="/audit">
+                <span>📋</span> Журнал аудита
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <button class="icon-btn mobile-toggle" id="mobileMenuBtn">☰</button>
+                <div class="tenant-selector">
+                    <label for="activeSellerSelect">Магазин:</label>
+                    <select id="activeSellerSelect">
+                        <option value="">Загрузка продавцов...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-btn" title="Сгенерировать демо-данные" id="seedDemoDataBtn">
+                    <span>🌱</span> Demo Data
+                </button>
+                <button class="icon-btn" title="Обновить данные" id="globalRefreshBtn">
+                    <span>🔄</span> Обновить
+                </button>
+                <button class="icon-btn" title="Настройки продавца" id="topbarSettingsBtn">
+                    <span>⚙️</span> Настройки
+                </button>
+                <button class="icon-btn" title="Информация о магазине" id="topbarProfileBtn">
+                    <span>👤</span> Аккаунт
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="content-area">
+            
+            <!-- Dashboard Page -->
+            <div id="page-/" class="page active">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Дашборд операций</h1>
+                        <p class="page-subtitle">Статистика работы FBS Wildberries и Честного Знака в реальном времени.</p>
+                    </div>
+                </div>
+
+                <div id="seedBannerContainer"></div>
+
+                <div class="stats-grid">
+                    <div class="glass-card stat-card">
+                        <div class="stat-header">
+                            <span>Заказов за сегодня</span>
+                            <div class="stat-icon">📦</div>
+                        </div>
+                        <div class="stat-value" id="stat-orders-today">0</div>
+                        <div class="stat-trend neutral" id="stat-orders-trend">Загрузка...</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-header">
+                            <span>Ожидают сборки</span>
+                            <div class="stat-icon">⏳</div>
+                        </div>
+                        <div class="stat-value" id="stat-pending">0</div>
+                        <div class="stat-trend down" id="stat-pending-trend">Требуется обработка</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-header">
+                            <span>Выбытия ЧЗ (успешно)</span>
+                            <div class="stat-icon">✅</div>
+                        </div>
+                        <div class="stat-value" id="stat-withdrawals">0</div>
+                        <div class="stat-trend up">Успешно обработано</div>
+                    </div>
+                    <div class="glass-card stat-card">
+                        <div class="stat-header">
+                            <span>Ошибки КИЗ</span>
+                            <div class="stat-icon" style="color:var(--status-cancelled); background:rgba(239,68,68,0.15)">⚠️</div>
+                        </div>
+                        <div class="stat-value" id="stat-issues">0</div>
+                        <div class="stat-trend down" id="stat-issues-trend">Проверьте журнал</div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <h3 style="margin-bottom: 20px;">Последние заказы</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID Заказа</th>
+                                    <th>Товар / Артикул</th>
+                                    <th>Статус WB</th>
+                                    <th>Статус КИЗ</th>
+                                    <th>Время создания</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-recent-table">
+                                <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка заказов...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Page -->
+            <div id="page-/orders" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Заказы (FBS)</h1>
+                        <p class="page-subtitle">Управление заказами, сборка и привязка маркировки КИЗ.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="openBatchKizSigningModal('WITHDRAWAL')" title="Пакетный вывод из оборота выкупленных заказов через ЭЦП" style="border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; display: flex; align-items: center; gap: 6px;">
+                            <span>✍️</span> Вывести в ЧЗ (ЭЦП)
+                        </button>
+                        <button class="btn btn-secondary" onclick="openBatchKizSigningModal('RETURN')" title="Пакетный возврат в оборот отмененных заказов через ЭЦП" style="border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; display: flex; align-items: center; gap: 6px;">
+                            <span>🔄</span> Возврат в ЧЗ (ЭЦП)
+                        </button>
+                        <button class="btn btn-primary" id="syncOrdersBtn">
+                            <span class="btn-text">Синхронизировать с WB</span>
+                            <div class="loader"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <select class="form-control" style="width: 180px;" id="orderStatusFilter">
+                        <option value="ALL">Все статусы WB</option>
+                        <option value="NEW">Новый</option>
+                        <option value="ASSEMBLING">На сборке</option>
+                        <option value="DELIVERING">В доставке</option>
+                        <option value="DELIVERED">Доставлен</option>
+                        <option value="CANCELLED">Отменен</option>
+                    </select>
+                    <select class="form-control" style="width: 200px;" id="orderKizStatusFilter">
+                        <option value="ALL">Все статусы КИЗ</option>
+                        <option value="PENDING">Ожидает КИЗ</option>
+                        <option value="ATTACHED">КИЗ Прикреплен</option>
+                        <option value="WITHDRAWN">Выведен из оборота</option>
+                        <option value="ERROR">Ошибка КИЗ</option>
+                    </select>
+                    <input type="text" class="form-control" style="width: 320px;" placeholder="Поиск по ID заказа, артикулу или КИЗ..." id="orderSearchInput">
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID Заказа</th>
+                                <th>Товар / Артикул</th>
+                                <th>Цена</th>
+                                <th>Статус WB</th>
+                                <th>Статус КИЗ</th>
+                                <th>Дата создания</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body">
+                            <tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка заказов...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- KIZ Scanner Page -->
+            <div id="page-/kiz" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Сканер и Привязка КИЗ</h1>
+                        <p class="page-subtitle">Сканирование штрихкодов DataMatrix (SGTIN) для привязки к заказам и выбытия в ЧЗ.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="triggerCzAction('withdraw')">Выбытие в ЧЗ</button>
+                        <button class="btn btn-secondary" onclick="triggerCzAction('return')">Возврат в ЧЗ</button>
+                    </div>
+                </div>
+
+                <div class="glass-card scanner-container">
+                    <div class="scanner-input-wrapper">
+                        <span class="scanner-icon">📷</span>
+                        <input type="text" class="scanner-input" id="kizScannerInput" placeholder="Отсканируйте код КИЗ / SGTIN..." autocomplete="off">
+                    </div>
+                    
+                    <div class="form-group" style="width: 100%; max-width: 650px; display: flex; gap: 12px; margin-bottom: 32px;">
+                        <input type="number" class="form-control" id="kizOrderSearch" placeholder="ID Заказа (оставьте пустым для авто-подбора)...">
+                        <button class="btn btn-primary" id="kizManualSubmitBtn">Привязать КИЗ</button>
+                    </div>
+
+                    <div class="scan-history">
+                        <h4 style="margin-bottom: 16px; color: var(--text-muted);">История сканирования текущей сессии</h4>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Время</th>
+                                        <th>Отсканированный код</th>
+                                        <th>ID Заказа</th>
+                                        <th>Результат</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scan-history-body">
+                                    <tr><td colspan="4" style="text-align:center; padding: 16px; color: var(--text-muted);">История пока пуста. Отсканируйте маркировку.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Supplies Page -->
+            <div id="page-/supplies" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Поставки (ШК Поставок)</h1>
+                        <p class="page-subtitle">Формирование и управление поставками FBS на склад WB.</p>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" id="syncSuppliesBtn" onclick="syncSuppliesFromWB()">🔄 Синхронизировать с WB</button>
+                        <button class="btn btn-primary" onclick="openCreateSupplyModal()">➕ Создать поставку</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID Поставки</th>
+                                <th>Название</th>
+                                <th>Статус</th>
+                                <th>Заказов в поставке</th>
+                                <th>Дата создания</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplies-table-body">
+                            <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка поставок...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sellers Page -->
+            <div id="page-/sellers" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Продавцы (Магазины)</h1>
+                        <p class="page-subtitle">Управление аккаунтами Wildberries и интеграцией Честного Знака.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddSellerModal()">Добавить продавца</button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Название магазина</th>
+                                <th>WB Supplier ID</th>
+                                <th>ИНН Честного Знака</th>
+                                <th>Статус</th>
+                                <th>Авто-опрос</th>
+                                <th>Дайджест</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sellers-table-body">
+                            <tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка продавцов...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Audit Log Page -->
+            <div id="page-/audit" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Журнал аудита</h1>
+                        <p class="page-subtitle">Полная история операций, запросов API и системных событий.</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Дата и время</th>
+                                <th>Агент / Модуль</th>
+                                <th>Действие</th>
+                                <th>Тип / ID объекта</th>
+                                <th>Детали события</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-table-body">
+                            <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка журнала аудита...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- Order Detail & Sticker Modal -->
+<div class="modal-overlay" id="orderDetailModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="orderDetailTitle">Заказ #--</h3>
+            <button class="icon-btn" onclick="closeModal('orderDetailModal')">✕</button>
+        </div>
+        <div class="modal-body" id="orderDetailBody">
+            <!-- Populated dynamically -->
+        </div>
+        <div class="modal-footer" id="orderDetailFooter">
+            <button class="btn btn-secondary" onclick="closeModal('orderDetailModal')">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Seller Modal -->
+<div class="modal-overlay" id="sellerModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="sellerModalTitle">Добавить продавца</h3>
+            <button class="icon-btn" onclick="closeModal('sellerModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="sellerForm" onsubmit="event.preventDefault(); saveSeller();">
+                <div class="form-group">
+                    <label class="form-label">Название магазина / Юр. лица *</label>
+                    <input type="text" class="form-control" id="seller_name" name="name" required placeholder="Например: ООО Модная Одежда">
+                </div>
+                
+                <h4 style="margin: 20px 0 10px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Настройки Wildberries API</h4>
+                <div class="form-group">
+                    <label class="form-label">API Токен WB <span id="wbTokenRequiredLabel">*</span></label>
+                    <input type="password" class="form-control" id="seller_wb_token" name="wb_token" placeholder="eyJhbGciOiJIUzI1NiIsInR5c...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">WB Supplier ID (Идентификатор поставщика)</label>
+                    <input type="text" class="form-control" id="seller_wb_supplier_id" name="wb_supplier_id" placeholder="Например: 123456">
+                </div>
+
+                <h4 style="margin: 20px 0 10px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Настройки Честного Знака (GISMT)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">ИНН организации</label>
+                        <input type="text" class="form-control" id="seller_cz_inn" name="cz_inn" placeholder="7700000000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ФИАС / КПП адреса</label>
+                        <input type="text" class="form-control" id="seller_cz_fias" name="cz_fias" placeholder="Необязательно">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Токен Честного Знака (True API)</label>
+                    <input type="password" class="form-control" id="seller_cz_token" name="cz_token" placeholder="Bearer eyJ...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">СУЗ OMS ID (Идентификатор СУЗ)</label>
+                    <input type="text" class="form-control" id="seller_cz_oms_id" name="cz_oms_id" placeholder="Необязательно (UUID СУЗ)">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Отпечаток сертификата УКЭП КриптоПро / Путь (.pem)</label>
+                    <input type="text" class="form-control" id="seller_cert_path" name="cert_path" placeholder="SHA1 отпечаток или путь /certs/seller.pem">
+                </div>
+
+                <h4 style="margin: 20px 0 10px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Уведомления Telegram</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label class="form-label">Токен бота Telegram</label>
+                        <input type="password" class="form-control" id="seller_tg_token" name="tg_token" placeholder="123456:ABC-DEF...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ID чатов (через запятую)</label>
+                        <input type="text" class="form-control" id="seller_tg_chat_ids" name="tg_chat_ids" placeholder="123456789, 987654321">
+                    </div>
+                </div>
+
+                <h4 style="margin: 20px 0 10px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">⚙️ Настройки опроса и дайджеста</h4>
+
+                <!-- Polling Interval -->
+                <div class="form-group">
+                    <label class="form-label" style="display:flex; justify-content:space-between;">
+                        <span>Интервал опроса WB API</span>
+                        <span id="polling_interval_label" style="color:var(--primary); font-weight:600;">1 мин</span>
+                    </label>
+                    <input type="range" id="seller_polling_interval" min="1" max="60" value="1"
+                        style="width:100%; accent-color: var(--primary); cursor:pointer;"
+                        oninput="document.getElementById('polling_interval_label').textContent = this.value + ' мин'">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-top:4px;">
+                        <span>1 мин (быстрее)</span><span>60 мин (реже)</span>
+                    </div>
+                </div>
+
+                <!-- Morning Digest -->
+                <div style="background: rgba(124,58,237,0.08); border: 1px solid rgba(124,58,237,0.2); border-radius:10px; padding:16px; margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                        <span style="font-weight:600; font-size:14px;">🌅 Утренний дайджест</span>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <span style="font-size:13px; color:var(--text-muted);">Включён</span>
+                            <input type="checkbox" id="seller_digest_enabled" checked
+                                style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;">
+                        </label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 2fr; gap:12px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Час (0–23)</label>
+                            <input type="number" class="form-control" id="seller_digest_hour"
+                                min="0" max="23" value="8" style="font-size:14px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Минута (0–59)</label>
+                            <input type="number" class="form-control" id="seller_digest_minute"
+                                min="0" max="59" value="0" step="30" style="font-size:14px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Часовой пояс</label>
+                            <select class="form-control" id="seller_digest_timezone" style="font-size:13px;">
+                                <option value="Europe/Moscow">Europe/Moscow (UTC+3)</option>
+                                <option value="Europe/Kaliningrad">Europe/Kaliningrad (UTC+2)</option>
+                                <option value="Asia/Yekaterinburg">Asia/Yekaterinburg (UTC+5)</option>
+                                <option value="Asia/Omsk">Asia/Omsk (UTC+6)</option>
+                                <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk (UTC+7)</option>
+                                <option value="Asia/Irkutsk">Asia/Irkutsk (UTC+8)</option>
+                                <option value="Asia/Yakutsk">Asia/Yakutsk (UTC+9)</option>
+                                <option value="Asia/Vladivostok">Asia/Vladivostok (UTC+10)</option>
+                                <option value="Asia/Magadan">Asia/Magadan (UTC+11)</option>
+                                <option value="Asia/Kamchatka">Asia/Kamchatka (UTC+12)</option>
+                                <option value="UTC">UTC (UTC+0)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">
+                        💡 Дайджест придёт в Telegram с резюме ночных заказов и кнопкой «Сформировать поставку»
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="testSellerConnection()">Проверить связь</button>
+            <button class="btn btn-primary" id="saveSellerBtn" onclick="saveSeller()">
+                <span class="btn-text">Сохранить</span>
+                <div class="loader"></div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Supply Modal -->
+<div class="modal-overlay" id="supplyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Создать поставку WB</h3>
+            <button class="icon-btn" onclick="closeModal('supplyModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Название поставки *</label>
+                <input type="text" class="form-control" id="supplyName" placeholder="Например: Поставка Электросталь 2026-08-12">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Выберите заказы на сборке для добавления в поставку:</label>
+                <div id="supplyOrdersSelectContainer" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: rgba(15,23,42,0.5);">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('supplyModal')">Отмена</button>
+            <button class="btn btn-primary" id="createSupplySubmitBtn" onclick="createSupply()">Создать поставку</button>
+        </div>
+    </div>
+</div>
+
+<!-- Supply Barcode Modal -->
+<div class="modal-overlay" id="barcodeModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 id="barcodeModalTitle">Штрихкод поставки</h3>
+            <button class="icon-btn" onclick="closeModal('barcodeModal')">✕</button>
+        </div>
+        <div class="modal-body" style="text-align: center;" id="barcodeModalBody">
+            <!-- Populated dynamically -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="window.print()">Печать</button>
+            <button class="btn btn-secondary" onclick="closeModal('barcodeModal')">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Attach KIZ Direct Modal -->
+<div class="modal-overlay" id="attachKizModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 id="attachKizModalTitle">Привязка КИЗ к заказу</h3>
+            <button class="icon-btn" onclick="closeModal('attachKizModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="modalAttachOrderId">
+            <div style="margin-bottom: 16px; color: var(--text-muted); font-size: 14px;" id="modalAttachOrderInfo"></div>
+            <div class="form-group">
+                <label class="form-label">Введите или отсканируйте код КИЗ / SGTIN *</label>
+                <input type="text" class="form-control" id="modalKizInput" placeholder="0104601234567890215..." style="font-family: monospace;">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('attachKizModal')">Отмена</button>
+            <button class="btn btn-primary" id="submitModalAttachKizBtn" onclick="submitModalKizAttach()">Прикрепить КИЗ</button>
+        </div>
+    </div>
+</div>
+
+<!-- KIZ CryptoPro Signing Modal -->
+<div class="modal-overlay" id="kizSigningModal">
+    <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+            <h3 id="kizSigningModalTitle">✍️ Подписание документа в Честный Знак</h3>
+            <button class="icon-btn" onclick="closeModal('kizSigningModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="kizSigningHeaderBanner" style="padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #c7d2fe;">
+                <div style="font-weight: 600;" id="kizSigningActionName">Вывод из оборота (Дистанционная продажа LK_RECEIPT)</div>
+                <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;" id="kizSigningActionDesc">Документ формируется на сервере VPS и подписывается вашей локальной УКЭП через плагин КриптоПро.</div>
+            </div>
+
+            <!-- Orders to process -->
+            <div style="margin-bottom: 16px;">
+                <label class="form-label" style="display:flex; justify-content:space-between;">
+                    <span>Выбранные заказы (<span id="kizSigningOrdersCount">0</span>):</span>
+                    <span id="kizSigningTotalPrice" style="font-weight:600; color:var(--primary-hover);">0 ₽</span>
+                </label>
+                <div id="kizSigningOrdersList" style="max-height: 140px; overflow-y: auto; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; font-size: 13px;">
+                    <!-- Items inserted dynamically -->
+                </div>
+            </div>
+
+            <!-- CryptoPro Certificate Selector -->
+            <div class="form-group" style="margin-bottom: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label class="form-label" style="margin-bottom:0;">Сертификат электронной подписи (УКЭП) *</label>
+                    <span id="kizSigningPluginBadge" style="font-size:11px; padding:2px 8px; border-radius:12px; font-weight:600; background:rgba(234, 179, 8, 0.15); color:#facc15; border:1px solid rgba(234, 179, 8, 0.3);">Поиск плагина...</span>
+                </div>
+                <select class="form-control" id="kizSigningCertSelect" onchange="onCertSelected()">
+                    <option value="">-- Загрузка сертификатов из хранилища КриптоПро... --</option>
+                </select>
+                <div id="kizSigningCertDetails" style="font-size:12px; color:var(--text-muted); margin-top:6px; line-height:1.4;"></div>
+            </div>
+
+            <!-- Prepared Document Preview (Collapsible) -->
+            <details style="margin-bottom: 16px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px;">
+                <summary style="font-size: 12px; color: var(--text-muted); cursor: pointer; font-weight: 500;">📄 Просмотр структуры JSON-документа ГИС МТ</summary>
+                <pre id="kizSigningJsonPreview" style="margin-top: 8px; font-size: 11px; font-family: monospace; color: #a5f3fc; white-space: pre-wrap; max-height: 150px; overflow-y: auto; background: rgba(15, 23, 42, 0.9); padding: 8px; border-radius: 4px;">Формирование...</pre>
+            </details>
+
+            <!-- Progress / Status logs -->
+            <div id="kizSigningLogs" style="display: none; padding: 10px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; margin-top: 10px;">
+                <div style="font-weight: 600; margin-bottom: 4px;" id="kizSigningStatusTitle">Статус операции:</div>
+                <div id="kizSigningStatusText" style="color: var(--text-muted);">Инициализация...</div>
+            </div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div>
+                <button class="btn btn-secondary" id="kizSigningServerFallbackBtn" onclick="submitKizViaServerFallback()" style="font-size:12px; opacity:0.85;" title="Использовать фоновый агент на сервере, если сертификат установлен на VPS">⚙️ Серверная отправка</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" onclick="closeModal('kizSigningModal')">Отмена</button>
+                <button class="btn btn-primary" id="kizSigningSubmitBtn" onclick="executeKizClientSigning()" style="background: linear-gradient(135deg, #10b981, #059669); border:none; display:flex; align-items:center; gap:6px;">
+                    <span class="btn-text">✍️ Подписать ЭЦП и отправить</span>
+                    <div class="loader" style="display:none;"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toasts Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    /** --- STATE & CONFIG --- */
+    const API_BASE = '/api/v1';
+    let currentSellerId = null;
+    let refreshInterval = null;
+    let currentSellersList = [];
+
+    // Helper translation maps
+    const STATUS_MAP_ORDER = {
+        'NEW': 'Новый',
+        'ASSEMBLING': 'На сборке',
+        'ASSEMBLED': 'Собран',
+        'DELIVERING': 'В доставке',
+        'DELIVERED': 'Доставлен',
+        'CANCELLED': 'Отменен',
+        'SORTED': 'Отсортирован'
+    };
+
+    const STATUS_MAP_KIZ = {
+        'PENDING': 'Ожидает КИЗ',
+        'ATTACHED': 'Прикреплен',
+        'VALIDATED': 'Проверен',
+        'WITHDRAWN': 'Выведен из оборота',
+        'RETURNED': 'Возвращен',
+        'ERROR': 'Ошибка КИЗ',
+        'NOT_REQUIRED': 'Не требуется'
+    };
+
+    const STATUS_MAP_SUPPLY = {
+        'CREATED': 'Создана',
+        'CLOSED': 'Закрыта',
+        'DELIVERING': 'В пути',
+        'DELIVERED': 'Принята',
+        'DONE': 'Завершена',
+        'CANCELLED': 'Отменена'
+    };
+
+    /** --- ROUTING --- */
+    function navigateTo(route) {
+        document.querySelectorAll('.nav-item').forEach(el => {
+            el.classList.toggle('active', el.dataset.route === route);
+        });
+
+        document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+        const pageEl = document.getElementById(`page-${route}`);
+        if(pageEl) {
+            pageEl.classList.add('active');
+        }
+
+        if(route === '/kiz') {
+            setTimeout(() => document.getElementById('kizScannerInput').focus(), 100);
+        } else if (route === '/') {
+            loadDashboard();
+        } else if (route === '/orders') {
+            loadOrders();
+        } else if (route === '/supplies') {
+            loadSupplies();
+        } else if (route === '/sellers') {
+            loadSellers();
+        } else if (route === '/audit') {
+            loadAuditLogs();
+        }
+
+        if(window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.remove('open');
+        }
+        
+        window.history.pushState({}, '', '#' + route);
+    }
+
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.addEventListener('click', () => navigateTo(el.dataset.route));
+    });
+
+    window.addEventListener('popstate', () => {
+        const route = window.location.hash.replace('#', '') || '/';
+        navigateTo(route);
+    });
+
+    /** --- UI HELPERS --- */
+    function showToast(title, message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let icon = 'ℹ️';
+        if(type === 'success') icon = '✅';
+        if(type === 'error') icon = '❌';
+
+        toast.innerHTML = `
+            <div class="toast-icon">${icon}</div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-msg">${message}</div>
+            </div>
+        `;
+
+        container.appendChild(toast);
+        toast.offsetHeight;
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 4500);
+    }
+
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    const STATUS_MAP_CZ = {
+        'INTRODUCED': 'В обороте',
+        'IN_CIRCULATION': 'В обороте',
+        'RETIRED': 'Выведен',
+        'OUT_OF_CIRCULATION': 'Выведен',
+        'EMITTED': 'Эмитирован',
+        'EMISSION': 'Эмитирован',
+        'APPLIED': 'Нанесен',
+        'DISAGGREGATED': 'Списан',
+        'WRITTEN_OFF': 'Списан',
+        'KILLED': 'Списан'
+    };
+
+    function getStatusBadge(status, type='order') {
+        if(!status) return '<span class="badge">-</span>';
+        const s = status.toUpperCase();
+        if(type === 'order') {
+            const ru = STATUS_MAP_ORDER[s] || s;
+            return `<span class="badge bg-${s.toLowerCase()}">${ru}</span>`;
+        } else if (type === 'kiz') {
+            const ru = STATUS_MAP_KIZ[s] || s;
+            return `<span class="badge kiz-${s.toLowerCase()}">${ru}</span>`;
+        } else {
+            const ru = STATUS_MAP_SUPPLY[s] || s;
+            return `<span class="badge bg-${s.toLowerCase()}">${ru}</span>`;
+        }
+    }
+
+    function getCzStatusBadge(czStatus, kizStatus, hasKizCode) {
+        if (kizStatus === 'NOT_REQUIRED') return '';
+        if (!czStatus) {
+            return hasKizCode ? '<span style="background: rgba(100, 116, 139, 0.15); color: #94a3b8; font-size:11px; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(100, 116, 139, 0.25);" title="Статус в ГИС МТ еще не запрашивался">ЧЗ: не проверен</span>' : '';
+        }
+        const s = czStatus.toUpperCase();
+        if (s === 'INTRODUCED' || s === 'IN_CIRCULATION') {
+            return `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);" title="Код находится в обороте в ГИС МТ (Честный Знак)">ЧЗ: В обороте</span>`;
+        } else if (s === 'RETIRED' || s === 'OUT_OF_CIRCULATION') {
+            return `<span style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.3);" title="Код официально выведен из оборота в ГИС МТ">ЧЗ: Выведен</span>`;
+        } else if (s === 'EMITTED' || s === 'EMISSION') {
+            return `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);" title="Код эмитирован в СУЗ">ЧЗ: Эмитирован</span>`;
+        } else if (s === 'APPLIED') {
+            return `<span style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(168, 85, 247, 0.3);" title="Код нанесен">ЧЗ: Нанесен</span>`;
+        } else if (s === 'DISAGGREGATED' || s === 'WRITTEN_OFF' || s === 'KILLED') {
+            return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Код списан или расформирован в ГИС МТ">ЧЗ: Списан</span>`;
+        }
+        return `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">ЧЗ: ${STATUS_MAP_CZ[s] || s}</span>`;
+    }
+
+    const STATUS_MAP_WB = {
+        'waiting': 'Ожидает приемки СЦ',
+        'sorted': 'Отсортирован на СЦ',
+        'ready_for_pickup': 'В ПВЗ (готов к выдаче)',
+        'sold': 'Выкуплен покупателем',
+        'canceled': 'Отменен WB',
+        'canceled_by_client': 'Отказ при получении',
+        'declined_by_client': 'Отменен клиентом (1-й час)',
+        'defect': 'Брак'
+    };
+
+    function getWbStatusBadge(wbStatus, supplierStatus) {
+        if (!wbStatus && !supplierStatus) return '';
+        const s = (wbStatus || '').toLowerCase();
+        if (s === 'sorted') {
+            return `<span style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(139, 92, 246, 0.3);" title="Товар принят и отсортирован на складе/СЦ Wildberries">📦 СЦ: Отсортирован</span>`;
+        } else if (s === 'ready_for_pickup') {
+            return `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3);" title="Товар прибыл в ПВЗ и ожидает получения клиентом">🏪 ПВЗ: Готов к выдаче</span>`;
+        } else if (s === 'sold') {
+            return `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);" title="Товар выдан покупателю (продажа)">💰 Выкуплен</span>`;
+        } else if (s === 'canceled_by_client' || s === 'declined_by_client') {
+            return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Покупатель отказался от товара">${s === 'canceled_by_client' ? '🔄 Отказ на ПВЗ' : '🚫 Отмена клиентом'}</span>`;
+        } else if (s === 'waiting') {
+            return `<span style="background: rgba(100, 116, 139, 0.15); color: #cbd5e1; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(100, 116, 139, 0.3);" title="Заказ передан в доставку, ожидает приемки на СЦ">🚚 В пути на СЦ</span>`;
+        } else if (s === 'defect') {
+            return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Отменен по причине брака">⚠️ Брак</span>`;
+        } else if (wbStatus) {
+            return `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">WB: ${STATUS_MAP_WB[s] || s}</span>`;
+        }
+        return '';
+    }
+
+    /** --- API FETCH WRAPPER --- */
+    async function apiFetch(endpoint, options = {}) {
+        const url = `${API_BASE}${endpoint}`;
+        const defaultHeaders = {
+            'Content-Type': 'application/json',
+            'X-Seller-ID': currentSellerId || ''
+        };
+        
+        options.headers = { ...defaultHeaders, ...options.headers };
+
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            let errorText = response.statusText;
+            try {
+                const errJson = await response.json();
+                if (errJson && errJson.detail) {
+                    errorText = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
+                }
+            } catch(e) {}
+            throw new Error(errorText || `Ошибка HTTP ${response.status}`);
+        }
+        return await response.json();
+    }
+
+    /** --- INITIALIZATION --- */
+    async function initApp() {
+        const route = window.location.hash.replace('#', '') || '/';
+        
+        await loadSellersForDropdown();
+
+        navigateTo(route);
+
+        // Auto refresh orders every 30s if on orders tab
+        refreshInterval = setInterval(() => {
+            const ordersPage = document.getElementById('page-/orders');
+            if(ordersPage && ordersPage.classList.contains('active')) {
+                loadOrders(true);
+            }
+        }, 30000);
+
+        // Mobile menu toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('open');
+        });
+        
+        document.getElementById('globalRefreshBtn').addEventListener('click', () => {
+            const activeNav = document.querySelector('.nav-item.active');
+            const currentRoute = activeNav ? activeNav.dataset.route : '/';
+            navigateTo(currentRoute);
+            showToast('Данные обновлены', 'Информация успешна синхронизирована', 'success');
+        });
+
+        document.getElementById('topbarSettingsBtn').addEventListener('click', () => {
+            if (currentSellerId) {
+                editSeller(currentSellerId);
+            } else {
+                openAddSellerModal();
+            }
+        });
+
+        document.getElementById('topbarProfileBtn').addEventListener('click', () => {
+            if (currentSellerId) {
+                const currentSeller = currentSellersList.find(s => s.id == currentSellerId);
+                showToast('Активный магазин', currentSeller ? `${currentSeller.name} (ИНН: ${currentSeller.cz_inn || 'Не указан'})` : `ID: ${currentSellerId}`, 'info');
+            } else {
+                showToast('Внимание', 'Сначала создайте или выберите продавца', 'info');
+            }
+        });
+
+        document.getElementById('seedDemoDataBtn').addEventListener('click', seedMockData);
+    }
+
+    async function seedMockData() {
+        try {
+            showToast('Загрузка...', 'Создание демо-данных в базе...', 'info');
+            const res = await apiFetch('/debug/seed-mock-data', { method: 'POST' });
+            showToast('Успех', 'Сгенерирован демо-продавец и 5 заказов', 'success');
+            await loadSellersForDropdown();
+            navigateTo('/');
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось создаь тестовые данные: ' + e.message, 'error');
+        }
+    }
+
+    async function loadSellersForDropdown() {
+        const select = document.getElementById('activeSellerSelect');
+        let sellers = [];
+        
+        try {
+            const data = await apiFetch('/sellers');
+            if (Array.isArray(data)) sellers = data;
+            else if (data && Array.isArray(data.items)) sellers = data.items;
+        } catch (e) {
+            console.error("Ошибка загрузки продавцов:", e);
+        }
+
+        currentSellersList = sellers;
+
+        if (sellers.length === 0) {
+            select.innerHTML = '<option value="">(Нет активных продавцов)</option>';
+            currentSellerId = null;
+            showSeedBanner(true);
+            return;
+        }
+
+        showSeedBanner(false);
+        select.innerHTML = sellers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        
+        if (!currentSellerId || !sellers.some(s => s.id == currentSellerId)) {
+            currentSellerId = sellers[0].id;
+        }
+        select.value = currentSellerId;
+
+        // Change listener
+        select.onchange = (e) => {
+            currentSellerId = e.target.value;
+            showToast('Переключение', `Выбран магазин`, 'info');
+            const activeNav = document.querySelector('.nav-item.active');
+            const currentRoute = activeNav ? activeNav.dataset.route : '/';
+            navigateTo(currentRoute);
+        };
+    }
+
+    function showSeedBanner(show) {
+        const container = document.getElementById('seedBannerContainer');
+        if (show) {
+            container.innerHTML = `
+                <div class="seed-banner">
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">База данных пока пуста</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">Нажмите "Сгенерировать демо-данные", чтобы мгновенно создать тестового продавца и 5 заказов FBS.</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="seedMockData()">Сгенерировать демо-данные</button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '';
+        }
+    }
+
+    /** --- DASHBOARD --- */
+    async function loadDashboard() {
+        if (!currentSellerId) {
+            document.getElementById('stat-orders-today').innerText = '0';
+            document.getElementById('stat-pending').innerText = '0';
+            document.getElementById('stat-withdrawals').innerText = '0';
+            document.getElementById('stat-issues').innerText = '0';
+            document.getElementById('dashboard-recent-table').innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Продавцы не найдены. Добавьте продавца или нажмите "Demo Data".</td></tr>`;
+            return;
+        }
+
+        try {
+            const stats = await apiFetch(`/sellers/${currentSellerId}/orders/stats`);
+            document.getElementById('stat-orders-today').innerText = stats.orders_today || '0';
+            document.getElementById('stat-pending').innerText = stats.pending_assembly || '0';
+            document.getElementById('stat-withdrawals').innerText = stats.withdrawals_success || '0';
+            document.getElementById('stat-issues').innerText = stats.kiz_issues || '0';
+            
+            document.getElementById('stat-orders-trend').innerText = `Всего заказов: ${stats.total_orders || 0}`;
+        } catch (e) {
+            console.error("Ошибка загрузки статистики:", e);
+        }
+
+        try {
+            const data = await apiFetch(`/sellers/${currentSellerId}/orders?page_size=5`);
+            const orders = data.items || [];
+            const tbody = document.getElementById('dashboard-recent-table');
+            
+            if (orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Заказов пока нет</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(o => {
+                const sizeBadge = o.tech_size ? `<span style="background: rgba(99,102,241,0.18); color: #a5b4fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3);">Размер: ${o.tech_size}${o.wb_size && o.wb_size !== o.tech_size ? ` (RU: ${o.wb_size})` : ''}</span>` : '';
+                return `
+                <tr>
+                    <td style="font-weight: 600;">#${o.id}</td>
+                    <td>
+                        <div style="font-weight:500; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+                            <span>${o.name || o.subject}</span>
+                            ${sizeBadge}
+                        </div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Арт: ${o.article}</div>
+                    </td>
+                    <td>${getStatusBadge(o.status, 'order')}</td>
+                    <td>${getStatusBadge(o.kiz_status, 'kiz')}</td>
+                    <td style="color: var(--text-muted); font-size:13px;">${o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '-'}</td>
+                </tr>
+            `}).join('');
+        } catch (e) {
+            console.error("Ошибка загрузки последних заказов:", e);
+        }
+    }
+
+    /** --- ORDERS --- */
+    async function loadOrders(silent = false) {
+        if (!currentSellerId) {
+            document.getElementById('orders-table-body').innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Выберите продавца</td></tr>`;
+            return;
+        }
+
+        const statusFilter = document.getElementById('orderStatusFilter').value;
+        const kizFilter = document.getElementById('orderKizStatusFilter').value;
+        const searchQuery = document.getElementById('orderSearchInput').value.trim();
+
+        let queryParams = [];
+        if (statusFilter !== 'ALL') queryParams.push(`status=${statusFilter}`);
+        if (kizFilter !== 'ALL') queryParams.push(`kiz_status=${kizFilter}`);
+        if (searchQuery) queryParams.push(`q=${encodeURIComponent(searchQuery)}`);
+
+        const queryString = queryParams.length ? '?' + queryParams.join('&') : '';
+
+        try {
+            const data = await apiFetch(`/sellers/${currentSellerId}/orders${queryString}`);
+            const orders = data.items || [];
+            const tbody = document.getElementById('orders-table-body');
+
+            if (orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Заказы не найдены</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(o => {
+                const sizeBadge = o.tech_size ? `<span style="background: rgba(99,102,241,0.18); color: #a5b4fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3);">Размер: ${o.tech_size}${o.wb_size && o.wb_size !== o.tech_size ? ` (RU: ${o.wb_size})` : ''}</span>` : '';
+                const czStatusBadge = getCzStatusBadge(o.kiz_cz_status, o.kiz_status, !!o.kiz_code);
+
+                return `
+                <tr>
+                    <td style="font-weight: 600;">#${o.id}</td>
+                    <td>
+                        <div style="font-weight:500; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+                            <span>${o.name || o.subject}</span>
+                            ${sizeBadge}
+                        </div>
+                        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Арт: ${o.article} | ${o.brand}</div>
+                    </td>
+                    <td style="font-weight: 600;">${o.price} ₽</td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                            <div>${getStatusBadge(o.status, 'order')}</div>
+                            ${getWbStatusBadge(o.wb_status, o.supplier_status)}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            ${getStatusBadge(o.kiz_status, 'kiz')}
+                            ${czStatusBadge}
+                        </div>
+                        ${o.kiz_code ? `<div style="font-size:11px; font-family:monospace; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:4px;"><span>${o.kiz_code.substring(0, 18)}...</span><button class="icon-btn" style="padding:1px 4px; font-size:11px;" title="Проверить статус в Честном Знаке" onclick="checkKizLiveStatus('${o.id}')">🔍</button></div>` : ''}
+                    </td>
+                    <td style="color: var(--text-muted); font-size:13px;" title="Дата и время заказа на Wildberries">${(o.wb_created_at || o.created_at) ? new Date(o.wb_created_at || o.created_at).toLocaleString('ru-RU') : '-'}</td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="icon-btn" title="Просмотр и этикетка" onclick="viewOrderDetail('${o.id}')">👁️</button>
+                            ${o.status === 'NEW' ? `<button class="icon-btn" title="Перевести на сборку" onclick="markOrderAssembling('${o.id}')">📦</button>` : ''}
+                            <button class="icon-btn" title="Привязать КИЗ" onclick="openAttachKizModal('${o.id}', '${o.name || o.article}')">🏷️</button>
+                            ${o.kiz_code && o.kiz_status === 'ATTACHED' ? `<button class="icon-btn" style="color:#10b981;" title="Вывести КИЗ из оборота в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'WITHDRAWAL')">✍️</button>` : ''}
+                            ${o.kiz_code && (o.kiz_status === 'WITHDRAWN' || o.status === 'CANCELLED') ? `<button class="icon-btn" style="color:#f59e0b;" title="Вернуть КИЗ в оборот в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'RETURN')">🔄</button>` : ''}
+                            ${o.status !== 'CANCELLED' ? `<button class="icon-btn" title="Отменить заказ" style="color:var(--status-cancelled)" onclick="cancelOrder('${o.id}')">❌</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+
+            if(!silent) showToast('Заказы загружены', `Загружено ${orders.length} заказов`, 'success');
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось загрузить заказы: ' + e.message, 'error');
+        }
+    }
+
+    async function checkKizLiveStatus(orderId) {
+        if(!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
+        try {
+            showToast('Честный Знак', 'Запрос статуса КИЗ в ГИС МТ...', 'info');
+            const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/kiz-check`, { method: 'POST' });
+            const czName = STATUS_MAP_CZ[res.kiz_cz_status] || res.kiz_cz_status;
+            const statusName = `${czName} (${res.kiz_cz_status})`;
+            if (res.kiz_status === 'ERROR') {
+                showToast('Внимание! Ошибка КИЗ', `Статус в ЧЗ: ${statusName}. Обнаружено несоответствие!`, 'error');
+            } else {
+                showToast('Статус КИЗ в ГИС МТ', `Статус: ${statusName}`, 'success');
+            }
+            await loadOrders(true);
+        } catch (e) {
+            showToast('Ошибка проверки КИЗ', e.message, 'error');
+        }
+    }
+
+    // Attach listeners for filters
+    document.getElementById('orderStatusFilter').addEventListener('change', () => loadOrders());
+    document.getElementById('orderKizStatusFilter').addEventListener('change', () => loadOrders());
+    document.getElementById('orderSearchInput').addEventListener('input', () => loadOrders());
+
+    // Sync button
+    document.getElementById('syncOrdersBtn').addEventListener('click', async (e) => {
+        if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+        const btn = e.currentTarget;
+        btn.classList.add('loading');
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/orders/sync`, { method: 'POST' });
+            showToast('Успех', res.message || 'Синхронизация заказов с WB запущена', 'success');
+            await loadOrders();
+            await loadDashboardStats();
+        } catch (err) {
+            showToast('Ошибка', err.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    });
+
+    async function viewOrderDetail(orderId) {
+        try {
+            const order = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}`);
+            const sticker = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/sticker`);
+
+            document.getElementById('orderDetailTitle').innerText = `Детали сборочного задания #${order.id}`;
+            
+            document.getElementById('orderDetailBody').innerHTML = `
+                <div style="margin-bottom: 16px;">
+                    <div style="color: var(--text-muted); font-size:12px;">Наименование товара</div>
+                    <div style="font-weight:600; font-size:15px; margin-top:2px;">${order.name || '-'}</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Артикул</div>
+                        <div style="font-weight:600;">${order.article || '-'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Размер</div>
+                        <div style="font-weight:600; color:#a5b4fc;">${order.tech_size ? `${order.tech_size} ${order.wb_size && order.wb_size !== order.tech_size ? `(RU: ${order.wb_size})` : ''}` : 'Без размера / Не указан'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Бренд</div>
+                        <div style="font-weight:600;">${order.brand || '-'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Предмет</div>
+                        <div style="font-weight:600;">${order.subject || '-'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Цена</div>
+                        <div style="font-weight:600; color:var(--primary-hover);">${order.price} ₽</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Статус заказа</div>
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:3px;">
+                            ${getStatusBadge(order.status, 'order')}
+                            ${getWbStatusBadge(order.wb_status, order.supplier_status)}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-muted); font-size:12px;">Дата заказа на WB</div>
+                        <div style="font-weight:600;">${order.wb_created_at ? new Date(order.wb_created_at).toLocaleString('ru-RU') : '-'}</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px; padding: 14px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="color: var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Маркировка Честный Знак (КИЗ)</span>
+                        ${order.kiz_code ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="checkKizLiveStatus('${order.id}'); viewOrderDetail('${order.id}');">🔍 Проверить в ЧЗ</button>` : ''}
+                    </div>
+                    <div style="font-family:monospace; font-size:13px; word-break:break-all; background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; margin-bottom:10px;">
+                        ${order.kiz_code || 'Код КИЗ не прикреплен'}
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <div><span style="color:var(--text-muted); font-size:11px;">Локальный статус:</span> ${getStatusBadge(order.kiz_status, 'kiz')}</div>
+                        <div><span style="color:var(--text-muted); font-size:11px;">Статус в ГИС МТ:</span> ${getCzStatusBadge(order.kiz_cz_status, order.kiz_status, !!order.kiz_code)}</div>
+                        ${order.kiz_cz_status_updated_at ? `<div style="font-size:11px; color:var(--text-muted);">Обновлено: ${new Date(order.kiz_cz_status_updated_at).toLocaleString('ru-RU')}</div>` : ''}
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 16px;">
+                    <div style="font-weight: 500; font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Этикетка Wildberries</div>
+                    <div class="sticker-preview">
+                        ${sticker.svg_content || '<div>Этикетка недоступна</div>'}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('orderDetailFooter').innerHTML = `
+                ${order.kiz_code && order.kiz_status === 'ATTACHED' ? `<button class="btn btn-success" style="background:#10b981; border:none; display:flex; align-items:center; gap:6px;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'WITHDRAWAL');"><span>✍️</span> Вывести КИЗ (ЭЦП)</button>` : ''}
+                ${order.kiz_code && (order.kiz_status === 'WITHDRAWN' || order.status === 'CANCELLED') ? `<button class="btn btn-warning" style="background:#f59e0b; border:none; display:flex; align-items:center; gap:6px; color:#000;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'RETURN');"><span>🔄</span> Вернуть КИЗ (ЭЦП)</button>` : ''}
+                ${order.status === 'NEW' ? `<button class="btn btn-success" onclick="markOrderAssembling('${order.id}'); closeModal('orderDetailModal');">На сборку</button>` : ''}
+                <button class="btn btn-primary" onclick="window.print()">Печать этикетки</button>
+                <button class="btn btn-secondary" onclick="closeModal('orderDetailModal')">Закрыть</button>
+            `;
+
+            openModal('orderDetailModal');
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось загрузить детали заказа: ' + e.message, 'error');
+        }
+    }
+
+    async function markOrderAssembling(orderId) {
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/mark-assembling`, { method: 'POST' });
+            showToast('Успех', res.message, 'success');
+            await loadOrders();
+            await loadDashboard();
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        }
+    }
+
+    async function cancelOrder(orderId) {
+        if (!confirm(`Вы действительно хотите отменить заказ #${orderId}?`)) return;
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/cancel`, { method: 'POST' });
+            showToast('Заказ отменен', res.message, 'success');
+            await loadOrders();
+            await loadDashboard();
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        }
+    }
+
+    function openAttachKizModal(orderId, orderInfo) {
+        document.getElementById('modalAttachOrderId').value = orderId;
+        document.getElementById('modalAttachOrderInfo').innerText = `Заказ #${orderId} — ${orderInfo}`;
+        document.getElementById('modalKizInput').value = '';
+        openModal('attachKizModal');
+        setTimeout(() => document.getElementById('modalKizInput').focus(), 150);
+    }
+
+    async function submitModalKizAttach() {
+        const orderId = document.getElementById('modalAttachOrderId').value;
+        const kizCode = document.getElementById('modalKizInput').value.trim();
+
+        if (!kizCode) {
+            return showToast('Ошибка', 'Введите код КИЗ', 'error');
+        }
+
+        const btn = document.getElementById('submitModalAttachKizBtn');
+        btn.classList.add('loading');
+
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/kiz`, {
+                method: 'POST',
+                body: JSON.stringify({ kiz_code: kizCode })
+            });
+            showToast('Успех', res.message || 'КИЗ прикреплен к заказу', 'success');
+            closeModal('attachKizModal');
+            await loadOrders();
+            await loadDashboard();
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    }
+
+    /** --- KIZ SCANNER --- */
+    const scannerInput = document.getElementById('kizScannerInput');
+    const scanHistory = document.getElementById('scan-history-body');
+
+    scannerInput.addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') {
+            processKizScan(scannerInput.value);
+            scannerInput.value = '';
+        }
+    });
+
+    document.getElementById('kizManualSubmitBtn').addEventListener('click', () => {
+        if(scannerInput.value) {
+            processKizScan(scannerInput.value);
+            scannerInput.value = '';
+        }
+    });
+
+    async function processKizScan(code) {
+        const kizCode = code.trim();
+        if(!kizCode) return;
+        
+        if(!currentSellerId) {
+            return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+        }
+
+        const specifiedOrderId = document.getElementById('kizOrderSearch').value.trim();
+        const orderIdNum = specifiedOrderId ? parseInt(specifiedOrderId) : null;
+
+        const timeStr = new Date().toLocaleTimeString('ru-RU');
+        
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/kiz/attach`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    kiz_code: kizCode,
+                    order_id: orderIdNum
+                })
+            });
+
+            // Append to history table
+            const tr = document.createElement('tr');
+            const prod = res.product_info || {};
+            const isBlocked = prod.blocked_by_ogv || (prod.ogvs && prod.ogvs.length > 0);
+            const statusHtml = isBlocked
+                ? `<span style="color: var(--status-cancelled); display: flex; align-items: center; gap: 6px; font-weight:500;">
+                     ⛔ ОГВ Блокировка: ${prod.validation_message || 'Заблокирован госорганами'}
+                   </span>`
+                : (prod.is_valid === false
+                    ? `<span style="color: #f59e0b; display: flex; align-items: center; gap: 6px; font-weight:500;">
+                         ⚠️ ${prod.validation_message || res.message}
+                       </span>`
+                    : `<span style="color: var(--status-delivered); display: flex; align-items: center; gap: 6px; font-weight:500;">
+                         ✅ ${res.message} ${prod.cz_status ? `(${prod.cz_status})` : ''}
+                       </span>`);
+
+            tr.innerHTML = `
+                <td style="color: var(--text-muted); font-size:13px;">${timeStr}</td>
+                <td style="font-family: monospace; font-size: 14px;">${kizCode}</td>
+                <td style="font-weight:600;">#${res.order_id}</td>
+                <td>${statusHtml}</td>
+            `;
+
+            // If placeholder row exists, remove it
+            if (scanHistory.rows.length === 1 && scanHistory.rows[0].cells.length === 1) {
+                scanHistory.innerHTML = '';
+            }
+
+            scanHistory.prepend(tr);
+            if (isBlocked) {
+                showToast('Внимание!', `Код заблокирован ОГВ: ${prod.validation_message}`, 'warning');
+            } else {
+                showToast('КИЗ отсканирован', res.message, 'success');
+            }
+
+        } catch (e) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="color: var(--text-muted); font-size:13px;">${timeStr}</td>
+                <td style="font-family: monospace; font-size: 14px;">${kizCode}</td>
+                <td>${orderIdNum ? '#' + orderIdNum : '-'}</td>
+                <td>
+                    <span style="color: var(--status-cancelled); display: flex; align-items: center; gap: 6px; font-weight:500;">
+                        ❌ ${e.message}
+                    </span>
+                </td>
+            `;
+            if (scanHistory.rows.length === 1 && scanHistory.rows[0].cells.length === 1) {
+                scanHistory.innerHTML = '';
+            }
+            scanHistory.prepend(tr);
+            showToast('Ошибка маркировки', e.message, 'error');
+        }
+    }
+
+    async function triggerCzAction(type) {
+        if(!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
+        try {
+            const endpoint = type === 'withdraw' ? `/sellers/${currentSellerId}/kiz/withdraw` : `/sellers/${currentSellerId}/kiz/return`;
+            const res = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify({}) });
+            showToast('Честный Знак', res.message, 'success');
+            await loadDashboard();
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        }
+    }
+
+    /** --- SUPPLIES --- */
+    async function loadSupplies() {
+        if(!currentSellerId) {
+            document.getElementById('supplies-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Выберите продавца</td></tr>`;
+            return;
+        }
+
+        try {
+            const data = await apiFetch(`/sellers/${currentSellerId}/supplies`);
+            const supplies = data.items || [];
+            const tbody = document.getElementById('supplies-table-body');
+
+            if (supplies.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Поставки пока не созданы</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = supplies.map(s => `
+                <tr>
+                    <td style="font-weight: 600; font-family:monospace;">${s.wb_supply_id}</td>
+                    <td style="font-weight: 500;">${s.name}</td>
+                    <td>${getStatusBadge(s.status, 'supply')}</td>
+                    <td style="font-weight: 600;">${s.orders_count} шт</td>
+                    <td style="color: var(--text-muted); font-size:13px;">${s.created_at ? new Date(s.created_at).toLocaleString('ru-RU') : '-'}</td>
+                    <td>
+                        <button class="icon-btn" title="Штрихкод поставки" onclick="showSupplyBarcode('${s.id}', '${s.wb_supply_id}')">📄 Штрихкод</button>
+                    </td>
+                </tr>
+            `).join('');
+
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось загрузить поставки: ' + e.message, 'error');
+        }
+    }
+
+    async function syncSuppliesFromWB() {
+        if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+        const btn = document.getElementById('syncSuppliesBtn');
+        if (btn) btn.classList.add('loading');
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/supplies/sync`, { method: 'POST' });
+            showToast('Успех', res.message || 'Поставки синхронизированы с WB', 'success');
+            await loadSupplies();
+        } catch (err) {
+            showToast('Ошибка', err.message, 'error');
+        } finally {
+            if (btn) btn.classList.remove('loading');
+        }
+    }
+
+    async function openCreateSupplyModal() {
+        if(!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+        
+        document.getElementById('supplyName').value = `Поставка от ${new Date().toLocaleDateString('ru-RU')}`;
+        
+        // Fetch orders in ASSEMBLING or NEW state to select
+        const selectContainer = document.getElementById('supplyOrdersSelectContainer');
+        selectContainer.innerHTML = '<div style="color: var(--text-muted);">Загрузка заказов...</div>';
+
+        try {
+            const data = await apiFetch(`/sellers/${currentSellerId}/orders?status=ASSEMBLING`);
+            const orders = data.items || [];
+            
+            if (orders.length === 0) {
+                selectContainer.innerHTML = '<div style="color: var(--text-muted); font-size:13px;">Нет заказов в статусе "На сборке". Поставка будет создана пустой.</div>';
+            } else {
+                selectContainer.innerHTML = orders.map(o => `
+                    <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer;">
+                        <input type="checkbox" name="supply_order_choice" value="${o.id}" checked>
+                        <span><strong>#${o.id}</strong> — ${o.name || o.article} (${o.price} ₽)</span>
+                    </label>
+                `).join('');
+            }
+            openModal('supplyModal');
+        } catch (e) {
+            openModal('supplyModal');
+        }
+    }
+
+    async function createSupply() {
+        const name = document.getElementById('supplyName').value.trim();
+        if(!name) return showToast('Ошибка', 'Введите название поставки', 'error');
+
+        const checkboxes = document.querySelectorAll('input[name="supply_order_choice"]:checked');
+        const selectedOrderIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        const btn = document.getElementById('createSupplySubmitBtn');
+        btn.classList.add('loading');
+
+        try {
+            const res = await apiFetch(`/sellers/${currentSellerId}/supplies`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: name,
+                    order_ids: selectedOrderIds
+                })
+            });
+            showToast('Поставка создана', res.message || 'Поставка сформирована', 'success');
+            closeModal('supplyModal');
+            await loadSupplies();
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    }
+
+    async function showSupplyBarcode(supplyId, wbSupplyId) {
+        try {
+            const data = await apiFetch(`/sellers/${currentSellerId}/supplies/${supplyId}/barcode`);
+            document.getElementById('barcodeModalTitle').innerText = `Штрихкод ${wbSupplyId}`;
+            document.getElementById('barcodeModalBody').innerHTML = `
+                <div style="font-weight: 700; font-size: 18px; margin-bottom: 12px; color: black;">WILDBERRIES SUPPLY</div>
+                <div style="background: black; color: white; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 24px; letter-spacing: 4px;">
+                    *${wbSupplyId}*
+                </div>
+                <div style="margin-top: 12px; font-size: 14px; color: black;">Идентификатор поставки: ${wbSupplyId}</div>
+            `;
+            openModal('barcodeModal');
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        }
+    }
+
+    /** --- SELLERS --- */
+    let currentEditingSellerId = null;
+
+    function openAddSellerModal() {
+        currentEditingSellerId = null;
+        document.getElementById('sellerForm').reset();
+        document.getElementById('sellerModalTitle').innerText = "Добавить нового продавца";
+        document.getElementById('wbTokenRequiredLabel').style.display = 'inline';
+        openModal('sellerModal');
+    }
+
+    async function editSeller(sellerId) {
+        currentEditingSellerId = sellerId;
+        document.getElementById('sellerModalTitle').innerText = "Редактировать продавца";
+        document.getElementById('wbTokenRequiredLabel').style.display = 'none';
+        showToast('Загрузка...', 'Получение данных продавца', 'info');
+        
+        try {
+            const seller = await apiFetch(`/sellers/${sellerId}`);
+            document.getElementById('seller_name').value = seller.name || '';
+            document.getElementById('seller_wb_supplier_id').value = seller.wb_supplier_id || '';
+            document.getElementById('seller_cz_inn').value = seller.cz_inn || '';
+            document.getElementById('seller_cz_oms_id').value = seller.cz_oms_id || '';
+            document.getElementById('seller_cz_fias').value = seller.mod_fias || '';
+            document.getElementById('seller_cert_path').value = seller.cryptopro_cert_thumbprint || seller.cz_cert_path || '';
+            document.getElementById('seller_tg_chat_ids').value = (seller.telegram_chat_ids || []).join(', ');
+
+            // Polling interval (API returns seconds, form shows minutes)
+            const intervalMin = Math.max(1, Math.round((seller.polling_interval_seconds || 60) / 60));
+            document.getElementById('seller_polling_interval').value = intervalMin;
+            document.getElementById('polling_interval_label').textContent = intervalMin + ' мин';
+
+            // Digest settings
+            document.getElementById('seller_digest_enabled').checked = seller.digest_enabled !== false;
+            document.getElementById('seller_digest_hour').value = seller.digest_hour ?? 8;
+            document.getElementById('seller_digest_minute').value = seller.digest_minute ?? 0;
+            const tzSelect = document.getElementById('seller_digest_timezone');
+            const tzVal = seller.digest_timezone || 'Europe/Moscow';
+            // Try to set known option, fallback to first
+            const tzOption = Array.from(tzSelect.options).find(o => o.value === tzVal);
+            tzSelect.value = tzOption ? tzVal : 'Europe/Moscow';
+            
+            document.getElementById('seller_wb_token').value = '';
+            document.getElementById('seller_cz_token').value = '';
+            document.getElementById('seller_tg_token').value = '';
+            
+            openModal('sellerModal');
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось получить данные продавца: ' + e.message, 'error');
+        }
+    }
+
+    async function loadSellers() {
+        let sellers = [];
+        try {
+            const data = await apiFetch('/sellers');
+            if (Array.isArray(data)) sellers = data;
+            else if (data && Array.isArray(data.items)) sellers = data.items;
+        } catch(e) {
+            console.error("Ошибка загрузки продавцов:", e);
+        }
+
+        const tbody = document.getElementById('sellers-table-body');
+        if (sellers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Продавцы не найдены. Нажмите "Добавить продавца" или "Demo Data".</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = sellers.map(s => `
+            <tr>
+                <td style="font-weight: 600;">${s.name}</td>
+                <td style="font-family:monospace;">${s.wb_supplier_id || '-'}</td>
+                <td>${s.cz_inn || '-'}</td>
+                <td><span class="badge ${s.is_active ? 'bg-delivered' : 'bg-cancelled'}">${s.is_active ? 'Активен' : 'Отключен'}</span></td>
+                <td><span class="badge ${s.polling_enabled ? 'bg-new' : 'kiz-pending'}">${s.polling_enabled ? 'Включен' : 'Выключен'}</span></td>
+                <td>
+                    <div style="display:flex; gap:6px;">
+                        <button class="icon-btn" title="Редактировать" onclick="editSeller('${s.id}')">✏️</button>
+                        <button class="icon-btn" title="Проверить API WB" onclick="testConnectionFor('${s.id}')">🔌</button>
+                        <button class="icon-btn" title="Переключить авто-опрос" onclick="togglePollingFor('${s.id}', ${!s.polling_enabled})">⚡</button>
+                        <button class="icon-btn" title="Отключить продавца" style="color: var(--status-cancelled)" onclick="deleteSeller('${s.id}', '${(s.name || '').replace(/'/g, "\\'")}')">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function saveSeller() {
+        const btn = document.getElementById('saveSellerBtn');
+        btn.classList.add('loading');
+
+        const name = document.getElementById('seller_name').value.trim();
+        const wbToken = document.getElementById('seller_wb_token').value.trim();
+        const wbSupplierId = document.getElementById('seller_wb_supplier_id').value.trim();
+        const czInn = document.getElementById('seller_cz_inn').value.trim();
+        const czOmsId = document.getElementById('seller_cz_oms_id').value.trim();
+        const czFias = document.getElementById('seller_cz_fias').value.trim();
+        const czToken = document.getElementById('seller_cz_token').value.trim();
+        const certPath = document.getElementById('seller_cert_path').value.trim();
+        const tgToken = document.getElementById('seller_tg_token').value.trim();
+        const tgChatIdsRaw = document.getElementById('seller_tg_chat_ids').value.trim();
+
+        if (!name) {
+            showToast('Ошибка валидации', 'Введите название продавца', 'error');
+            btn.classList.remove('loading');
+            return;
+        }
+
+        const tgChatIds = tgChatIdsRaw ? tgChatIdsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+        try {
+            if (!currentEditingSellerId) {
+                if (!wbToken) {
+                    showToast('Ошибка валидации', 'API токен WB обязателен для нового продавца', 'error');
+                    btn.classList.remove('loading');
+                    return;
+                }
+                const payload = {
+                    name,
+                    wb_api_token: wbToken,
+                    wb_supplier_id: wbSupplierId || null,
+                    cz_inn: czInn || null,
+                    cz_oms_id: czOmsId || null,
+                    cz_token: czToken || null,
+                    cz_cert_path: certPath || null,
+                    cryptopro_cert_thumbprint: certPath || null,
+                    mod_fias: czFias || null,
+                    telegram_bot_token: tgToken || null,
+                    telegram_chat_ids: tgChatIds.length ? tgChatIds : null,
+                    polling_interval_minutes: parseInt(document.getElementById('seller_polling_interval').value) || 1,
+                    digest: {
+                        enabled: document.getElementById('seller_digest_enabled').checked,
+                        hour: parseInt(document.getElementById('seller_digest_hour').value) || 8,
+                        minute: parseInt(document.getElementById('seller_digest_minute').value) || 0,
+                        timezone: document.getElementById('seller_digest_timezone').value || 'Europe/Moscow',
+                    },
+                };
+                await apiFetch('/sellers', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                showToast('Успех', 'Продавец успешно добавлен!', 'success');
+            } else {
+                const payload = {
+                    name: name || undefined,
+                    wb_supplier_id: wbSupplierId || undefined,
+                    cz_inn: czInn || undefined,
+                    cz_oms_id: czOmsId || undefined,
+                    cz_cert_path: certPath || undefined,
+                    cryptopro_cert_thumbprint: certPath || undefined,
+                    mod_fias: czFias || undefined,
+                    telegram_chat_ids: tgChatIds.length ? tgChatIds : undefined,
+                    polling_interval_minutes: parseInt(document.getElementById('seller_polling_interval').value) || 1,
+                    digest_enabled: document.getElementById('seller_digest_enabled').checked,
+                    digest_hour: parseInt(document.getElementById('seller_digest_hour').value) || 8,
+                    digest_minute: parseInt(document.getElementById('seller_digest_minute').value) || 0,
+                    digest_timezone: document.getElementById('seller_digest_timezone').value || 'Europe/Moscow',
+                };
+                if (wbToken) payload.wb_api_token = wbToken;
+                if (czToken) payload.cz_token = czToken;
+                if (tgToken) payload.telegram_bot_token = tgToken;
+
+                await apiFetch(`/sellers/${currentEditingSellerId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(payload)
+                });
+                showToast('Успех', 'Данные продавца обновлены!', 'success');
+            }
+
+            closeModal('sellerModal');
+            await loadSellers();
+            await loadSellersForDropdown();
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось сохранить продавца: ' + e.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    }
+
+    async function deleteSeller(sellerId, sellerName) {
+        if (!confirm(`Вы действительно хотите отключить продавца "${sellerName}"?`)) return;
+
+        try {
+            await apiFetch(`/sellers/${sellerId}`, { method: 'DELETE' });
+            showToast('Продавец отключен', `Продавец "${sellerName}" отключен`, 'success');
+            await loadSellers();
+            await loadSellersForDropdown();
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось отключить продавца: ' + e.message, 'error');
+        }
+    }
+
+    async function testConnectionFor(sellerId) {
+        showToast('Проверка...', 'Подключение к WB API...', 'info');
+        try {
+            const res = await apiFetch(`/sellers/${sellerId}/test-connection`, { method: 'POST' });
+            if (res.success) showToast('Успех', res.message, 'success');
+            else showToast('Информация', res.message, 'info');
+        } catch (e) {
+            showToast('Ошибка', 'Проверка соединения завершилась ошибкой: ' + e.message, 'error');
+        }
+    }
+
+    async function testSellerConnection() {
+        if (!currentEditingSellerId) return showToast('Инфо', 'Сохраните продавца перед проверкой соединения', 'info');
+        testConnectionFor(currentEditingSellerId);
+    }
+
+    async function togglePollingFor(sellerId, enable) {
+        try {
+            const res = await apiFetch(`/sellers/${sellerId}/toggle-polling?enabled=${enable}`, { method: 'POST' });
+            showToast('Авто-опрос', res.message, 'success');
+            await loadSellers();
+        } catch (e) {
+            showToast('Ошибка', e.message, 'error');
+        }
+    }
+
+    /** --- AUDIT LOGS --- */
+    async function loadAuditLogs() {
+        const tbody = document.getElementById('audit-table-body');
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка журнала аудита...</td></tr>`;
+
+        try {
+            const endpoint = currentSellerId ? `/sellers/${currentSellerId}/audit` : '/audit';
+            const data = await apiFetch(endpoint);
+            const logs = data.items || [];
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Записи в журнале аудита пока отсутствуют</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => `
+                <tr>
+                    <td style="color: var(--text-muted); font-size:13px; white-space:nowrap;">
+                        ${l.created_at ? new Date(l.created_at).toLocaleString('ru-RU') : '-'}
+                    </td>
+                    <td><span class="badge bg-new">${l.agent}</span></td>
+                    <td style="font-weight:600;">${l.action}</td>
+                    <td>${l.entity_type ? `${l.entity_type} #${l.entity_id || ''}` : '-'}</td>
+                    <td style="font-size:12px; font-family:monospace; color:var(--text-muted);">
+                        ${l.error ? `<span style="color:var(--status-cancelled)">❌ ${l.error}</span>` : JSON.stringify(l.payload || {})}
+                    </td>
+                </tr>
+            `).join('');
+
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--status-cancelled);">Ошибка загрузки аудита: ${e.message}</td></tr>`;
+        }
+    }
+
+    /** --- CRYPTOPRO CADES BROWSER PLUGIN & SIGNING --- */
+    let currentSigningPayload = null;
+    let cryptoProCerts = [];
+    let isCryptoProAvailable = false;
+
+    async function initCryptoProPlugin() {
+        try {
+            if (window.cadesplugin) {
+                await checkPluginLoaded();
+            } else {
+                loadCadesScript();
+            }
+        } catch (e) {
+            console.log("CryptoPro init note:", e);
+        }
+    }
+
+    function loadCadesScript() {
+        if (document.getElementById('cadesplugin_script')) return;
+        const s = document.createElement('script');
+        s.id = 'cadesplugin_script';
+        s.src = 'https://www.cryptopro.ru/sites/default/files/products/cades/cadesplugin_api.js';
+        s.onload = () => {
+            setTimeout(checkPluginLoaded, 400);
+        };
+        s.onerror = () => {
+            console.log("External cadesplugin_api.js not reachable, checking native window.cadesplugin");
+            checkPluginLoaded();
+        };
+        document.head.appendChild(s);
+    }
+
+    async function checkPluginLoaded() {
+        const badge = document.getElementById('kizSigningPluginBadge');
+        if (!window.cadesplugin) {
+            if (badge) {
+                badge.style.background = 'rgba(148, 163, 184, 0.15)';
+                badge.style.color = '#94a3b8';
+                badge.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                badge.innerText = 'Плагин не обнаружен';
+            }
+            return false;
+        }
+        try {
+            await window.cadesplugin;
+            isCryptoProAvailable = true;
+            if (badge) {
+                badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                badge.style.color = '#10b981';
+                badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                badge.innerText = '🟢 Плагин КриптоПро активен';
+            }
+            await populateCertificatesDropdown();
+            return true;
+        } catch (err) {
+            isCryptoProAvailable = false;
+            if (badge) {
+                badge.style.background = 'rgba(239, 68, 68, 0.15)';
+                badge.style.color = '#f87171';
+                badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                badge.innerText = '⚠️ Ошибка плагина';
+            }
+            return false;
+        }
+    }
+
+    async function populateCertificatesDropdown() {
+        const select = document.getElementById('kizSigningCertSelect');
+        if (!select) return;
+        select.innerHTML = '<option value="">-- Поиск сертификатов в хранилище... --</option>';
+
+        if (!window.cadesplugin) {
+            select.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен (доступна серверная отправка) --</option>';
+            return;
+        }
+
+        try {
+            const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+            await oStore.Open(window.cadesplugin.CAPICOM_CURRENT_USER_STORE, window.cadesplugin.CAPICOM_MY_STORE, window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED);
+            const certs = await oStore.Certificates;
+            const count = await certs.Count;
+            cryptoProCerts = [];
+
+            select.innerHTML = '<option value="">-- Выберите сертификат для подписания --</option>';
+
+            for (let i = 1; i <= count; i++) {
+                const cert = await certs.Item(i);
+                try {
+                    const subjectName = await cert.SubjectName;
+                    const validTo = await cert.ValidToDate;
+                    const thumbprint = await cert.Thumbprint;
+                    const serial = await cert.SerialNumber;
+
+                    let cn = subjectName;
+                    const cnMatch = subjectName.match(/CN=([^,]+)/);
+                    if (cnMatch) cn = cnMatch[1];
+                    let inn = '';
+                    const innMatch = subjectName.match(/ИНН=([^,]+)/) || subjectName.match(/ИНН ЮЛ=([^,]+)/) || subjectName.match(/INN=([^,]+)/);
+                    if (innMatch) inn = innMatch[1];
+
+                    const certData = {
+                        thumbprint: thumbprint,
+                        subject: cn,
+                        inn: inn,
+                        validTo: validTo,
+                        serial: serial,
+                        rawSubject: subjectName
+                    };
+                    cryptoProCerts.push(certData);
+
+                    const opt = document.createElement('option');
+                    opt.value = thumbprint;
+                    opt.textContent = `${cn} ${inn ? `(ИНН: ${inn})` : ''} — до ${new Date(validTo).toLocaleDateString('ru-RU')}`;
+                    select.appendChild(opt);
+                } catch (ce) {
+                    console.log("Error inspecting cert item:", ce);
+                }
+            }
+            await oStore.Close();
+
+            if (cryptoProCerts.length === 0) {
+                select.innerHTML = '<option value="">-- В хранилище "Личные" нет доступных сертификатов --</option>';
+            } else {
+                select.selectedIndex = 1;
+                onCertSelected();
+            }
+        } catch (e) {
+            console.error("Error reading certs from store:", e);
+            select.innerHTML = `<option value="">-- Ошибка чтения сертификатов: ${e.message} --</option>`;
+        }
+    }
+
+    function onCertSelected() {
+        const select = document.getElementById('kizSigningCertSelect');
+        const thumb = select.value;
+        const detailsEl = document.getElementById('kizSigningCertDetails');
+        if (!thumb) {
+            detailsEl.innerHTML = '';
+            return;
+        }
+        const cert = cryptoProCerts.find(c => c.thumbprint === thumb);
+        if (cert) {
+            detailsEl.innerHTML = `<strong>Владелец:</strong> ${cert.subject}<br><strong>Действителен до:</strong> ${new Date(cert.validTo).toLocaleString('ru-RU')}<br><span style="font-family:monospace; font-size:11px;">Отпечаток (SHA-1): ${cert.thumbprint}</span>`;
+        }
+    }
+
+    async function openKizSigningModal(orderIds, action = 'WITHDRAWAL') {
+        if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
+        if (!orderIds || orderIds.length === 0) return showToast('Инфо', 'Нет выбранных заказов для обработки', 'info');
+
+        currentSigningPayload = {
+            seller_id: currentSellerId,
+            order_ids: orderIds.map(id => parseInt(id)),
+            action: action
+        };
+
+        const isWithdrawal = action === 'WITHDRAWAL';
+        document.getElementById('kizSigningModalTitle').innerText = isWithdrawal ? '✍️ Вывод маркировки КИЗ из оборота' : '🔄 Возврат маркировки КИЗ в оборот';
+        document.getElementById('kizSigningActionName').innerText = isWithdrawal ? 'Вывод из оборота (Дистанционная продажа LK_RECEIPT)' : 'Возврат в оборот (Дистанционная продажа LP_RETURN)';
+        document.getElementById('kizSigningActionDesc').innerText = isWithdrawal ? 'Документ дистанционной продажи формируется на VPS и подписывается локальной УКЭП.' : 'Документ возврата в оборот формируется на VPS и подписывается локальной УКЭП.';
+
+        document.getElementById('kizSigningOrdersCount').innerText = orderIds.length;
+        document.getElementById('kizSigningOrdersList').innerHTML = '<div style="color:var(--text-muted); padding:4px;">Загрузка данных заказов...</div>';
+        document.getElementById('kizSigningJsonPreview').innerText = 'Подготовка документа на сервере...';
+        document.getElementById('kizSigningLogs').style.display = 'none';
+
+        openModal('kizSigningModal');
+        await checkPluginLoaded();
+
+        // Prepare document on server
+        try {
+            const prepRes = await apiFetch(`/sellers/${currentSellerId}/kiz/prepare-document`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: action,
+                    order_ids: currentSigningPayload.order_ids
+                })
+            });
+
+            currentSigningPayload.prepared = prepRes;
+            document.getElementById('kizSigningJsonPreview').innerText = JSON.stringify(JSON.parse(prepRes.document_json), null, 2);
+
+            // Populate orders list
+            const ordersListEl = document.getElementById('kizSigningOrdersList');
+            ordersListEl.innerHTML = prepRes.order_ids.map((oid, idx) => {
+                const code = prepRes.kiz_codes[idx] || '';
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div><strong>#${oid}</strong></div>
+                    <div style="font-family:monospace; font-size:11px; color:var(--text-muted);">${code.substring(0, 24)}...</div>
+                </div>`;
+            }).join('');
+
+        } catch (e) {
+            document.getElementById('kizSigningJsonPreview').innerText = `Ошибка подготовки документа: ${e.message}`;
+            showToast('Ошибка подготовки', e.message, 'error');
+        }
+    }
+
+    async function openBatchKizSigningModal(action = 'WITHDRAWAL') {
+        if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
+
+        try {
+            const data = await apiFetch(`/sellers/${currentSellerId}/orders`);
+            const orders = data.items || [];
+            let eligible = [];
+
+            if (action === 'WITHDRAWAL') {
+                eligible = orders.filter(o => o.kiz_code && o.kiz_status === 'ATTACHED');
+            } else {
+                eligible = orders.filter(o => o.kiz_code && (o.status === 'CANCELLED' || o.kiz_status === 'WITHDRAWN'));
+            }
+
+            if (eligible.length === 0) {
+                const msg = action === 'WITHDRAWAL' ? 'Нет заказов с прикрепленным КИЗ, готовых к выводу из оборота' : 'Нет отмененных заказов для возврата КИЗ в оборот';
+                return showToast('Информация', msg, 'info');
+            }
+
+            openKizSigningModal(eligible.map(o => o.id), action);
+        } catch (e) {
+            showToast('Ошибка', 'Не удалось загрузить список заказов: ' + e.message, 'error');
+        }
+    }
+
+    async function executeKizClientSigning() {
+        if (!currentSigningPayload || !currentSigningPayload.prepared) {
+            return showToast('Ошибка', 'Документ еще не подготовлен', 'error');
+        }
+
+        const select = document.getElementById('kizSigningCertSelect');
+        const thumbprint = select.value;
+        const btn = document.getElementById('kizSigningSubmitBtn');
+        const logsEl = document.getElementById('kizSigningLogs');
+        const statusText = document.getElementById('kizSigningStatusText');
+
+        logsEl.style.display = 'block';
+        btn.classList.add('loading');
+        statusText.innerHTML = '⏳ 1/3: Подписание документа в плагине КриптоПро...';
+
+        let signature = '';
+        try {
+            if (isCryptoProAvailable && window.cadesplugin) {
+                signature = await signDataWithCryptoPro(currentSigningPayload.prepared.document_base64, thumbprint);
+                statusText.innerHTML = '✅ 1/3: Документ успешно подписан локальной ЭЦП.<br>⏳ 2/3: Отправка подписанного пакета в ГИС МТ (Честный Знак)...';
+            } else {
+                throw new Error("КриптоПро плагин не обнаружен в этом браузере. Вставьте токен с ЭЦП или нажмите 'Серверная отправка'");
+            }
+
+            const submitRes = await apiFetch(`/sellers/${currentSellerId}/kiz/submit-signed-document`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    document_type: currentSigningPayload.prepared.document_type,
+                    document_base64: currentSigningPayload.prepared.document_base64,
+                    signature_base64: signature,
+                    order_ids: currentSigningPayload.order_ids,
+                    action: currentSigningPayload.action
+                })
+            });
+
+            statusText.innerHTML = `🎉 <strong>Успех!</strong> Документ принят ГИС МТ.<br>ID документа: <code>${submitRes.doc_id}</code><br>Статусы заказов и КИЗ обновлены.`;
+            showToast('Честный Знак', submitRes.message, 'success');
+
+            setTimeout(() => {
+                closeModal('kizSigningModal');
+                loadOrders();
+                loadDashboard();
+            }, 1500);
+
+        } catch (err) {
+            statusText.innerHTML = `❌ <span style="color:var(--status-cancelled)">Ошибка: ${err.message}</span>`;
+            showToast('Ошибка подписания / отправки', err.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+        }
+    }
+
+    async function signDataWithCryptoPro(base64Data, thumbprint) {
+        if (!window.cadesplugin) throw new Error("КриптоПро ЭЦП Browser Plug-in не доступен");
+
+        const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+        await oStore.Open(window.cadesplugin.CAPICOM_CURRENT_USER_STORE, window.cadesplugin.CAPICOM_MY_STORE, window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED);
+        const certs = await oStore.Certificates;
+        let selectedCert = null;
+
+        if (thumbprint) {
+            const found = await certs.Find(window.cadesplugin.CAPICOM_CERTIFICATE_FIND_SHA1_HASH, thumbprint);
+            if (await found.Count > 0) {
+                selectedCert = await found.Item(1);
+            }
+        }
+        if (!selectedCert && (await certs.Count > 0)) {
+            selectedCert = await certs.Item(1);
+        }
+        if (!selectedCert) {
+            await oStore.Close();
+            throw new Error("Не выбран действующий сертификат для подписания");
+        }
+
+        const oSigner = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+        await oSigner.propset_Certificate(selectedCert);
+        await oSigner.propset_CheckCertificate(false);
+
+        const oSignedData = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+        await oSignedData.propset_ContentEncoding(window.cadesplugin.CADESCOM_BASE64_TO_BINARY);
+        await oSignedData.propset_Content(base64Data);
+
+        const signature = await oSignedData.SignCades(oSigner, window.cadesplugin.CADESCOM_CADES_BES, true);
+        await oStore.Close();
+        return signature;
+    }
+
+    async function submitKizViaServerFallback() {
+        if (!currentSigningPayload) return;
+        const statusText = document.getElementById('kizSigningStatusText');
+        const logsEl = document.getElementById('kizSigningLogs');
+
+        logsEl.style.display = 'block';
+        statusText.innerHTML = '⏳ Отправка команды фоновому серверному агенту Celery...';
+
+        try {
+            const endpoint = currentSigningPayload.action === 'WITHDRAWAL' ? '/kiz/withdraw' : '/kiz/return';
+            const res = await apiFetch(`/sellers/${currentSellerId}${endpoint}`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    order_ids: currentSigningPayload.order_ids
+                })
+            });
+            statusText.innerHTML = `✅ ${res.message}`;
+            showToast('Фоновый агент', res.message, 'success');
+            setTimeout(() => {
+                closeModal('kizSigningModal');
+                loadOrders();
+            }, 1200);
+        } catch (e) {
+            statusText.innerHTML = `❌ Ошибка: ${e.message}`;
+            showToast('Ошибка фонового агента', e.message, 'error');
+        }
+    }
+
+    // Run init on DOM Ready
+    document.addEventListener('DOMContentLoaded', () => {
+        initApp();
+        initCryptoProPlugin();
+    });
+
+</script>
+</body>
+</html>

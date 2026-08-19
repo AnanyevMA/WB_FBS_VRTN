@@ -1,0 +1,594 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.1.0",
+  "system_name": "WB FBS Manager Multi-Agent System",
+  "description": "Unified Configuration Manifest & Principle of Least Privilege (PoLP) File Access Matrix",
+  "updated_at": "2026-08-12T00:20:00Z",
+  "development_rules": {
+    "frontend_coverage_required": true,
+    "frontend_coverage_policy": "CRITICAL: Any feature that adds user-configurable settings (fields in API schema, seller model, or any model exposed to users) MUST include corresponding changes to frontend/index.html in the SAME implementation task. This includes: form inputs, edit population (editSeller/editXxx JS), save payload (saveSeller/saveXxx JS), and table/list display columns. Omitting frontend changes for backend-added settings is a defect and must not happen.",
+
+    "holistic_impact_analysis": {
+      "enabled": true,
+      "policy": "REQUIRED: Before implementing ANY change, the agent MUST perform a full project impact scan. The agent must explicitly list every layer of the system that the change touches or might touch, and confirm that changes are applied to ALL affected layers in a single task.",
+      "layers_to_scan": [
+        "app/models/        — ORM models, DB schema",
+        "app/schemas/       — Pydantic validation, API contracts",
+        "app/api/           — FastAPI endpoints, request/response handling",
+        "app/agents/        — Celery tasks, background workers",
+        "app/services/      — Business logic, external API clients",
+        "app/celery_app.py  — Beat schedule, task routing, includes",
+        "app/agent_manifest.py — PoLP Pydantic models",
+        "agents_config.json — Agent registry, development rules",
+        "frontend/index.html — All UI: forms, tables, JS save/load logic",
+        "tests/             — Existing and new tests",
+        "alembic/           — DB migration scripts",
+        "docs/              — README, API docs if applicable"
+      ],
+      "required_pre_implementation_steps": [
+        "1. Read and understand the user request fully.",
+        "2. Search the entire project for all files related to the feature area (models, schemas, api, agents, services, frontend, tests).",
+        "3. List every file that will need to change and WHY.",
+        "4. Identify implicit side effects (e.g., adding a model field requires: migration, schema, API, frontend form, frontend table, tests).",
+        "5. Document findings in the implementation plan before writing any code."
+      ]
+    },
+
+    "post_change_test_analysis": {
+      "enabled": true,
+      "policy": "REQUIRED: After completing any implementation, the agent MUST analyze what tests are needed and implement them. Tests are not optional — a feature is not complete without corresponding test coverage.",
+      "required_post_implementation_steps": [
+        "1. List every changed or new module/function/endpoint.",
+        "2. For each changed unit, identify what behavior needs to be verified.",
+        "3. Check tests/ directory for existing coverage — extend rather than duplicate.",
+        "4. Write new tests covering: happy path, edge cases, validation errors, and integration with adjacent components.",
+        "5. Run existing tests to confirm no regressions introduced.",
+        "6. Document which tests were added and why in the walkthrough or task notes."
+      ],
+      "test_categories": {
+        "unit": "Individual functions, validators, model methods",
+        "integration": "API endpoint + DB round-trip, Celery task execution",
+        "schema": "Pydantic validation rules, field constraints, timezone validators",
+        "frontend_contract": "Verify API response shape matches what frontend JS expects",
+        "regression": "Existing tests must still pass after every change"
+      },
+      "test_file_convention": "tests/test_<feature_area>.py — group tests by feature domain, not by layer"
+    },
+
+    "token_efficient_codebase_indexing": {
+      "enabled": true,
+      "policy": "REQUIRED: To prevent excessive token consumption when analyzing the project, agents must NEVER read full files indiscriminately across the codebase. Agents must use the two-tier index (codebase_index.json and CODEBASE_MAP.md) or lookup_code_symbol() for preliminary discovery, and only read specific targeted files when their relevance is confirmed.",
+      "automatic_maintenance_policy": "REQUIRED: Whenever any code or configuration file is created, modified, or deleted, the codebase index MUST be updated via CodebaseIndexer().save_index() to maintain 100% synchronization of all symbols, classes, functions, routes, and tasks.",
+      "required_steps": [
+        "1. Discover relevant files via codebase_index.json or CODEBASE_MAP.md by symbol/layer/endpoint.",
+        "2. Read only the confirmed target source file(s).",
+        "3. Implement modifications.",
+        "4. Run CodebaseIndexer().save_index() to refresh codebase_index.json and CODEBASE_MAP.md.",
+        "5. Run tests to ensure index and code integrity."
+      ]
+    },
+
+    "implementation_checklist": [
+      "[ ] Pre-change: holistic project scan completed, all affected layers identified",
+      "[ ] Two-tier lookup used (codebase_index.json / CODEBASE_MAP.md) to minimize token consumption",
+      "[ ] Backend model fields added",
+      "[ ] Schema/validation updated",
+      "[ ] API endpoint handles new fields",
+      "[ ] Frontend FORM inputs added (frontend/index.html)",
+      "[ ] Frontend EDIT population JS updated (load existing values into form)",
+      "[ ] Frontend SAVE payload JS updated (send new fields to API)",
+      "[ ] Frontend TABLE/LIST display updated (show new fields in rows)",
+      "[ ] DB migration executed",
+      "[ ] agents_config.json updated if new agent added",
+      "[ ] Codebase index updated (codebase_index.json & CODEBASE_MAP.md via CodebaseIndexer)",
+      "[ ] Post-change: test analysis completed, new tests written and passing",
+      "[ ] Existing tests confirmed not broken"
+    ]
+  },
+  "global_polp_policy": {
+    "default_deny": true,
+    "strict_isolation": true,
+    "audit_logging_enabled": true,
+    "allow_root_execution": false,
+    "global_forbidden_paths": [
+      ".env*",
+      "*.pem",
+      "*.key",
+      "config/secrets/*",
+      "/etc/*",
+      "C:/Windows/*",
+      "C:/Program Files/*"
+    ]
+  },
+  "celery_queues": [
+    "orders",
+    "supplies",
+    "cz_operations",
+    "archive",
+    "notifications",
+    "maintenance",
+    "qa_testing"
+  ],
+  "agents": [
+    {
+      "id": "order_poller",
+      "name": "Order Poller Agent",
+      "role": "Polls new WB FBS assembly tasks, checks KIZ marking requirements, fetches order stickers, and triggers notification chains.",
+      "celery_task": "app.agents.order_poller.poll_all_sellers",
+      "queue": "orders",
+      "schedule": "every 60s",
+      "timeout_seconds": 300,
+      "max_retries": 3,
+      "concurrency_limit": 5,
+      "arbitration_priority": 90,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/order_poller.py",
+          "app/services/wb_client.py",
+          "app/services/encryption.py",
+          "storage/stickers/*"
+        ],
+        "allowed_write_paths": [
+          "storage/stickers/*",
+          "logs/order_poller.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "*.key",
+          "alembic/*",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_MARKETPLACE_API"
+        ],
+        "crypto_key_access": "READ_DECRYPT_TOKENS"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "supply_agent",
+      "name": "Supply & Shipment Agent",
+      "role": "Manages WB FBS supply lifecycles: creates supplies, adds orders to supplies, closes supplies, and generates barcodes.",
+      "celery_task": "app.agents.supply_agent.create_supply_for_seller",
+      "queue": "supplies",
+      "schedule": "event-driven / manual",
+      "timeout_seconds": 600,
+      "max_retries": 3,
+      "concurrency_limit": 3,
+      "arbitration_priority": 85,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/supply_agent.py",
+          "app/services/wb_client.py",
+          "storage/barcodes/*"
+        ],
+        "allowed_write_paths": [
+          "storage/barcodes/*",
+          "logs/supply_agent.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "*.key",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT_UPDATE",
+          "supplies": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_MARKETPLACE_API"
+        ],
+        "crypto_key_access": "READ_DECRYPT_TOKENS"
+      },
+      "dependencies": [
+        "order_poller"
+      ]
+    },
+    {
+      "id": "cz_withdrawal",
+      "name": "Chestny Znak KIZ Withdrawal Agent",
+      "role": "Signs and submits KIZ withdrawal documents (вывод из оборота) to True API (ГИС МТ) using CryptoPro UKEP.",
+      "celery_task": "app.agents.cz_withdrawal.withdraw_order_kiz",
+      "queue": "cz_operations",
+      "schedule": "daily at 03:00 / event-driven",
+      "timeout_seconds": 900,
+      "max_retries": 5,
+      "concurrency_limit": 2,
+      "arbitration_priority": 80,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/cz_withdrawal.py",
+          "app/services/cz_client.py",
+          "app/services/crypto_service.py",
+          "storage/cz_docs/*"
+        ],
+        "allowed_write_paths": [
+          "storage/cz_docs/*",
+          "logs/cz_withdrawal.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT",
+          "kiz_logs": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "USE_UKEP_SIGNATURE"
+      },
+      "dependencies": [
+        "order_poller"
+      ]
+    },
+    {
+      "id": "cz_return",
+      "name": "Chestny Znak KIZ Return Agent",
+      "role": "Processes returned items and re-introduces KIZ (возврат в оборот) into GIS MT True API with signed documents.",
+      "celery_task": "app.agents.cz_return.return_order_kiz",
+      "queue": "cz_operations",
+      "schedule": "event-driven",
+      "timeout_seconds": 600,
+      "max_retries": 3,
+      "concurrency_limit": 2,
+      "arbitration_priority": 75,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/cz_return.py",
+          "app/services/cz_client.py",
+          "app/services/crypto_service.py",
+          "storage/cz_docs/*"
+        ],
+        "allowed_write_paths": [
+          "storage/cz_docs/*",
+          "logs/cz_return.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT_UPDATE",
+          "kiz_logs": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "USE_UKEP_SIGNATURE"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "archive_processor",
+      "name": "Archive & Reconciliation Processor Agent",
+      "role": "Daily reconciliation of completed orders and Chestny Znak status synchronization.",
+      "celery_task": "app.agents.archive_processor.process_all_archives",
+      "queue": "archive",
+      "schedule": "daily at 03:30",
+      "timeout_seconds": 1200,
+      "max_retries": 2,
+      "concurrency_limit": 1,
+      "arbitration_priority": 50,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/archive_processor.py",
+          "storage/archive/*"
+        ],
+        "allowed_write_paths": [
+          "storage/archive/*",
+          "logs/archive_processor.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "*.key"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT_UPDATE",
+          "kiz_logs": "SELECT",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_MARKETPLACE_API",
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "NONE"
+      },
+      "dependencies": [
+        "cz_withdrawal"
+      ]
+    },
+    {
+      "id": "notifier",
+      "name": "Telegram Notifier Agent",
+      "role": "Sends real-time Telegram alert notifications with interactive inline buttons for new orders, errors, and status updates.",
+      "celery_task": "app.agents.notifier.notify_new_order",
+      "queue": "notifications",
+      "schedule": "event-driven",
+      "timeout_seconds": 60,
+      "max_retries": 5,
+      "concurrency_limit": 10,
+      "arbitration_priority": 95,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/notifier.py",
+          "app/services/telegram_service.py"
+        ],
+        "allowed_write_paths": [
+          "logs/notifier.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "storage/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "TELEGRAM_BOT_API"
+        ],
+        "crypto_key_access": "NONE"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "cleanup",
+      "name": "Data Retention & Cleanup Agent",
+      "role": "Purges old audit logs, temporary sticker files, and expired cache beyond retention policies.",
+      "celery_task": "app.agents.cleanup.cleanup_old_audit_logs",
+      "queue": "maintenance",
+      "schedule": "weekly on Sunday at 04:00",
+      "timeout_seconds": 300,
+      "max_retries": 1,
+      "concurrency_limit": 1,
+      "arbitration_priority": 10,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/cleanup.py",
+          "storage/temp/*",
+          "storage/stickers/*"
+        ],
+        "allowed_write_paths": [
+          "logs/cleanup.log"
+        ],
+        "allowed_delete_paths": [
+          "storage/temp/*",
+          "storage/stickers/tmp_*"
+        ],
+        "forbidden_paths": [
+          ".env*",
+          "app/*",
+          "storage/cz_docs/*"
+        ],
+        "database_table_permissions": {
+          "audit_logs": "DELETE"
+        },
+        "external_api_access": [],
+        "crypto_key_access": "NONE"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "qa_test_agent",
+      "name": "QA Automated Testing Agent",
+      "role": "Executes health checks, end-to-end integration tests, and synthetic API checks in isolated QA environment.",
+      "celery_task": "app.agents.qa_test_agent.run_system_regression_tests",
+      "queue": "qa_testing",
+      "schedule": "every 30m / manual",
+      "timeout_seconds": 180,
+      "max_retries": 1,
+      "concurrency_limit": 1,
+      "arbitration_priority": 30,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/*",
+          "tests/*",
+          "storage/qa_reports/*"
+        ],
+        "allowed_write_paths": [
+          "storage/qa_reports/*",
+          "logs/qa_test.log"
+        ],
+        "allowed_delete_paths": [
+          "storage/qa_reports/tmp_*"
+        ],
+        "forbidden_paths": [
+          ".env*",
+          "*.key"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT",
+          "supplies": "SELECT",
+          "kiz_logs": "SELECT",
+          "audit_logs": "SELECT_INSERT"
+        },
+        "external_api_access": [
+          "WB_MARKETPLACE_API",
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "NONE"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "cz_token_refresher",
+      "name": "Chestny Znak Auth Token Refresher Agent",
+      "role": "Refreshes auth tokens for GIS MT True API before expiration using UKEP signature authentication.",
+      "celery_task": "app.agents.cz_token_refresher.refresh_all_tokens",
+      "queue": "cz_operations",
+      "schedule": "every 30m",
+      "timeout_seconds": 120,
+      "max_retries": 3,
+      "concurrency_limit": 2,
+      "arbitration_priority": 95,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/cz_token_refresher.py",
+          "app/services/cz_client.py",
+          "app/services/crypto_service.py"
+        ],
+        "allowed_write_paths": [
+          "logs/cz_token_refresher.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "USE_UKEP_SIGNATURE"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "morning_digest",
+      "name": "Morning Digest Agent",
+      "role": "Sends a daily morning digest to each seller via Telegram at their configured local time. Includes a summary of all pending (NEW/ASSEMBLING) orders and a one-tap 'Create Supply' button. Runs every 30 minutes and uses an in-memory guard to prevent double-sending on the same day.",
+      "celery_task": "app.agents.morning_digest.send_morning_digest",
+      "queue": "notifications",
+      "schedule": "every 30m (fires per-seller based on their digest_hour/digest_minute/digest_timezone)",
+      "timeout_seconds": 120,
+      "max_retries": 3,
+      "concurrency_limit": 5,
+      "arbitration_priority": 85,
+      "enabled": true,
+      "user_configurable_fields": [
+        "digest_enabled",
+        "digest_hour",
+        "digest_minute",
+        "digest_timezone"
+      ],
+      "frontend_coverage": {
+        "form_inputs": "seller_digest_enabled, seller_digest_hour, seller_digest_minute, seller_digest_timezone",
+        "table_column": "Дайджест column in sellers table",
+        "edit_population": "editSeller() populates all digest fields",
+        "save_payload": "saveSeller() sends digest_* fields on PATCH and nested digest object on POST"
+      },
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/morning_digest.py",
+          "app/services/telegram_service.py",
+          "app/services/encryption.py"
+        ],
+        "allowed_write_paths": [
+          "logs/morning_digest.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "*.key",
+          "storage/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "TELEGRAM_BOT_API"
+        ],
+        "crypto_key_access": "READ_DECRYPT_TOKENS"
+      },
+      "dependencies": ["notifier"]
+    },
+    {
+      "id": "kb_sync_agent",
+      "name": "Knowledge Base Sync & Integrity Agent",
+      "role": "Monitors, validates, and maintains the project Knowledge Base in docs/, ensuring documentation, code references, and fast two-tier indexes remain fresh and synchronized.",
+      "celery_task": "app.agents.kb_sync_agent.sync_knowledge_base",
+      "queue": "maintenance",
+      "schedule": "every 6h",
+      "timeout_seconds": 180,
+      "max_retries": 2,
+      "concurrency_limit": 1,
+      "arbitration_priority": 20,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/kb_sync_agent.py",
+          "app/services/kb_service.py",
+          "app/services/codebase_indexer.py",
+          "docs/*",
+          "codebase_index.json",
+          "CODEBASE_MAP.md"
+        ],
+        "allowed_write_paths": [
+          "docs/INDEX.json",
+          "docs/INDEX.md",
+          "codebase_index.json",
+          "CODEBASE_MAP.md",
+          "logs/kb_sync.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "*.key",
+          "storage/*"
+        ],
+        "database_table_permissions": {
+          "audit_logs": "SELECT_INSERT"
+        },
+        "external_api_access": [],
+        "crypto_key_access": "NONE"
+      },
+      "dependencies": []
+    }
+  ],
+  "arbitration_rules": {
+    "priority_queues": {
+      "notifications": 100,
+      "cz_operations": 90,
+      "orders": 80,
+      "supplies": 70,
+      "archive": 50,
+      "qa_testing": 30,
+      "maintenance": 10
+    },
+    "deadlock_prevention": {
+      "lock_timeout_seconds": 60,
+      "lock_prefix": "wb_fbs_lock:",
+      "redis_distributed_locks": true
+    },
+    "rate_limiting": {
+      "wb_api_max_calls_per_min": 300,
+      "cz_api_max_calls_per_min": 100
+    }
+  }
+}

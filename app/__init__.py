@@ -1,0 +1,1 @@
+"""WB FBS Manager Application"""

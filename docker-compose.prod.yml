@@ -1,0 +1,268 @@
+﻿version: "3.9"
+
+services:
+  # ─── PostgreSQL (Low-Memory Tuning for 1GB VPS) ───────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: wbfbs_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wbfbs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wbfbs_password}
+      POSTGRES_DB: ${POSTGRES_DB:-wbfbs}
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=16MB
+      -c max_connections=30
+      -c effective_cache_size=128MB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wbfbs} -d ${POSTGRES_DB:-wbfbs}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 160M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── Redis (Max 64MB LRU) ─────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: wbfbs_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 80M
+        reservations:
+          memory: 32M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── FastAPI Backend ──────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wbfbs_api
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - certs_data:/app/certs
+      - logs_data:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 100
+    deploy:
+      resources:
+        limits:
+          memory: 160M
+        reservations:
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── Celery Worker (Agents) ───────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wbfbs_worker
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - certs_data:/app/certs
+      - logs_data:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=100 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance,qa_testing
+    deploy:
+      resources:
+        limits:
+          memory: 180M
+        reservations:
+          memory: 80M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── Celery Beat (Scheduler) ──────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wbfbs_scheduler
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - worker
+    command: celery -A app.celery_app beat --loglevel=info
+    deploy:
+      resources:
+        limits:
+          memory: 80M
+        reservations:
+          memory: 32M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── Telegram Bot Service ─────────────────────────────────────
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wbfbs_bot
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python run_bot.py
+    deploy:
+      resources:
+        limits:
+          memory: 90M
+        reservations:
+          memory: 40M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── Nginx Reverse Proxy & Static Files ───────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: wbfbs_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./frontend:/app/frontend:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: 40M
+        reservations:
+          memory: 16M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+  # ─── Certbot (SSL Auto-renewal) ───────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: wbfbs_certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt:rw
+      - ./certbot/www:/var/www/certbot:rw
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12d & wait $${!}; done;'"
+    deploy:
+      resources:
+        limits:
+          memory: 40M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    networks:
+      - internal_net
+
+  # ─── Flower (Optional Monitoring — run with --profile monitoring)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wbfbs_flower
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:5555:5555"
+    depends_on:
+      - worker
+    command: celery -A app.celery_app flower --port=5555
+    profiles: ["monitoring"]
+    deploy:
+      resources:
+        limits:
+          memory: 90M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal_net
+
+volumes:
+  postgres_data:
+  redis_data:
+  certs_data:
+  logs_data:
+
+networks:
+  internal_net:
+    driver: bridge

@@ -1,0 +1,74 @@
+# =============================================================================
+# WB FBS Manager — Git Ignore Configuration
+# =============================================================================
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# SQLite and local databases
+*.db
+*.sqlite
+*.sqlite3
+wbfbs.db
+
+# Certificates and keys (Keep directory with .gitkeep)
+certs/*
+!certs/.gitkeep
+*.pem
+*.key
+*.pfx
+*.crt
+*.cer
+
+# Logs and debug files (Keep directory with .gitkeep)
+logs/*
+!logs/.gitkeep
+*.log
+
+# Backups (Keep directory with .gitkeep)
+backups/*
+!backups/.gitkeep
+*.sql.gz
+*.tar.gz
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# IDE and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Nginx SSL certs storage
+nginx/ssl/*
+!nginx/ssl/.gitkeep
+certbot/conf/*
+!certbot/conf/.gitkeep
+certbot/www/*
+!certbot/www/.gitkeep

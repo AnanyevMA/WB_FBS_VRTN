@@ -787,7 +787,7 @@
                 </div>
             </div>
             <div class="topbar-actions">
-                <button class="icon-btn" title="Сгенерировать демо-данные" id="seedDemoDataBtn">
+                <button class="icon-btn" title="Сгенерировать демо-данные" id="seedDemoDataBtn" style="display:none;">
                     <span>🌱</span> Demo Data
                 </button>
                 <button class="icon-btn" title="Обновить данные" id="globalRefreshBtn">
@@ -796,8 +796,11 @@
                 <button class="icon-btn" title="Настройки продавца" id="topbarSettingsBtn">
                     <span>⚙️</span> Настройки
                 </button>
-                <button class="icon-btn" title="Информация о магазине" id="topbarProfileBtn">
-                    <span>👤</span> Аккаунт
+                <button class="icon-btn" title="Управление учетной записью" id="topbarProfileBtn" style="background: rgba(124, 58, 237, 0.15); border-color: rgba(124, 58, 237, 0.3);">
+                    <span>👤</span> <span id="topbarUsernameLabel">Вход</span>
+                </button>
+                <button class="icon-btn btn-danger" title="Выйти из системы" id="topbarLogoutBtn" onclick="logout()" style="padding: 8px 10px; display:none;">
+                    <span>🚪</span>
                 </button>
             </div>
         </header>
@@ -1344,6 +1347,85 @@
     </div>
 </div>
 
+<!-- Authentication & Login Modal -->
+<div class="modal-overlay" id="loginModal" style="z-index: 9999; backdrop-filter: blur(16px); background: rgba(15, 23, 42, 0.92);">
+    <div class="modal-content" style="max-width: 440px; border: 1px solid rgba(124, 58, 237, 0.4); box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 30px rgba(124, 58, 237, 0.25);">
+        <div class="modal-header" style="text-align: center; display: block; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+            <div style="width: 48px; height: 48px; margin: 0 auto 12px; background: linear-gradient(135deg, var(--primary), var(--primary-hover)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 14px rgba(124,58,237,0.4);">🔒</div>
+            <h3 style="font-size: 20px; font-weight: 700; color: var(--text-main);">Вход в систему</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">WB FBS Manager & Честный Знак</p>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+            <div id="loginErrorBox" style="display:none; padding: 10px 14px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #f87171; font-size: 13px; margin-bottom: 16px;"></div>
+
+            <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" for="loginUsername">Имя пользователя или Email *</label>
+                    <input type="text" class="form-control" id="loginUsername" placeholder="admin" required autofocus autocomplete="username">
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label" for="loginPassword">Пароль *</label>
+                    <input type="password" class="form-control" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginSubmitBtn" style="width: 100%; padding: 12px; font-size: 15px; font-weight: 600;">
+                    <span class="btn-text">Войти в дашборд</span>
+                    <div class="loader" style="display:none;"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- User Account & Security Settings Modal -->
+<div class="modal-overlay" id="userAccountModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>👤 Профиль и Безопасность</h3>
+            <button class="icon-btn" onclick="closeModal('userAccountModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:13px; color:var(--text-muted);">Пользователь:</span>
+                    <span id="accountModalUsername" style="font-weight:600; font-size:14px; color:var(--text-main);">admin</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:13px; color:var(--text-muted);">Роль:</span>
+                    <span id="accountModalRole" class="badge" style="background:rgba(124,58,237,0.2); color:#c4b5fd; border:1px solid rgba(124,58,237,0.4);">Администратор</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px; color:var(--text-muted);">Статус сессии:</span>
+                    <span class="badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3);">🟢 Активна (JWT)</span>
+                </div>
+            </div>
+
+            <h4 style="font-size:14px; margin-bottom:12px; color:var(--text-main);">🔒 Смена пароля</h4>
+            <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label" for="oldPasswordInput">Текущий пароль *</label>
+                    <input type="password" class="form-control" id="oldPasswordInput" required autocomplete="current-password">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label" for="newPasswordInput">Новый пароль *</label>
+                    <input type="password" class="form-control" id="newPasswordInput" minlength="6" required autocomplete="new-password">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" for="confirmPasswordInput">Подтверждение нового пароля *</label>
+                    <input type="password" class="form-control" id="confirmPasswordInput" minlength="6" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn btn-primary" id="changePasswordBtn" style="width: 100%;">
+                    <span class="btn-text">Обновить пароль</span>
+                    <div class="loader" style="display:none;"></div>
+                </button>
+            </form>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:space-between;">
+            <button class="btn btn-danger" onclick="logout()">Выйти из аккаунта</button>
+            <button class="btn btn-secondary" onclick="closeModal('userAccountModal')">Закрыть</button>
+        </div>
+    </div>
+</div>
+
 <!-- Toasts Container -->
 <div class="toast-container" id="toastContainer"></div>
 
@@ -1542,6 +1624,154 @@
         return '';
     }
 
+    /** --- AUTHENTICATION STATE & LOGIC --- */
+    let authToken = localStorage.getItem('wbfbs_auth_token') || '';
+    let currentUser = JSON.parse(localStorage.getItem('wbfbs_current_user') || 'null');
+
+    function updateAuthTopbarUI() {
+        const usernameLabel = document.getElementById('topbarUsernameLabel');
+        const logoutBtn = document.getElementById('topbarLogoutBtn');
+        if (currentUser && authToken) {
+            if (usernameLabel) usernameLabel.textContent = currentUser.username || 'Профиль';
+            if (logoutBtn) logoutBtn.style.display = 'flex';
+        } else {
+            if (usernameLabel) usernameLabel.textContent = 'Вход';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+        }
+    }
+
+    function showLoginModal(errorMessage = '') {
+        const modal = document.getElementById('loginModal');
+        const errBox = document.getElementById('loginErrorBox');
+        if (errBox) {
+            if (errorMessage) {
+                errBox.textContent = errorMessage;
+                errBox.style.display = 'block';
+            } else {
+                errBox.style.display = 'none';
+            }
+        }
+        if (modal) modal.classList.add('active');
+        const userInp = document.getElementById('loginUsername');
+        if (userInp) setTimeout(() => userInp.focus(), 100);
+    }
+
+    function handleUnauthorized() {
+        authToken = '';
+        currentUser = null;
+        localStorage.removeItem('wbfbs_auth_token');
+        localStorage.removeItem('wbfbs_current_user');
+        updateAuthTopbarUI();
+        showLoginModal('Сессия истекла или требуется авторизация. Пожалуйста, войдите.');
+    }
+
+    async function handleLoginSubmit(event) {
+        event.preventDefault();
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const btn = document.getElementById('loginSubmitBtn');
+        const errBox = document.getElementById('loginErrorBox');
+
+        if (!username || !password) return;
+
+        btn.classList.add('loading');
+        btn.disabled = true;
+        if (errBox) errBox.style.display = 'none';
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!res.ok) {
+                let errDetail = 'Неверный логин или пароль';
+                try {
+                    const errJson = await res.json();
+                    if (errJson && errJson.detail) errDetail = errJson.detail;
+                } catch(e) {}
+                throw new Error(errDetail);
+            }
+
+            const data = await res.json();
+            authToken = data.access_token;
+            currentUser = data.user;
+            localStorage.setItem('wbfbs_auth_token', authToken);
+            localStorage.setItem('wbfbs_current_user', JSON.stringify(currentUser));
+
+            updateAuthTopbarUI();
+            closeModal('loginModal');
+            showToast('Успешный вход', `Добро пожаловать, ${currentUser.username}!`, 'success');
+
+            // Initialize app data after successful login
+            await initAppPostLogin();
+        } catch (err) {
+            if (errBox) {
+                errBox.textContent = err.message || 'Ошибка авторизации';
+                errBox.style.display = 'block';
+            }
+            showToast('Ошибка входа', err.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
+    function logout() {
+        authToken = '';
+        currentUser = null;
+        localStorage.removeItem('wbfbs_auth_token');
+        localStorage.removeItem('wbfbs_current_user');
+        updateAuthTopbarUI();
+        closeModal('userAccountModal');
+        showToast('Выход выполнен', 'Вы успешно вышли из учетной записи', 'info');
+        showLoginModal();
+    }
+
+    function openUserAccountModal() {
+        if (!authToken || !currentUser) {
+            showLoginModal();
+            return;
+        }
+        document.getElementById('accountModalUsername').textContent = currentUser.username || 'admin';
+        document.getElementById('accountModalRole').textContent = currentUser.role === 'admin' ? 'Администратор' : 'Оператор';
+        document.getElementById('oldPasswordInput').value = '';
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('confirmPasswordInput').value = '';
+        openModal('userAccountModal');
+    }
+
+    async function handleChangePasswordSubmit(event) {
+        event.preventDefault();
+        const old_password = document.getElementById('oldPasswordInput').value;
+        const new_password = document.getElementById('newPasswordInput').value;
+        const confirm_password = document.getElementById('confirmPasswordInput').value;
+        const btn = document.getElementById('changePasswordBtn');
+
+        if (new_password !== confirm_password) {
+            showToast('Ошибка', 'Новые пароли не совпадают', 'error');
+            return;
+        }
+
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        try {
+            const res = await apiFetch('/auth/change-password', {
+                method: 'POST',
+                body: JSON.stringify({ old_password, new_password })
+            });
+            showToast('Успех', res.message || 'Пароль успешно обновлен', 'success');
+            closeModal('userAccountModal');
+        } catch (err) {
+            showToast('Ошибка смены пароля', err.message, 'error');
+        } finally {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
     /** --- API FETCH WRAPPER --- */
     async function apiFetch(endpoint, options = {}) {
         const url = `${API_BASE}${endpoint}`;
@@ -1549,10 +1779,19 @@
             'Content-Type': 'application/json',
             'X-Seller-ID': currentSellerId || ''
         };
+
+        if (authToken) {
+            defaultHeaders['Authorization'] = `Bearer ${authToken}`;
+        }
         
         options.headers = { ...defaultHeaders, ...options.headers };
 
         const response = await fetch(url, options);
+        if (response.status === 401 && endpoint !== '/auth/login') {
+            handleUnauthorized();
+            throw new Error('Требуется авторизация (401)');
+        }
+
         if (!response.ok) {
             let errorText = response.statusText;
             try {
@@ -1568,21 +1807,9 @@
 
     /** --- INITIALIZATION --- */
     async function initApp() {
-        const route = window.location.hash.replace('#', '') || '/';
-        
-        await loadSellersForDropdown();
+        updateAuthTopbarUI();
 
-        navigateTo(route);
-
-        // Auto refresh orders every 30s if on orders tab
-        refreshInterval = setInterval(() => {
-            const ordersPage = document.getElementById('page-/orders');
-            if(ordersPage && ordersPage.classList.contains('active')) {
-                loadOrders(true);
-            }
-        }, 30000);
-
-        // Mobile menu toggle
+        // Event listeners
         document.getElementById('mobileMenuBtn').addEventListener('click', () => {
             document.getElementById('sidebar').classList.toggle('open');
         });
@@ -1603,15 +1830,41 @@
         });
 
         document.getElementById('topbarProfileBtn').addEventListener('click', () => {
-            if (currentSellerId) {
-                const currentSeller = currentSellersList.find(s => s.id == currentSellerId);
-                showToast('Активный магазин', currentSeller ? `${currentSeller.name} (ИНН: ${currentSeller.cz_inn || 'Не указан'})` : `ID: ${currentSellerId}`, 'info');
-            } else {
-                showToast('Внимание', 'Сначала создайте или выберите продавца', 'info');
-            }
+            openUserAccountModal();
         });
 
         document.getElementById('seedDemoDataBtn').addEventListener('click', seedMockData);
+
+        if (!authToken) {
+            showLoginModal();
+            return;
+        }
+
+        // Validate token with backend
+        try {
+            const profile = await apiFetch('/auth/me');
+            currentUser = profile;
+            localStorage.setItem('wbfbs_current_user', JSON.stringify(profile));
+            updateAuthTopbarUI();
+            await initAppPostLogin();
+        } catch (e) {
+            console.warn('Token validation failed, showing login modal:', e);
+            handleUnauthorized();
+        }
+    }
+
+    async function initAppPostLogin() {
+        const route = window.location.hash.replace('#', '') || '/';
+        await loadSellersForDropdown();
+        navigateTo(route);
+
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(() => {
+            const ordersPage = document.getElementById('page-/orders');
+            if (ordersPage && ordersPage.classList.contains('active')) {
+                loadOrders(true);
+            }
+        }, 30000);
     }
 
     async function seedMockData() {

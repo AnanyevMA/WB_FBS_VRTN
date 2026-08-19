@@ -5,15 +5,22 @@ from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
-from app.database import AsyncSessionLocal
+from app.database import AsyncSessionLocal, init_db
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus, OrderStatus
 from app.services.encryption import encrypt
+from app.services.auth_service import create_access_token, ensure_initial_admin
 
 
 @pytest.mark.asyncio
 async def test_prepare_and_submit_kiz_document_endpoints():
+    await init_db()
+
     async with AsyncSessionLocal() as session:
+        admin_user = await ensure_initial_admin(session)
+        auth_token = create_access_token(
+            data={"sub": admin_user.id, "username": admin_user.username, "role": "admin", "is_superuser": True}
+        )
         seller_id = str(uuid.uuid4())
         seller = Seller(
             id=seller_id,
@@ -23,10 +30,9 @@ async def test_prepare_and_submit_kiz_document_endpoints():
             cz_inn="7700112233",
             mod_fias="test-fias-uuid",
             is_active=True,
-            created_at=datetime.now(timezone.utc),
+            polling_enabled=True,
         )
         session.add(seller)
-        await session.flush()
 
         order_id = int(str(uuid.uuid4().int)[:9])
         order = Order(
@@ -48,7 +54,7 @@ async def test_prepare_and_submit_kiz_document_endpoints():
 
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"Authorization": f"Bearer {auth_token}"}) as ac:
         # 1. Test prepare withdrawal document
         res_prep_w = await ac.post(
             f"/api/v1/sellers/{seller_id}/kiz/prepare-document",

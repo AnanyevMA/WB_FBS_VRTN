@@ -73,3 +73,12 @@ async def init_db() -> None:
                                 col_type = col.type.compile(sync_conn.dialect)
                                 sync_conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
             await conn.run_sync(sync_sqlite_columns)
+
+    # Bootstrap default admin user if database has no users
+    try:
+        from app.services.auth_service import ensure_initial_admin
+        async with AsyncSessionLocal() as session:
+            await ensure_initial_admin(session)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Could not bootstrap initial admin: {e}")

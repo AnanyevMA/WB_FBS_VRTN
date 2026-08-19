@@ -56,9 +56,11 @@ docker compose up -d
 ```
 
 ### 4. Доступ к сервисам
-- **Дашборд**: [http://localhost:8000](http://localhost:8000)
+- **Дашборд**: [http://localhost:8000](http://localhost:8000) (Учетные данные по умолчанию: логин `admin`, пароль `admin_password`)
 - **Swagger API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Flower (Мониторинг Celery)**: [http://localhost:5555](http://localhost:5555)
+
+> 🔒 **Безопасность**: При первом входе в дашборд смените стандартный пароль администратора через меню «Профиль» -> «Смена пароля». Все API-эндпоинты защищены JWT Bearer токенами и ограничены Rate Limiting.
 
 ---
 

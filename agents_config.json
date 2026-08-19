@@ -623,6 +623,42 @@
                        "dependencies":  [
 
                                         ]
+                   },
+                   {
+                       "id":  "security_audit_agent",
+                       "name":  "Security Audit & Configuration Integrity Agent",
+                       "role":  "Performs periodic background security audits: inspects cryptographic keys, default passwords, SSL/TLS certificate lifecycles, and audit trail anomalies.",
+                       "celery_task":  "app.agents.security_audit_agent.run_security_audit",
+                       "queue":  "maintenance",
+                       "schedule":  "every 6h",
+                       "timeout_seconds":  180,
+                       "max_retries":  2,
+                       "concurrency_limit":  1,
+                       "arbitration_priority":  15,
+                       "enabled":  true,
+                       "polp_matrix":  {
+                           "allowed_read_paths":  [
+                               "app/agents/security_audit_agent.py",
+                               "certbot/conf/live/*",
+                               "/etc/letsencrypt/live/*"
+                           ],
+                           "allowed_write_paths":  [
+                               "logs/security_audit.log"
+                           ],
+                           "allowed_delete_paths":  [],
+                           "forbidden_paths":  [
+                               ".env*",
+                               "*.key"
+                           ],
+                           "database_table_permissions":  {
+                               "users":  "SELECT",
+                               "sellers":  "SELECT",
+                               "audit_logs":  "SELECT_INSERT"
+                           },
+                           "external_api_access":  [],
+                           "crypto_key_access":  "NONE"
+                       },
+                       "dependencies":  []
                    }
                ],
     "arbitration_rules":  {

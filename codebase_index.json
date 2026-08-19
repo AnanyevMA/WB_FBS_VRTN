@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-19T22:52:37.795699+00:00",
+  "updated_at": "2026-08-19T23:08:37.133311+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 61,
+  "total_files": 69,
   "files": [
     {
       "file": "alembic/env.py",
@@ -70,6 +70,37 @@
       "layer": "migrations",
       "hash": "14d4bf12d901",
       "docstring": "initial_schema",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/7a8e91b2c3d4_add_users_table.py",
+      "layer": "migrations",
+      "hash": "f0f17d0c7085",
+      "docstring": "add_users_table",
       "classes": [],
       "functions": [
         {
@@ -1009,6 +1040,59 @@
       ]
     },
     {
+      "file": "app/agents/security_audit_agent.py",
+      "layer": "agents",
+      "hash": "fcc03130437f",
+      "docstring": "Security Audit Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "inspect_security_posture",
+          "is_async": false,
+          "args": [
+            "session"
+          ],
+          "decorators": [],
+          "docstring": "Inspect system security configuration, secrets, users, and audit logs."
+        },
+        {
+          "name": "run_security_audit",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Execute complete security health audit and record results."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.security_audit_agent.run_security_audit",
+          "function": "run_security_audit",
+          "docstring": "Execute complete security health audit and record results."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.models.audit",
+        "app.models.seller",
+        "app.models.user",
+        "app.services.auth_service",
+        "app.services.telegram_service",
+        "cryptography",
+        "datetime",
+        "logging",
+        "os",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
       "file": "app/agents/supply_agent.py",
       "layer": "agents",
       "hash": "4249204002bc",
@@ -1140,6 +1224,152 @@
         "app.database",
         "app.models.audit",
         "fastapi",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/auth.py",
+      "layer": "api",
+      "hash": "a11dbdb021d5",
+      "docstring": "Authentication Router & Dependencies — JWT Login, Current User, and User Management",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_current_user",
+          "is_async": true,
+          "args": [
+            "credentials",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Dependency: Validate JWT Bearer token and return current User instance."
+        },
+        {
+          "name": "get_current_active_user",
+          "is_async": true,
+          "args": [
+            "current_user"
+          ],
+          "decorators": [],
+          "docstring": "Dependency: Ensure the current user account is active."
+        },
+        {
+          "name": "require_admin",
+          "is_async": true,
+          "args": [
+            "current_user"
+          ],
+          "decorators": [],
+          "docstring": "Dependency: Restrict endpoint to Admin and Superusers."
+        },
+        {
+          "name": "login",
+          "is_async": true,
+          "args": [
+            "login_data",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/login')"
+          ],
+          "docstring": "Authenticate user with username/email and password, return JWT token."
+        },
+        {
+          "name": "get_current_user_profile",
+          "is_async": true,
+          "args": [
+            "current_user"
+          ],
+          "decorators": [
+            "router.get('/me')"
+          ],
+          "docstring": "Get current authenticated user profile."
+        },
+        {
+          "name": "change_password",
+          "is_async": true,
+          "args": [
+            "data",
+            "current_user",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/change-password')"
+          ],
+          "docstring": "Change current user's password."
+        },
+        {
+          "name": "list_users",
+          "is_async": true,
+          "args": [
+            "db",
+            "admin_user"
+          ],
+          "decorators": [
+            "router.get('/users')"
+          ],
+          "docstring": "List all registered system users (Admin only)."
+        },
+        {
+          "name": "create_user_by_admin",
+          "is_async": true,
+          "args": [
+            "user_in",
+            "db",
+            "admin_user"
+          ],
+          "decorators": [
+            "router.post('/users')"
+          ],
+          "docstring": "Create a new operator / user (Admin only)."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/login",
+          "handler": "login",
+          "docstring": "Authenticate user with username/email and password, return JWT token."
+        },
+        {
+          "method": "GET",
+          "path": "/me",
+          "handler": "get_current_user_profile",
+          "docstring": "Get current authenticated user profile."
+        },
+        {
+          "method": "POST",
+          "path": "/change-password",
+          "handler": "change_password",
+          "docstring": "Change current user's password."
+        },
+        {
+          "method": "GET",
+          "path": "/users",
+          "handler": "list_users",
+          "docstring": "List all registered system users (Admin only)."
+        },
+        {
+          "method": "POST",
+          "path": "/users",
+          "handler": "create_user_by_admin",
+          "docstring": "Create a new operator / user (Admin only)."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.database",
+        "app.models.user",
+        "app.schemas.auth",
+        "app.services.auth_service",
+        "datetime",
+        "fastapi",
+        "fastapi.security",
+        "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "typing"
@@ -2071,7 +2301,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "b48c15a7c96f",
+      "hash": "9a894cb07cad",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -2088,7 +2318,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "c57fd04a6bd2",
+      "hash": "d9b610b376e7",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -2126,7 +2356,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "a3f7e07be275",
+      "hash": "4f493af37f6f",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -2160,6 +2390,8 @@
       "imports": [
         "app.config",
         "app.models",
+        "app.services.auth_service",
+        "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "sqlalchemy.orm"
@@ -2168,7 +2400,7 @@
     {
       "file": "app/main.py",
       "layer": "core",
-      "hash": "ec8c75767952",
+      "hash": "03023f5a472f",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2220,6 +2452,7 @@
       "db_tables": [],
       "imports": [
         "app.api",
+        "app.api.auth",
         "app.config",
         "app.database",
         "contextlib",
@@ -2233,7 +2466,7 @@
     {
       "file": "app/models/__init__.py",
       "layer": "models",
-      "hash": "5e14a0ff6980",
+      "hash": "cf2147479c0c",
       "docstring": "",
       "classes": [],
       "functions": [],
@@ -2245,7 +2478,8 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
-        "app.models.supply"
+        "app.models.supply",
+        "app.models.user"
       ]
     },
     {
@@ -2453,6 +2687,47 @@
       ]
     },
     {
+      "file": "app/models/user.py",
+      "layer": "models",
+      "hash": "1f6a5b193154",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "UserRole",
+          "bases": [
+            "str",
+            "enum.Enum"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "User",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "users"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "enum",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
       "file": "app/schemas/__init__.py",
       "layer": "schemas",
       "hash": "f7ff302fd49c",
@@ -2463,6 +2738,79 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": []
+    },
+    {
+      "file": "app/schemas/auth.py",
+      "layer": "schemas",
+      "hash": "80d74df8a162",
+      "docstring": "Pydantic Schemas for Authentication & User Management",
+      "classes": [
+        {
+          "name": "LoginRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "TokenPayload",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "UserResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "Token",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "UserCreate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "UserUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "PasswordChangeRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "datetime",
+        "pydantic",
+        "typing"
+      ]
     },
     {
       "file": "app/schemas/order.py",
@@ -2606,6 +2954,111 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": []
+    },
+    {
+      "file": "app/services/auth_service.py",
+      "layer": "services",
+      "hash": "954308945d06",
+      "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
+      "classes": [],
+      "functions": [
+        {
+          "name": "hash_password",
+          "is_async": false,
+          "args": [
+            "password"
+          ],
+          "decorators": [],
+          "docstring": "Hash plain text password safely."
+        },
+        {
+          "name": "verify_password",
+          "is_async": false,
+          "args": [
+            "plain_password",
+            "hashed_password"
+          ],
+          "decorators": [],
+          "docstring": "Verify plain password against hashed password."
+        },
+        {
+          "name": "create_access_token",
+          "is_async": false,
+          "args": [
+            "data",
+            "expires_delta"
+          ],
+          "decorators": [],
+          "docstring": "Generate signed JWT access token."
+        },
+        {
+          "name": "decode_access_token",
+          "is_async": false,
+          "args": [
+            "token"
+          ],
+          "decorators": [],
+          "docstring": "Decode and validate JWT access token."
+        },
+        {
+          "name": "get_user_by_username",
+          "is_async": true,
+          "args": [
+            "db",
+            "username_or_email"
+          ],
+          "decorators": [],
+          "docstring": "Find user by username or email."
+        },
+        {
+          "name": "get_user_by_id",
+          "is_async": true,
+          "args": [
+            "db",
+            "user_id"
+          ],
+          "decorators": [],
+          "docstring": "Find user by ID."
+        },
+        {
+          "name": "authenticate_user",
+          "is_async": true,
+          "args": [
+            "db",
+            "username_or_email",
+            "password"
+          ],
+          "decorators": [],
+          "docstring": "Authenticate user with username/email and password."
+        },
+        {
+          "name": "ensure_initial_admin",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Bootstrap default admin account if no users exist in database."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.models.user",
+        "app.schemas.auth",
+        "datetime",
+        "hashlib",
+        "hmac",
+        "jose",
+        "logging",
+        "os",
+        "passlib.context",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
     },
     {
       "file": "app/services/codebase_indexer.py",
@@ -3296,6 +3749,73 @@
       ]
     },
     {
+      "file": "tests/test_auth.py",
+      "layer": "tests",
+      "hash": "1ee0acbbda93",
+      "docstring": "Tests for Authentication, JWT, User Management, and Endpoint Security Protection",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_password_hashing_and_verification",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that password hashing produces valid hashes and verifies correctly."
+        },
+        {
+          "name": "test_jwt_token_generation_and_decode",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify JWT access token creation and decoding."
+        },
+        {
+          "name": "test_admin_bootstrap_and_login_flow",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify initial admin account is created and login returns valid JWT token."
+        },
+        {
+          "name": "test_protected_routes_require_authentication",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that business API routes return 401 without token and succeed with token."
+        },
+        {
+          "name": "test_change_password_api",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify password change endpoint."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.user",
+        "app.services.auth_service",
+        "datetime",
+        "httpx",
+        "pytest"
+      ]
+    },
+    {
       "file": "tests/test_codebase_indexer.py",
       "layer": "tests",
       "hash": "0c8499eef099",
@@ -3568,7 +4088,7 @@
     {
       "file": "tests/test_kiz_signing_endpoints.py",
       "layer": "tests",
-      "hash": "babb0184f7bf",
+      "hash": "106528b0840d",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3590,6 +4110,7 @@
         "app.main",
         "app.models.order",
         "app.models.seller",
+        "app.services.auth_service",
         "app.services.encryption",
         "datetime",
         "httpx",
@@ -3833,6 +4354,39 @@
       ]
     },
     {
+      "file": "tests/test_security_agent.py",
+      "layer": "tests",
+      "hash": "4ef0dfde587c",
+      "docstring": "Tests for Security Audit Agent & Posture Inspection",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_security_audit_agent_execution",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify security audit agent executes and returns structured findings."
+        },
+        {
+          "name": "test_security_audit_celery_task",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify Celery task run_security_audit generates audit report and records audit log."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.security_audit_agent",
+        "app.database",
+        "pytest"
+      ]
+    },
+    {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
       "hash": "509bc7cee960",
@@ -3878,7 +4432,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "1880b854b40b",
+      "hash": "f1c00738303f",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [
@@ -3943,7 +4497,27 @@
           "docstring": "Frontend JS Function"
         },
         {
+          "name": "handleChangePasswordSubmit",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "handleLoginSubmit",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "handleUnauthorized",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
           "name": "initApp",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "initAppPostLogin",
           "is_async": true,
           "docstring": "Frontend JS Function"
         },
@@ -3984,6 +4558,11 @@
         },
         {
           "name": "loadSupplies",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "logout",
           "is_async": true,
           "docstring": "Frontend JS Function"
         },
@@ -4033,6 +4612,11 @@
           "docstring": "Frontend JS Function"
         },
         {
+          "name": "openUserAccountModal",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
           "name": "populateCertificatesDropdown",
           "is_async": true,
           "docstring": "Frontend JS Function"
@@ -4049,6 +4633,11 @@
         },
         {
           "name": "seedMockData",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
+          "name": "showLoginModal",
           "is_async": true,
           "docstring": "Frontend JS Function"
         },
@@ -4108,6 +4697,11 @@
           "docstring": "Frontend JS Function"
         },
         {
+          "name": "updateAuthTopbarUI",
+          "is_async": true,
+          "docstring": "Frontend JS Function"
+        },
+        {
           "name": "viewOrderDetail",
           "is_async": true,
           "docstring": "Frontend JS Function"
@@ -4125,6 +4719,8 @@
         "/supplies"
       ],
       "modals": [
+        "accountModalRole",
+        "accountModalUsername",
         "attachKizModal",
         "attachKizModalTitle",
         "barcodeModal",
@@ -4132,6 +4728,7 @@
         "barcodeModalTitle",
         "kizSigningModal",
         "kizSigningModalTitle",
+        "loginModal",
         "modalAttachOrderId",
         "modalAttachOrderInfo",
         "modalKizInput",
@@ -4139,7 +4736,8 @@
         "sellerModal",
         "sellerModalTitle",
         "submitModalAttachKizBtn",
-        "supplyModal"
+        "supplyModal",
+        "userAccountModal"
       ]
     }
   ]

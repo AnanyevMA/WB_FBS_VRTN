@@ -27,10 +27,14 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://redis:6379/0"
     celery_result_backend: str = "redis://redis:6379/1"
 
-    # Security / JWT
+    # Security / JWT & Bootstrap Admin
     jwt_secret_key: str = "change-this-jwt-secret"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440  # 24 hours
+    admin_username: str = "admin"
+    admin_password: str = "admin_password"
+    admin_email: str = "admin@example.com"
+    cors_origins: str = "*"  # comma-separated origins or "*"
 
     # Encryption key for DB-stored credentials (Fernet)
     encryption_key: str = "change-this-encryption-key-32-b"

@@ -27,6 +27,7 @@ celery_app = Celery(
         "app.agents.cz_token_refresher",
         "app.agents.morning_digest",
         "app.agents.kb_sync_agent",
+        "app.agents.security_audit_agent",
     ],
 )
 
@@ -64,6 +65,7 @@ celery_app.conf.update(
         "app.agents.morning_digest.*": {"queue": "notifications"},
         "app.agents.cleanup.*": {"queue": "maintenance"},
         "app.agents.kb_sync_agent.*": {"queue": "maintenance"},
+        "app.agents.security_audit_agent.*": {"queue": "maintenance"},
         "app.agents.qa_test_agent.*": {"queue": "qa_testing"},
     },
     # Periodic Tasks Beat Schedule matching agents_config.json
@@ -103,6 +105,12 @@ celery_app.conf.update(
         "sync-knowledge-base": {
             "task": "app.agents.kb_sync_agent.sync_knowledge_base",
             "schedule": crontab(minute=0, hour="*/6"),
+            "options": {"queue": "maintenance"},
+        },
+        # Runs every 6 hours for continuous security & posture auditing
+        "security-audit-check": {
+            "task": "app.agents.security_audit_agent.run_security_audit",
+            "schedule": crontab(minute=15, hour="*/6"),
             "options": {"queue": "maintenance"},
         },
     },

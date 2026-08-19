@@ -55,8 +55,22 @@ server {
         expires 30d;
     }
 
-    # FastAPI backend proxy
+    # Login endpoint with strict brute-force rate limit (5 req/sec burst 5)
+    location /api/v1/auth/login {
+        limit_req zone=login_limit burst=5 nodelay;
+
+        proxy_pass http://api:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    # FastAPI backend proxy with rate limiting
     location / {
+        limit_req zone=api_limit burst=20 nodelay;
+
         proxy_pass http://api:8000;
         proxy_http_version 1.1;
 

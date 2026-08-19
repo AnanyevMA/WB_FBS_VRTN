@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Generate Secure Keys and Passwords for WB FBS Manager
 Генерация криптографически стойких ключей для .env

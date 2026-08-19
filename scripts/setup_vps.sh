@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # WB FBS Manager — Automated VPS Setup Script
 # Target OS: Ubuntu 22.04 LTS / 24.04 LTS (Optimized for 1 Core / 1 GB RAM / 30 GB SSD)

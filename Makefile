@@ -1,4 +1,4 @@
-﻿# WB FBS Manager — Makefile
+# WB FBS Manager — Makefile
 .PHONY: up down build logs migrate test prod-up prod-down prod-logs prod-build secrets backup memory help
 
 help:

@@ -1,7 +1,5 @@
-﻿version: "3.9"
-
 services:
-  # ─── PostgreSQL (Low-Memory Tuning for 1GB VPS) ───────────────
+  # в”Ђв”Ђв”Ђ PostgreSQL (Low-Memory Tuning for 1GB VPS) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   postgres:
     image: postgres:16-alpine
     container_name: wbfbs_postgres
@@ -38,7 +36,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Redis (Max 64MB LRU) ─────────────────────────────────────
+  # в”Ђв”Ђв”Ђ Redis (Max 64MB LRU) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   redis:
     image: redis:7-alpine
     container_name: wbfbs_redis
@@ -65,7 +63,7 @@ services:
     networks:
       - internal_net
 
-  # ─── FastAPI Backend ──────────────────────────────────────────
+  # в”Ђв”Ђв”Ђ FastAPI Backend в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   api:
     build:
       context: .
@@ -96,7 +94,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Celery Worker (Agents) ───────────────────────────────────
+  # в”Ђв”Ђв”Ђ Celery Worker (Agents) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   worker:
     build:
       context: .
@@ -127,7 +125,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Celery Beat (Scheduler) ──────────────────────────────────
+  # в”Ђв”Ђв”Ђ Celery Beat (Scheduler) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   scheduler:
     build:
       context: .
@@ -152,7 +150,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Telegram Bot Service ─────────────────────────────────────
+  # в”Ђв”Ђв”Ђ Telegram Bot Service в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   bot:
     build:
       context: .
@@ -180,7 +178,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Nginx Reverse Proxy & Static Files ───────────────────────
+  # в”Ђв”Ђв”Ђ Nginx Reverse Proxy & Static Files в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   nginx:
     image: nginx:1.27-alpine
     container_name: wbfbs_nginx
@@ -210,7 +208,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Certbot (SSL Auto-renewal) ───────────────────────────────
+  # в”Ђв”Ђв”Ђ Certbot (SSL Auto-renewal) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   certbot:
     image: certbot/certbot:latest
     container_name: wbfbs_certbot
@@ -231,7 +229,7 @@ services:
     networks:
       - internal_net
 
-  # ─── Flower (Optional Monitoring — run with --profile monitoring)
+  # в”Ђв”Ђв”Ђ Flower (Optional Monitoring вЂ” run with --profile monitoring)
   flower:
     build:
       context: .

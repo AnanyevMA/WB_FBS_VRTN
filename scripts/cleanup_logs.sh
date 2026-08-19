@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # WB FBS Manager — Automated Server Log & Storage Cleanup Script
 # Запуск через cron: 0 3 * * * /opt/wb-fbs/scripts/cleanup_logs.sh >> /opt/wb-fbs/logs/cleanup.log 2>&1

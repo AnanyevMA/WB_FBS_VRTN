@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # WB FBS Manager — Automated Let's Encrypt SSL Setup Script
 # Usage: ./scripts/init_ssl.sh your-domain.com your-email@example.com

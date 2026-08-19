@@ -1,4 +1,4 @@
-﻿# WB FBS Manager — Nginx Production Server Block with SSL
+# WB FBS Manager — Nginx Production Server Block with SSL
 
 # HTTP -> HTTPS Redirect & Let's Encrypt Challenge
 server {

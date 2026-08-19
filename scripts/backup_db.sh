@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # WB FBS Manager — Automated PostgreSQL Database Backup Script
 # Рекомендуется запускать через cron: 0 4 * * * /path/to/project/scripts/backup_db.sh

@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-19 13:21:38 UTC | **Файлов проиндексировано**: 61  
+> **Дата актуализации**: 2026-08-19 22:49:32 UTC | **Файлов проиндексировано**: 61  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -110,4 +110,4 @@
 | Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
 |---|---|---|---|
 | [`run_bot.py`](file:///D:/PyCharm_Projects/WB FBS/run_bot.py) | — | `get_active_sellers_with_tokens`, `check_bot`, `send_test_notification`, `run_polling`, +еще 1 | Run Telegram Bot Locally — WB FBS Manager |
-| [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | — | Модуль кодовой базы |
+| [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | `generate_fernet_key`, `generate_random_token`, `generate_password`, `main` | Generate Secure Keys and Passwords for WB FBS Manager |

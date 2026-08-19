@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-19T14:08:46.232826+00:00",
+  "updated_at": "2026-08-19T22:49:32.332189+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 61,
   "files": [
@@ -2126,7 +2126,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "6b97f515ce25",
+      "hash": "a3f7e07be275",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -2151,7 +2151,7 @@
           "is_async": true,
           "args": [],
           "decorators": [],
-          "docstring": "Create all tables and sync missing columns for SQLite development."
+          "docstring": "Create all tables and sync missing columns for SQLite/PostgreSQL development."
         }
       ],
       "endpoints": [],
@@ -2159,6 +2159,7 @@
       "db_tables": [],
       "imports": [
         "app.config",
+        "app.models",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "sqlalchemy.orm"
@@ -3162,7 +3163,7 @@
     {
       "file": "scripts/generate_secrets.py",
       "layer": "config",
-      "hash": "064b34e17221",
+      "hash": "578fa613c500",
       "docstring": "Generate Secure Keys and Passwords for WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3189,7 +3190,7 @@
             "length"
           ],
           "decorators": [],
-          "docstring": "Generate secure password for DB/Redis."
+          "docstring": "Generate secure alphanumeric password for DB/Redis."
         },
         {
           "name": "main",
@@ -3252,7 +3253,7 @@
     {
       "file": "tests/test_agent_manifest.py",
       "layer": "tests",
-      "hash": "69e0bb204861",
+      "hash": "2ed5803360ef",
       "docstring": "Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer.",
       "classes": [],
       "functions": [
@@ -3268,7 +3269,7 @@
           "is_async": false,
           "args": [],
           "decorators": [],
-          "docstring": "Verify both holistic_impact_analysis and post_change_test_analysis rules exist."
+          "docstring": "Verify holistic_impact_analysis, post_change_test_analysis, and github_sync_and_documentation_policy."
         },
         {
           "name": "test_polp_enforcer_global_forbidden",

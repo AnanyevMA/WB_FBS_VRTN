@@ -4,10 +4,11 @@ Set or Reset Admin Password for WB FBS Manager
 Смена или восстановление пароля администратора в базе данных без потери данных.
 
 Использование:
-  python3 scripts/set_admin_password.py --username admin --password "новый_пароль"
-  docker compose -f docker-compose.prod.yml exec api python scripts/set_admin_password.py --password "новый_пароль"
+  python3 scripts/set_admin_password.py --username admin --password 'новый_пароль'
+  docker compose -f docker-compose.prod.yml exec api python scripts/set_admin_password.py --username admin
 """
 import argparse
+import getpass
 import os
 import sys
 from datetime import datetime, timezone
@@ -65,16 +66,24 @@ def set_admin_password(username: str, password: str, email: str = "admin@example
 def main():
     parser = argparse.ArgumentParser(description="Смена пароля администратора WB FBS Manager")
     parser.add_argument("--username", default="admin", help="Имя пользователя (по умолчанию: admin)")
-    parser.add_argument("--password", required=True, help="Новый пароль")
+    parser.add_argument("--password", required=False, help="Новый пароль (если не указан, будет запрошен безопасно)")
     parser.add_argument("--email", default="admin@example.com", help="Email администратора")
     args = parser.parse_args()
 
-    if len(args.password) < 6:
+    pwd = args.password
+    if not pwd:
+        try:
+            pwd = input(f"Введите новый пароль для '{args.username}': ").strip()
+        except Exception:
+            print("[ERROR] Не удалось прочитать пароль!")
+            sys.exit(1)
+
+    if len(pwd) < 6:
         print("[ERROR] Пароль должен быть не менее 6 символов!")
         sys.exit(1)
 
     try:
-        set_admin_password(args.username, args.password, args.email)
+        set_admin_password(args.username, pwd, args.email)
     except Exception as e:
         print(f"[ERROR] Не удалось установить пароль: {e}")
         sys.exit(1)

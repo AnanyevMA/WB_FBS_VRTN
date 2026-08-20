@@ -29,8 +29,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.35'
-          memory: 160M
+          cpus: '0.40'
+          memory: 180M
         reservations:
           memory: 48M
     logging:
@@ -89,8 +89,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 160M
+          cpus: '0.60'
+          memory: 240M
         reservations:
           memory: 64M
     logging:
@@ -121,8 +121,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 180M
+          cpus: '0.60'
+          memory: 240M
         reservations:
           memory: 64M
     logging:
@@ -152,8 +152,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10'
-          memory: 64M
+          cpus: '0.15'
+          memory: 80M
         reservations:
           memory: 24M
     logging:
@@ -182,7 +182,7 @@ services:
       resources:
         limits:
           cpus: '0.20'
-          memory: 80M
+          memory: 100M
         reservations:
           memory: 32M
     logging:

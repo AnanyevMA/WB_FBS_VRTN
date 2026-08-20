@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Enum as SAEnum, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum as SAEnum, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -26,7 +26,7 @@ class KizOperation(Base):
         primary_key=True, 
         default=uuid.uuid4,
     )
-    seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sellers.id"), index=True)
+    seller_id: Mapped[str] = mapped_column(String(36), ForeignKey("sellers.id"), index=True)
     order_id: Mapped[Optional[int]] = mapped_column(ForeignKey("orders.id"), index=True)
     
     kiz_code: Mapped[str] = mapped_column(String(255), index=True)
@@ -41,8 +41,8 @@ class KizOperation(Base):
     
     retries: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     seller: Mapped["Seller"] = relationship("Seller", back_populates="kiz_operations")
@@ -52,11 +52,6 @@ class KizOperation(Base):
 class KizProductInfo(Base):
     """
     Информация о товаре, полученная по коду маркировки (КИЗ / SGTIN / DataMatrix).
-    Используется для:
-    1. Идентификации товара по штрихкоду/КИЗ.
-    2. Проверки подлинности и статуса в ГИС МТ (Честный Знак).
-    3. Сверки соответствия вложенного товара с заказом (размер, артикул, бренд, ТН ВЭД).
-    4. Проверки прав собственности (ИНН владельца в ЧЗ совпадает с ИНН продавца).
     """
     __tablename__ = "kiz_product_info"
 
@@ -86,8 +81,8 @@ class KizProductInfo(Base):
     cz_owner_name: Mapped[Optional[str]] = mapped_column(String(255))
     cz_producer_inn: Mapped[Optional[str]] = mapped_column(String(20))
     cz_producer_name: Mapped[Optional[str]] = mapped_column(String(255))
-    cz_emission_date: Mapped[Optional[datetime]] = mapped_column()
-    cz_intro_date: Mapped[Optional[datetime]] = mapped_column()
+    cz_emission_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    cz_intro_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Связи
     seller_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("sellers.id"), index=True)
@@ -97,12 +92,11 @@ class KizProductInfo(Base):
     is_valid: Mapped[bool] = mapped_column(Boolean, default=True)
     validation_message: Mapped[Optional[str]] = mapped_column(Text)
     raw_cz_payload: Mapped[Optional[dict]] = mapped_column(JSON)
-    checked_at: Mapped[Optional[datetime]] = mapped_column()
+    checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     seller: Mapped[Optional["Seller"]] = relationship("Seller")
     order: Mapped[Optional["Order"]] = relationship("Order")
-

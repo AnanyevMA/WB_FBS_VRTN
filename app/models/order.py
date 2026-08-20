@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Enum as SAEnum, ForeignKey, Numeric, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum as SAEnum, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -35,14 +35,14 @@ class Order(Base):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    seller_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sellers.id"), index=True)
+    seller_id: Mapped[str] = mapped_column(String(36), ForeignKey("sellers.id"), index=True)
     supply_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("supplies.id"), index=True)
     
     status: Mapped[OrderStatus] = mapped_column(SAEnum(OrderStatus), nullable=False, index=True)
     wb_status: Mapped[Optional[str]] = mapped_column(String(50), index=True)
     supplier_status: Mapped[Optional[str]] = mapped_column(String(50))
     
-    wb_created_at: Mapped[datetime] = mapped_column(nullable=False)
+    wb_created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     wb_supply_id: Mapped[Optional[str]] = mapped_column(String(255))
     
     chrt_id: Mapped[Optional[int]] = mapped_column(BigInteger)
@@ -61,18 +61,18 @@ class Order(Base):
     kiz_required: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     kiz_code: Mapped[Optional[str]] = mapped_column(String(255))
     kiz_status: Mapped[KizStatus] = mapped_column(SAEnum(KizStatus), default=KizStatus.PENDING, index=True)
-    kiz_attached_at: Mapped[Optional[datetime]] = mapped_column()
+    kiz_attached_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     kiz_cz_status: Mapped[Optional[str]] = mapped_column(String(100))
-    kiz_cz_status_updated_at: Mapped[Optional[datetime]] = mapped_column()
+    kiz_cz_status_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
     cz_withdrawal_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
     cz_return_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
     
-    deadline_at: Mapped[Optional[datetime]] = mapped_column()
-    notified_at: Mapped[Optional[datetime]] = mapped_column()
+    deadline_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     seller: Mapped["Seller"] = relationship("Seller", back_populates="orders")

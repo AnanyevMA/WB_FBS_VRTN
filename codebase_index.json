@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-19T23:08:37.133311+00:00",
+  "updated_at": "2026-08-20T14:11:47.760084+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 69,
   "files": [
@@ -1671,7 +1671,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "979dbc92a5b9",
+      "hash": "0224503ede43",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2092,7 +2092,7 @@
     {
       "file": "app/api/supplies.py",
       "layer": "api",
-      "hash": "efebd5b912f0",
+      "hash": "5080f5ae3d3b",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2356,7 +2356,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "4f493af37f6f",
+      "hash": "b5af438457a1",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -2485,7 +2485,7 @@
     {
       "file": "app/models/audit.py",
       "layer": "models",
-      "hash": "1ccf37a5d5de",
+      "hash": "f3f0f6db8ae7",
       "docstring": "",
       "classes": [
         {
@@ -2507,7 +2507,6 @@
         "app.database",
         "datetime",
         "sqlalchemy",
-        "sqlalchemy.dialects.postgresql",
         "sqlalchemy.orm",
         "sqlalchemy.sql",
         "typing",
@@ -2517,7 +2516,7 @@
     {
       "file": "app/models/kiz.py",
       "layer": "models",
-      "hash": "fa11dc239204",
+      "hash": "3db9ce5d3bf5",
       "docstring": "",
       "classes": [
         {
@@ -2567,7 +2566,7 @@
     {
       "file": "app/models/order.py",
       "layer": "models",
-      "hash": "ddf3d4cd76d5",
+      "hash": "fee9705f8ef5",
       "docstring": "",
       "classes": [
         {
@@ -2616,7 +2615,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "b12e79717944",
+      "hash": "6f615f90bcc5",
       "docstring": "",
       "classes": [
         {
@@ -2638,7 +2637,6 @@
         "app.database",
         "datetime",
         "sqlalchemy",
-        "sqlalchemy.dialects.postgresql",
         "sqlalchemy.orm",
         "sqlalchemy.sql",
         "typing",
@@ -2648,7 +2646,7 @@
     {
       "file": "app/models/supply.py",
       "layer": "models",
-      "hash": "d14e800d5a96",
+      "hash": "fdcc1b5cbc14",
       "docstring": "",
       "classes": [
         {
@@ -3616,7 +3614,7 @@
     {
       "file": "scripts/generate_secrets.py",
       "layer": "config",
-      "hash": "578fa613c500",
+      "hash": "b6061f41ea56",
       "docstring": "Generate Secure Keys and Passwords for WB FBS Manager",
       "classes": [],
       "functions": [

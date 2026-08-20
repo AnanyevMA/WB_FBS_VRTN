@@ -74,6 +74,26 @@ async def init_db() -> None:
                                 sync_conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
             await conn.run_sync(sync_sqlite_columns)
 
+        # PostgreSQL auto-migration for TIMESTAMP WITH TIME ZONE
+        elif "postgres" in str(engine.url):
+            def sync_postgres_columns(sync_conn):
+                from sqlalchemy import inspect
+                inspector = inspect(sync_conn)
+                for table_name in Base.metadata.tables:
+                    if table_name in inspector.get_table_names():
+                        cols = inspector.get_columns(table_name)
+                        for col in cols:
+                            col_type_str = str(col["type"]).lower()
+                            if "timestamp" in col_type_str and "with time zone" not in col_type_str:
+                                col_name = col["name"]
+                                try:
+                                    sync_conn.exec_driver_sql(
+                                        f"ALTER TABLE {table_name} ALTER COLUMN {col_name} TYPE TIMESTAMP WITH TIME ZONE USING {col_name} AT TIME ZONE 'UTC'"
+                                    )
+                                except Exception:
+                                    pass
+            await conn.run_sync(sync_postgres_columns)
+
     # Bootstrap default admin user if database has no users
     try:
         from app.services.auth_service import ensure_initial_admin

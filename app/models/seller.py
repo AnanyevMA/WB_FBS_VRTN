@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, String, JSON, Integer
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy import Boolean, DateTime, String, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -39,8 +38,8 @@ class Seller(Base):
     digest_minute: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     digest_timezone: Mapped[str] = mapped_column(String(64), default="Europe/Moscow", server_default="'Europe/Moscow'")
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="seller", cascade="all, delete-orphan")

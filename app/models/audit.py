@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import ForeignKey, JSON, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -18,7 +17,7 @@ class AuditLog(Base):
         primary_key=True, 
         default=lambda: str(uuid.uuid4())
     )
-    seller_id: Mapped[Optional[str]] = mapped_column(ForeignKey("sellers.id"), index=True)
+    seller_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("sellers.id"), index=True)
     
     agent: Mapped[str] = mapped_column(String(100), index=True)
     action: Mapped[str] = mapped_column(String(100), index=True)
@@ -30,7 +29,7 @@ class AuditLog(Base):
     error: Mapped[Optional[str]] = mapped_column(Text)
     trace_id: Mapped[Optional[str]] = mapped_column(String(255), index=True)
     
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     # Relationships
     seller: Mapped[Optional["Seller"]] = relationship("Seller", back_populates="audit_logs")

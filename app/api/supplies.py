@@ -96,12 +96,16 @@ async def sync_supplies(seller_id: str, db: AsyncSession = Depends(get_db)):
             if created_at_str:
                 try:
                     c_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                    if c_at.tzinfo is None:
+                        c_at = c_at.replace(tzinfo=timezone.utc)
                 except Exception:
                     pass
             cl_at = None
             if closed_at_str:
                 try:
                     cl_at = datetime.fromisoformat(closed_at_str.replace("Z", "+00:00"))
+                    if cl_at.tzinfo is None:
+                        cl_at = cl_at.replace(tzinfo=timezone.utc)
                 except Exception:
                     pass
 
@@ -109,7 +113,8 @@ async def sync_supplies(seller_id: str, db: AsyncSession = Depends(get_db)):
 
             if not sup_obj:
                 sup_obj = Supply(
-                    seller_id=seller.id,
+                    id=uuid.uuid4(),
+                    seller_id=str(seller.id),
                     wb_supply_id=wb_sup_id,
                     name=sup_name,
                     status=sup_st,
@@ -148,6 +153,10 @@ async def sync_supplies(seller_id: str, db: AsyncSession = Depends(get_db)):
         )
         db.add(audit)
         await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error in sync_supplies for seller {seller_id}: {e}")
+        raise HTTPException(status_code=502, detail=f"Ошибка синхронизации поставок: {str(e)}")
     finally:
         await client.close()
 

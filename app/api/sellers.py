@@ -168,15 +168,93 @@ async def test_connection(seller_id: str, db: AsyncSession = Depends(get_db)):
     if not seller:
         raise HTTPException(status_code=404, detail="Seller not found")
 
-    token = decrypt(seller.wb_api_token_encrypted)
-    client = WBClient(token)
+    results = {
+        "wb": {"status": "pending", "message": ""},
+        "telegram": {"status": "skipped", "message": "Не настроен"},
+        "chestny_znak": {"status": "skipped", "message": "Не настроен"}
+    }
+    overall_success = True
+
+    # 1. WB API test
     try:
-        await client.get_new_orders()
-        return {"success": True, "message": "Connection to WB API verified successfully"}
+        token = decrypt(seller.wb_api_token_encrypted)
+        client = WBClient(token)
+        try:
+            await client.get_new_orders()
+            results["wb"] = {"status": "ok", "message": "Подключение к WB API успешно проверено"}
+        except Exception as e:
+            overall_success = False
+            results["wb"] = {"status": "error", "message": f"Ошибка WB API: {str(e)}"}
+        finally:
+            await client.close()
     except Exception as e:
-        return {"success": False, "message": f"WB API connection check failed: {str(e)}"}
-    finally:
-        await client.close()
+        overall_success = False
+        results["wb"] = {"status": "error", "message": f"Не удалось расшифровать токен WB: {str(e)}"}
+
+    # 2. Telegram Bot & Recipients test
+    if seller.telegram_bot_token_encrypted:
+        try:
+            import httpx
+            tg_token = decrypt(seller.telegram_bot_token_encrypted)
+            async with httpx.AsyncClient(timeout=10.0) as http_client:
+                me_resp = await http_client.get(f"https://api.telegram.org/bot{tg_token}/getMe")
+                if me_resp.status_code == 200:
+                    bot_data = me_resp.json().get("result", {})
+                    bot_user = bot_data.get("username", "bot")
+                    chat_ids = [str(c) for c in (seller.telegram_chat_ids or []) if str(c).strip()]
+                    if chat_ids:
+                        results["telegram"] = {
+                            "status": "ok",
+                            "message": f"Бот @{bot_user} активен. Получатели: {len(chat_ids)} чат(ов) [{', '.join(chat_ids)}]"
+                        }
+                    else:
+                        results["telegram"] = {
+                            "status": "warning",
+                            "message": f"Бот @{bot_user} активен, но ID получателей (чатов) не указаны"
+                        }
+                else:
+                    overall_success = False
+                    results["telegram"] = {"status": "error", "message": f"Неверный токен бота Telegram (HTTP {me_resp.status_code})"}
+        except Exception as e:
+            overall_success = False
+            results["telegram"] = {"status": "error", "message": f"Ошибка проверки Telegram: {str(e)}"}
+
+    # 3. Chestny Znak test
+    if seller.cz_token_encrypted or seller.cryptopro_cert_thumbprint or seller.cz_cert_path or seller.cz_inn:
+        cz_details = []
+        if seller.cz_inn:
+            cz_details.append(f"ИНН: {seller.cz_inn}")
+        if seller.cryptopro_cert_thumbprint or seller.cz_cert_path:
+            cz_details.append(f"ЭЦП: {(seller.cryptopro_cert_thumbprint or seller.cz_cert_path)[:16]}...")
+        if seller.cz_token_encrypted:
+            cz_details.append("True API токен")
+        results["chestny_znak"] = {
+            "status": "ok",
+            "message": f"Параметры ЧЗ настроены ({', '.join(cz_details) if cz_details else 'указаны'})"
+        }
+
+    # Summary messages
+    messages = []
+    if results["wb"]["status"] == "ok":
+        messages.append("✅ WB API подключен")
+    else:
+        messages.append(f"❌ WB API: {results['wb']['message']}")
+
+    if results["telegram"]["status"] == "ok":
+        messages.append(f"✅ Telegram: {results['telegram']['message']}")
+    elif results["telegram"]["status"] == "warning":
+        messages.append(f"⚠️ Telegram: {results['telegram']['message']}")
+    elif results["telegram"]["status"] == "error":
+        messages.append(f"❌ Telegram: {results['telegram']['message']}")
+
+    if results["chestny_znak"]["status"] == "ok":
+        messages.append(f"✅ ЧЗ: {results['chestny_znak']['message']}")
+
+    return {
+        "success": overall_success,
+        "message": " \n".join(messages),
+        "details": results
+    }
 
 
 @router.post("/{seller_id}/toggle-polling")

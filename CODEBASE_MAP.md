@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-20 14:23:33 UTC | **Файлов проиндексировано**: 70  
+> **Дата актуализации**: 2026-08-20 14:45:23 UTC | **Файлов проиндексировано**: 71  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -92,7 +92,7 @@
 
 | Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
 |---|---|---|---|
-| [`frontend/index.html`](file:///D:/PyCharm_Projects/WB FBS/frontend/index.html) | — | `apiFetch`, `cancelOrder`, `checkKizLiveStatus`, `checkPluginLoaded`, +еще 50 | Single Page Application Dashboard (HTML/CSS/JS) |
+| [`frontend/index.html`](file:///D:/PyCharm_Projects/WB FBS/frontend/index.html) | — | — | Single Page Application Dashboard (HTML/CSS/JS) |
 
 ### 🧪 Набор Автотестов (`tests/`)
 
@@ -100,7 +100,7 @@
 |---|---|---|---|
 | [`tests/test_agent_delegation_sync.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_agent_delegation_sync.py) | — | `test_agent_task_registration_and_queues`, `test_celery_beat_schedule_synchronization`, `test_qa_agent_execution_and_audit_logging` | Integration test for Agent Task Delegation, Audit Logging, and Workflow Synchronization. |
 | [`tests/test_agent_manifest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_agent_manifest.py) | — | `test_load_manifest`, `test_development_rules_holistic_and_test_policies`, `test_polp_enforcer_global_forbidden`, `test_polp_enforcer_agent_permissions` | Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer. |
-| [`tests/test_auth.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auth.py) | — | `test_password_hashing_and_verification`, `test_jwt_token_generation_and_decode`, `test_admin_bootstrap_and_login_flow`, `test_protected_routes_require_authentication`, +еще 1 | Tests for Authentication, JWT, User Management, and Endpoint Security Protection |
+| [`tests/test_auth.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auth.py) | — | `test_password_hashing_and_verification`, `test_jwt_token_generation_and_decode`, `test_admin_bootstrap_and_login_flow`, `test_protected_routes_require_authentication`, +еще 2 | Tests for Authentication, JWT, User Management, and Endpoint Security Protection |
 | [`tests/test_codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_codebase_indexer.py) | — | `test_codebase_indexer_scan_and_save`, `test_codebase_indexer_fast_symbol_query`, `test_lookup_code_symbol_helper`, `test_codebase_indexing_rule_in_manifest`, +еще 1 | Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule. |
 | [`tests/test_cz_client_and_queues.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_and_queues.py) | — | `test_encryption_service_compatibility`, `test_cz_client_authenticate_flow`, `test_cz_client_suz_endpoints_and_cises_info`, `test_agent_task_queue_decorators_match_manifest`, +еще 1 | Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService. |
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |

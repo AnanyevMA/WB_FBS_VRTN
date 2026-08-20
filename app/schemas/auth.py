@@ -1,7 +1,7 @@
 """
 Pydantic Schemas for Authentication & User Management
 """
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -16,6 +16,7 @@ class TokenPayload(BaseModel):
     username: str
     role: str
     is_superuser: bool = False
+    must_change_password: bool = False
     exp: Optional[int] = None
 
 
@@ -26,10 +27,16 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     is_superuser: bool
+    must_change_password: bool = False
     last_login_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("must_change_password", mode="before")
+    @classmethod
+    def validate_must_change_password(cls, v):
+        return bool(v) if v is not None else False
 
 
 class Token(BaseModel):
@@ -46,6 +53,7 @@ class UserCreate(BaseModel):
     role: str = Field(default="admin", description="admin, manager, or viewer")
     is_active: bool = True
     is_superuser: bool = False
+    must_change_password: bool = True
 
 
 class UserUpdate(BaseModel):

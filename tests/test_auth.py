@@ -50,7 +50,7 @@ async def test_jwt_token_generation_and_decode():
 
 @pytest.mark.asyncio
 async def test_admin_bootstrap_and_login_flow():
-    """Verify initial admin account is created and login returns valid JWT token."""
+    """Verify initial admin account is created with must_change_password=True and login returns valid JWT token."""
     await init_db()
 
     transport = ASGITransport(app=app)
@@ -72,6 +72,7 @@ async def test_admin_bootstrap_and_login_flow():
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert data["user"]["username"] == settings.admin_username
+        assert "must_change_password" in data["user"]
 
         token = data["access_token"]
 
@@ -83,6 +84,7 @@ async def test_admin_bootstrap_and_login_flow():
         assert res_me.status_code == 200
         user_profile = res_me.json()
         assert user_profile["username"] == settings.admin_username
+        assert "must_change_password" in user_profile
 
 
 @pytest.mark.asyncio
@@ -118,8 +120,8 @@ async def test_protected_routes_require_authentication():
 
 
 @pytest.mark.asyncio
-async def test_change_password_api():
-    """Verify password change endpoint."""
+async def test_change_password_api_and_db_persistence():
+    """Verify password change endpoint saves hashed password to database and clears must_change_password."""
     await init_db()
 
     transport = ASGITransport(app=app)
@@ -148,6 +150,16 @@ async def test_change_password_api():
             headers=headers
         )
         assert res_change.status_code == 200
+        change_data = res_change.json()
+        assert change_data["success"] is True
+        assert change_data["user"]["must_change_password"] is False
+
+        # Old password must now fail
+        res_old_fail = await client.post(
+            "/api/v1/auth/login",
+            json={"username": settings.admin_username, "password": settings.admin_password}
+        )
+        assert res_old_fail.status_code == 401
 
         # Test login with new password
         res_new_login = await client.post(
@@ -155,6 +167,15 @@ async def test_change_password_api():
             json={"username": settings.admin_username, "password": new_pass}
         )
         assert res_new_login.status_code == 200
+        assert res_new_login.json()["user"]["must_change_password"] is False
+
+        # Verify directly from Database session
+        async with AsyncSessionLocal() as db_session:
+            from sqlalchemy import select
+            user_db = await db_session.scalar(select(User).where(User.username == settings.admin_username))
+            assert user_db is not None
+            assert user_db.must_change_password is False
+            assert verify_password(new_pass, user_db.hashed_password) is True
 
         # Restore original password
         token2 = res_new_login.json()["access_token"]
@@ -163,3 +184,60 @@ async def test_change_password_api():
             json={"old_password": new_pass, "new_password": settings.admin_password},
             headers={"Authorization": f"Bearer {token2}"}
         )
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user_with_first_login_flag():
+    """Verify admin can create a user and user has must_change_password=True."""
+    await init_db()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # 1. Login as admin
+        admin_login = await client.post(
+            "/api/v1/auth/login",
+            json={"username": settings.admin_username, "password": settings.admin_password}
+        )
+        admin_token = admin_login.json()["access_token"]
+
+        # 2. Create operator user
+        import uuid
+        operator_uname = f"operator_{uuid.uuid4().hex[:6]}"
+        initial_temp_pass = "TempPass123!"
+
+        create_res = await client.post(
+            "/api/v1/auth/users",
+            json={
+                "username": operator_uname,
+                "password": initial_temp_pass,
+                "role": "manager",
+                "is_active": True,
+                "must_change_password": True
+            },
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        assert create_res.status_code == 201
+        created_user = create_res.json()
+        assert created_user["username"] == operator_uname
+        assert created_user["must_change_password"] is True
+
+        # 3. Login as operator
+        op_login = await client.post(
+            "/api/v1/auth/login",
+            json={"username": operator_uname, "password": initial_temp_pass}
+        )
+        assert op_login.status_code == 200
+        op_data = op_login.json()
+        assert op_data["user"]["must_change_password"] is True
+        op_token = op_data["access_token"]
+
+        # 4. Operator changes password on first login
+        op_permanent_pass = "PermanentOpPass456!"
+        change_res = await client.post(
+            "/api/v1/auth/change-password",
+            json={"old_password": initial_temp_pass, "new_password": op_permanent_pass},
+            headers={"Authorization": f"Bearer {op_token}"}
+        )
+        assert change_res.status_code == 200
+        assert change_res.json()["user"]["must_change_password"] is False
+

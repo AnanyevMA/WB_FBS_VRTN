@@ -115,6 +115,7 @@ def decode_access_token(token: str) -> Optional[TokenPayload]:
         username: str = payload.get("username")
         role: str = payload.get("role", UserRole.ADMIN.value)
         is_superuser: bool = payload.get("is_superuser", False)
+        must_change_password: bool = payload.get("must_change_password", False)
         exp: Optional[int] = payload.get("exp")
 
         if user_id is None or username is None:
@@ -125,6 +126,7 @@ def decode_access_token(token: str) -> Optional[TokenPayload]:
             username=username,
             role=role,
             is_superuser=is_superuser,
+            must_change_password=must_change_password,
             exp=exp
         )
     except (JWTError, ValueError) as e:
@@ -182,14 +184,15 @@ async def ensure_initial_admin(db: AsyncSession) -> Optional[User]:
     admin_password = settings.admin_password or "admin_password"
     admin_email = settings.admin_email or "admin@example.com"
 
-    logger.info(f"Bootstrapping default admin user: '{admin_username}'")
+    logger.info(f"Bootstrapping default admin user: '{admin_username}' with required first-login password change")
     admin_user = User(
         username=admin_username,
         email=admin_email,
         hashed_password=hash_password(admin_password),
         role=UserRole.ADMIN.value,
         is_active=True,
-        is_superuser=True
+        is_superuser=True,
+        must_change_password=True
     )
     db.add(admin_user)
     await db.commit()

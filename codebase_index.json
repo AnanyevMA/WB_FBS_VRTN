@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-20T14:23:33.869441+00:00",
+  "updated_at": "2026-08-20T14:45:23.121295+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 70,
+  "total_files": 71,
   "files": [
     {
       "file": "alembic/env.py",
@@ -101,6 +101,37 @@
       "layer": "migrations",
       "hash": "f0f17d0c7085",
       "docstring": "add_users_table",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/8b9f02c3d4e5_add_must_change_password_to_users.py",
+      "layer": "migrations",
+      "hash": "69347a830ffe",
+      "docstring": "add_must_change_password_to_users",
       "classes": [],
       "functions": [
         {
@@ -1232,7 +1263,7 @@
     {
       "file": "app/api/auth.py",
       "layer": "api",
-      "hash": "a11dbdb021d5",
+      "hash": "c67a8bafd9a3",
       "docstring": "Authentication Router & Dependencies — JWT Login, Current User, and User Management",
       "classes": [],
       "functions": [
@@ -1298,7 +1329,7 @@
           "decorators": [
             "router.post('/change-password')"
           ],
-          "docstring": "Change current user's password."
+          "docstring": "Change current user's password and save permanently in database."
         },
         {
           "name": "list_users",
@@ -1343,7 +1374,7 @@
           "method": "POST",
           "path": "/change-password",
           "handler": "change_password",
-          "docstring": "Change current user's password."
+          "docstring": "Change current user's password and save permanently in database."
         },
         {
           "method": "GET",
@@ -1901,7 +1932,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "068425051dd7",
+      "hash": "fc8606a34e47",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2084,6 +2115,7 @@
         "app.services.wb_client",
         "datetime",
         "fastapi",
+        "httpx",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "typing"
@@ -2356,7 +2388,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "b5af438457a1",
+      "hash": "f8994c0c875c",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -2687,7 +2719,7 @@
     {
       "file": "app/models/user.py",
       "layer": "models",
-      "hash": "1f6a5b193154",
+      "hash": "0ea1e3849e6c",
       "docstring": "",
       "classes": [
         {
@@ -2740,7 +2772,7 @@
     {
       "file": "app/schemas/auth.py",
       "layer": "schemas",
-      "hash": "80d74df8a162",
+      "hash": "1b9d0eaaba38",
       "docstring": "Pydantic Schemas for Authentication & User Management",
       "classes": [
         {
@@ -2765,7 +2797,9 @@
             "BaseModel"
           ],
           "docstring": "",
-          "methods": []
+          "methods": [
+            "validate_must_change_password"
+          ]
         },
         {
           "name": "Token",
@@ -2956,7 +2990,7 @@
     {
       "file": "app/services/auth_service.py",
       "layer": "services",
-      "hash": "720ad9ac1e30",
+      "hash": "42ddd438a0eb",
       "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
       "classes": [],
       "functions": [
@@ -3666,7 +3700,7 @@
     {
       "file": "scripts/set_admin_password.py",
       "layer": "config",
-      "hash": "e4f0149dd653",
+      "hash": "ff765b77e939",
       "docstring": "Set or Reset Admin Password for WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3698,6 +3732,7 @@
         "app.services.auth_service",
         "argparse",
         "datetime",
+        "getpass",
         "os",
         "sqlalchemy",
         "sqlalchemy.orm",
@@ -3791,7 +3826,7 @@
     {
       "file": "tests/test_auth.py",
       "layer": "tests",
-      "hash": "1ee0acbbda93",
+      "hash": "f446c200e7d3",
       "docstring": "Tests for Authentication, JWT, User Management, and Endpoint Security Protection",
       "classes": [],
       "functions": [
@@ -3820,7 +3855,7 @@
           "decorators": [
             "pytest.mark.asyncio"
           ],
-          "docstring": "Verify initial admin account is created and login returns valid JWT token."
+          "docstring": "Verify initial admin account is created with must_change_password=True and login returns valid JWT token."
         },
         {
           "name": "test_protected_routes_require_authentication",
@@ -3832,13 +3867,22 @@
           "docstring": "Verify that business API routes return 401 without token and succeed with token."
         },
         {
-          "name": "test_change_password_api",
+          "name": "test_change_password_api_and_db_persistence",
           "is_async": true,
           "args": [],
           "decorators": [
             "pytest.mark.asyncio"
           ],
-          "docstring": "Verify password change endpoint."
+          "docstring": "Verify password change endpoint saves hashed password to database and clears must_change_password."
+        },
+        {
+          "name": "test_admin_create_user_with_first_login_flag",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify admin can create a user and user has must_change_password=True."
         }
       ],
       "endpoints": [],
@@ -3852,7 +3896,9 @@
         "app.services.auth_service",
         "datetime",
         "httpx",
-        "pytest"
+        "pytest",
+        "sqlalchemy",
+        "uuid"
       ]
     },
     {
@@ -4472,281 +4518,10 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "f1c00738303f",
+      "hash": "b0139bb2ecd4",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
-      "functions": [
-        {
-          "name": "apiFetch",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "cancelOrder",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "checkKizLiveStatus",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "checkPluginLoaded",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "closeModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "createSupply",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "deleteSeller",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "editSeller",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "executeKizClientSigning",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "getCzStatusBadge",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "getStatusBadge",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "getWbStatusBadge",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "handleChangePasswordSubmit",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "handleLoginSubmit",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "handleUnauthorized",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "initApp",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "initAppPostLogin",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "initCryptoProPlugin",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadAuditLogs",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadCadesScript",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadDashboard",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadOrders",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadSellers",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadSellersForDropdown",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "loadSupplies",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "logout",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "markOrderAssembling",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "navigateTo",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "onCertSelected",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openAddSellerModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openAttachKizModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openBatchKizSigningModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openCreateSupplyModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openKizSigningModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "openUserAccountModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "populateCertificatesDropdown",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "processKizScan",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "saveSeller",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "seedMockData",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "showLoginModal",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "showSeedBanner",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "showSupplyBarcode",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "showToast",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "signDataWithCryptoPro",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "submitKizViaServerFallback",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "submitModalKizAttach",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "syncSuppliesFromWB",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "testConnectionFor",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "testSellerConnection",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "togglePollingFor",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "triggerCzAction",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "updateAuthTopbarUI",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        },
-        {
-          "name": "viewOrderDetail",
-          "is_async": true,
-          "docstring": "Frontend JS Function"
-        }
-      ],
+      "functions": [],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
@@ -4766,6 +4541,7 @@
         "barcodeModal",
         "barcodeModalBody",
         "barcodeModalTitle",
+        "firstLoginModal",
         "kizSigningModal",
         "kizSigningModalTitle",
         "loginModal",

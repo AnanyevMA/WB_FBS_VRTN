@@ -112,7 +112,8 @@ async def login(
             "sub": user.id,
             "username": user.username,
             "role": user.role,
-            "is_superuser": user.is_superuser
+            "is_superuser": user.is_superuser,
+            "must_change_password": user.must_change_password
         },
         expires_delta=access_token_expires
     )
@@ -139,7 +140,7 @@ async def change_password(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Change current user's password."""
+    """Change current user's password and save permanently in database."""
     if not verify_password(data.old_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -147,8 +148,14 @@ async def change_password(
         )
 
     current_user.hashed_password = hash_password(data.new_password)
+    current_user.must_change_password = False
     await db.commit()
-    return {"success": True, "message": "Пароль успешно изменен"}
+    await db.refresh(current_user)
+    return {
+        "success": True, 
+        "message": "Пароль успешно изменен и сохранен в базе данных",
+        "user": current_user
+    }
 
 
 @router.get("/users", response_model=List[UserResponse])
@@ -181,7 +188,8 @@ async def create_user_by_admin(
         hashed_password=hash_password(user_in.password),
         role=user_in.role,
         is_active=user_in.is_active,
-        is_superuser=user_in.is_superuser
+        is_superuser=user_in.is_superuser,
+        must_change_password=user_in.must_change_password
     )
     db.add(user)
     await db.commit()

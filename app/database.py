@@ -72,6 +72,10 @@ async def init_db() -> None:
                             if col.name not in existing_cols:
                                 col_type = col.type.compile(sync_conn.dialect)
                                 sync_conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}")
+                if "users" in inspector.get_table_names():
+                    cols = {c["name"] for c in inspector.get_columns("users")}
+                    if "must_change_password" in cols:
+                        sync_conn.exec_driver_sql("UPDATE users SET must_change_password = 0 WHERE must_change_password IS NULL")
             await conn.run_sync(sync_sqlite_columns)
 
         # PostgreSQL auto-migration for TIMESTAMP WITH TIME ZONE

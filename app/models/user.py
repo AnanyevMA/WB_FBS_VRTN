@@ -30,6 +30,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(32), default=UserRole.ADMIN.value, server_default=UserRole.ADMIN.value)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -12,7 +12,8 @@ cd "$PROJECT_DIR"
 # 1. Получение свежего кода из Git
 if [ -d ".git" ]; then
     echo "📥 Получение обновлений из Git..."
-    git pull origin main
+    git fetch origin main
+    git reset --hard origin/main
 else
     echo "ℹ️  Git репозиторий не инициализирован локально, сборка текущих файлов..."
 fi

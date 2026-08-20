@@ -50,6 +50,7 @@ def test_development_rules_holistic_and_test_policies():
     assert "holistic_impact_analysis" in dev_rules, "holistic_impact_analysis rule missing"
     assert "post_change_test_analysis" in dev_rules, "post_change_test_analysis rule missing"
     assert "github_sync_and_documentation_policy" in dev_rules, "github_sync_and_documentation_policy rule missing"
+    assert "data_and_credential_persistence_policy" in dev_rules, "data_and_credential_persistence_policy rule missing"
 
     holistic = dev_rules["holistic_impact_analysis"]
     assert holistic.get("enabled") is True
@@ -64,12 +65,17 @@ def test_development_rules_holistic_and_test_policies():
     assert len(gh_policy.get("required_steps", [])) >= 5
     assert "documentation_targets" in gh_policy
 
+    cred_policy = dev_rules["data_and_credential_persistence_policy"]
+    assert cred_policy.get("enabled") is True
+    assert len(cred_policy.get("required_steps", [])) >= 4
+
     checklist = dev_rules.get("implementation_checklist", [])
     checklist_str = " ".join(checklist)
     assert "holistic project scan" in checklist_str
     assert "test analysis" in checklist_str
     assert "Instructions & docs updated" in checklist_str
     assert "GitHub sync" in checklist_str
+    assert "Data & credentials preserved" in checklist_str
 
 
 def test_polp_enforcer_global_forbidden():

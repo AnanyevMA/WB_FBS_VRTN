@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-20T14:11:47.760084+00:00",
+  "updated_at": "2026-08-20T14:17:32.023062+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 69,
+  "total_files": 70,
   "files": [
     {
       "file": "alembic/env.py",
@@ -3614,7 +3614,7 @@
     {
       "file": "scripts/generate_secrets.py",
       "layer": "config",
-      "hash": "b6061f41ea56",
+      "hash": "3447bdf7b8f9",
       "docstring": "Generate Secure Keys and Passwords for WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3663,6 +3663,47 @@
       ]
     },
     {
+      "file": "scripts/set_admin_password.py",
+      "layer": "config",
+      "hash": "e4f0149dd653",
+      "docstring": "Set or Reset Admin Password for WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "set_admin_password",
+          "is_async": false,
+          "args": [
+            "username",
+            "password",
+            "email"
+          ],
+          "decorators": [],
+          "docstring": "Update or create admin user with the specified password in the database."
+        },
+        {
+          "name": "main",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.models.user",
+        "app.services.auth_service",
+        "argparse",
+        "datetime",
+        "os",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sys"
+      ]
+    },
+    {
       "file": "tests/test_agent_delegation_sync.py",
       "layer": "tests",
       "hash": "a1607c7e14ae",
@@ -3704,7 +3745,7 @@
     {
       "file": "tests/test_agent_manifest.py",
       "layer": "tests",
-      "hash": "2ed5803360ef",
+      "hash": "7bd4481fbd55",
       "docstring": "Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer.",
       "classes": [],
       "functions": [

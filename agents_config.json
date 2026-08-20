@@ -3,7 +3,7 @@
     "version":  "1.1.0",
     "system_name":  "WB FBS Manager Multi-Agent System",
     "description":  "Unified Configuration Manifest \u0026 Principle of Least Privilege (PoLP) File Access Matrix",
-    "updated_at":  "2026-08-19T22:48:45Z",
+    "updated_at":  "2026-08-20T14:16:12Z",
     "development_rules":  {
                               "frontend_coverage_required":  true,
                               "frontend_coverage_policy":  "CRITICAL: Any feature that adds user-configurable settings (fields in API schema, seller model, or any model exposed to users) MUST include corresponding changes to frontend/index.html in the SAME implementation task. This includes: form inputs, edit population (editSeller/editXxx JS), save payload (saveSeller/saveXxx JS), and table/list display columns. Omitting frontend changes for backend-added settings is a defect and must not happen.",
@@ -11,18 +11,18 @@
                                                                "enabled":  true,
                                                                "policy":  "REQUIRED: Before implementing ANY change, the agent MUST perform a full project impact scan. The agent must explicitly list every layer of the system that the change touches or might touch, and confirm that changes are applied to ALL affected layers in a single task.",
                                                                "layers_to_scan":  [
-                                                                                      "app/models/        вЂ” ORM models, DB schema",
-                                                                                      "app/schemas/       вЂ” Pydantic validation, API contracts",
-                                                                                      "app/api/           вЂ” FastAPI endpoints, request/response handling",
-                                                                                      "app/agents/        вЂ” Celery tasks, background workers",
-                                                                                      "app/services/      вЂ” Business logic, external API clients",
-                                                                                      "app/celery_app.py  вЂ” Beat schedule, task routing, includes",
-                                                                                      "app/agent_manifest.py вЂ” PoLP Pydantic models",
-                                                                                      "agents_config.json вЂ” Agent registry, development rules",
-                                                                                      "frontend/index.html вЂ” All UI: forms, tables, JS save/load logic",
-                                                                                      "tests/             вЂ” Existing and new tests",
-                                                                                      "alembic/           вЂ” DB migration scripts",
-                                                                                      "docs/              вЂ” README, API docs if applicable"
+                                                                                      "app/models/        РІР‚вЂќ ORM models, DB schema",
+                                                                                      "app/schemas/       РІР‚вЂќ Pydantic validation, API contracts",
+                                                                                      "app/api/           РІР‚вЂќ FastAPI endpoints, request/response handling",
+                                                                                      "app/agents/        РІР‚вЂќ Celery tasks, background workers",
+                                                                                      "app/services/      РІР‚вЂќ Business logic, external API clients",
+                                                                                      "app/celery_app.py  РІР‚вЂќ Beat schedule, task routing, includes",
+                                                                                      "app/agent_manifest.py РІР‚вЂќ PoLP Pydantic models",
+                                                                                      "agents_config.json РІР‚вЂќ Agent registry, development rules",
+                                                                                      "frontend/index.html РІР‚вЂќ All UI: forms, tables, JS save/load logic",
+                                                                                      "tests/             РІР‚вЂќ Existing and new tests",
+                                                                                      "alembic/           РІР‚вЂќ DB migration scripts",
+                                                                                      "docs/              РІР‚вЂќ README, API docs if applicable"
                                                                                   ],
                                                                "required_pre_implementation_steps":  [
                                                                                                          "1. Read and understand the user request fully.",
@@ -34,11 +34,11 @@
                                                            },
                               "post_change_test_analysis":  {
                                                                 "enabled":  true,
-                                                                "policy":  "REQUIRED: After completing any implementation, the agent MUST analyze what tests are needed and implement them. Tests are not optional вЂ” a feature is not complete without corresponding test coverage.",
+                                                                "policy":  "REQUIRED: After completing any implementation, the agent MUST analyze what tests are needed and implement them. Tests are not optional РІР‚вЂќ a feature is not complete without corresponding test coverage.",
                                                                 "required_post_implementation_steps":  [
                                                                                                            "1. List every changed or new module/function/endpoint.",
                                                                                                            "2. For each changed unit, identify what behavior needs to be verified.",
-                                                                                                           "3. Check tests/ directory for existing coverage вЂ” extend rather than duplicate.",
+                                                                                                           "3. Check tests/ directory for existing coverage РІР‚вЂќ extend rather than duplicate.",
                                                                                                            "4. Write new tests covering: happy path, edge cases, validation errors, and integration with adjacent components.",
                                                                                                            "5. Run existing tests to confirm no regressions introduced.",
                                                                                                            "6. Document which tests were added and why in the walkthrough or task notes."
@@ -50,7 +50,7 @@
                                                                                         "frontend_contract":  "Verify API response shape matches what frontend JS expects",
                                                                                         "regression":  "Existing tests must still pass after every change"
                                                                                     },
-                                                                "test_file_convention":  "tests/test_\u003cfeature_area\u003e.py вЂ” group tests by feature domain, not by layer"
+                                                                "test_file_convention":  "tests/test_\u003cfeature_area\u003e.py РІР‚вЂќ group tests by feature domain, not by layer"
                                                             },
                               "token_efficient_codebase_indexing":  {
                                                                         "enabled":  true,
@@ -74,12 +74,13 @@
                                                                "[ ] Frontend EDIT population JS updated (load existing values into form)",
                                                                "[ ] Frontend SAVE payload JS updated (send new fields to API)",
                                                                "[ ] Frontend TABLE/LIST display updated (show new fields in rows)",
-                                                               "[ ] DB migration executed",
+                                                               "[ ] DB migration executed (non-destructive)",
                                                                "[ ] agents_config.json updated if new agent or rule added",
                                                                "[ ] Instructions \u0026 docs updated (DEPLOY_VPS_GUIDE.md, README.md, docs/ if affected)",
                                                                "[ ] Codebase index updated (codebase_index.json \u0026 CODEBASE_MAP.md via CodebaseIndexer)",
                                                                "[ ] Post-change: test analysis completed, new tests written and passing",
                                                                "[ ] Existing tests confirmed not broken",
+                                                               "[ ] Data \u0026 credentials preserved (no destructive volume down -v, .env protected)",
                                                                "[ ] GitHub sync: changes committed and pushed to remote repository (AnanyevMA/WB_FBS_VRTN)"
                                                            ],
                               "github_sync_and_documentation_policy":  {
@@ -93,13 +94,23 @@
                                                                                                   "5. Stage changed files, commit with descriptive message, and push to GitHub remote origin main."
                                                                                               ],
                                                                            "documentation_targets":  {
-                                                                                                         "deployment_and_vps":  "DEPLOY_VPS_GUIDE.md — server setup, cron, systemd, docker compose, memory tuning",
-                                                                                                         "general_and_quickstart":  "README.md — system features, tech stack, quick start, API overview",
-                                                                                                         "architecture_and_rules":  "docs/ARCHITECTURE_PLAYBOOK.md and agents_config.json — agent registry, PoLP, workflow rules",
-                                                                                                         "knowledge_base":  "docs/ — API references, troubleshooting, recipes, docs/INDEX.json",
-                                                                                                         "codebase_map":  "codebase_index.json and CODEBASE_MAP.md — symbol maps, routes, classes, tasks"
+                                                                                                         "deployment_and_vps":  "DEPLOY_VPS_GUIDE.md вЂ” server setup, cron, systemd, docker compose, memory tuning",
+                                                                                                         "general_and_quickstart":  "README.md вЂ” system features, tech stack, quick start, API overview",
+                                                                                                         "architecture_and_rules":  "docs/ARCHITECTURE_PLAYBOOK.md and agents_config.json вЂ” agent registry, PoLP, workflow rules",
+                                                                                                         "knowledge_base":  "docs/ вЂ” API references, troubleshooting, recipes, docs/INDEX.json",
+                                                                                                         "codebase_map":  "codebase_index.json and CODEBASE_MAP.md вЂ” symbol maps, routes, classes, tasks"
                                                                                                      }
-                                                                       }
+                                                                       },
+                              "data_and_credential_persistence_policy":  {
+                                                                             "enabled":  true,
+                                                                             "policy":  "CRITICAL: During updates, deployments, or bugfixes, user data and credentials MUST NEVER be wiped or reset. Agents must NEVER instruct users to run destructive volume commands (docker compose down -v) or overwrite existing .env files. Standard updates must only use \u0027git pull origin main\u0027 and \u0027docker compose up -d --build\u0027 without -v. Any password or credential management must be done via dedicated non-destructive scripts (scripts/set_admin_password.py) preserving all database records.",
+                                                                             "required_steps":  [
+                                                                                                    "1. Never use or recommend \u0027docker compose down -v\u0027 for deployment updates.",
+                                                                                                    "2. Ensure scripts/generate_secrets.py never overwrites an existing .env file.",
+                                                                                                    "3. Ensure all DB migrations and schema changes are non-destructive and preserve user data.",
+                                                                                                    "4. Provide scripts/set_admin_password.py for safe password updates without data loss."
+                                                                                                ]
+                                                                         }
                           },
     "global_polp_policy":  {
                                "default_deny":  true,
@@ -220,7 +231,7 @@
                    {
                        "id":  "cz_withdrawal",
                        "name":  "Chestny Znak KIZ Withdrawal Agent",
-                       "role":  "Signs and submits KIZ withdrawal documents (РІС‹РІРѕРґ РёР· РѕР±РѕСЂРѕС‚Р°) to True API (Р“РРЎ РњРў) using CryptoPro UKEP.",
+                       "role":  "Signs and submits KIZ withdrawal documents (Р Р†РЎвЂ№Р Р†Р С•Р Т‘ Р С‘Р В· Р С•Р В±Р С•РЎР‚Р С•РЎвЂљР В°) to True API (Р вЂњР ВР РЋ Р СљР Сћ) using CryptoPro UKEP.",
                        "celery_task":  "app.agents.cz_withdrawal.withdraw_order_kiz",
                        "queue":  "cz_operations",
                        "schedule":  "daily at 03:00 / event-driven",
@@ -265,7 +276,7 @@
                    {
                        "id":  "cz_return",
                        "name":  "Chestny Znak KIZ Return Agent",
-                       "role":  "Processes returned items and re-introduces KIZ (РІРѕР·РІСЂР°С‚ РІ РѕР±РѕСЂРѕС‚) into GIS MT True API with signed documents.",
+                       "role":  "Processes returned items and re-introduces KIZ (Р Р†Р С•Р В·Р Р†РЎР‚Р В°РЎвЂљ Р Р† Р С•Р В±Р С•РЎР‚Р С•РЎвЂљ) into GIS MT True API with signed documents.",
                        "celery_task":  "app.agents.cz_return.return_order_kiz",
                        "queue":  "cz_operations",
                        "schedule":  "event-driven",
@@ -541,7 +552,7 @@
                                                     ],
                        "frontend_coverage":  {
                                                  "form_inputs":  "seller_digest_enabled, seller_digest_hour, seller_digest_minute, seller_digest_timezone",
-                                                 "table_column":  "Р”Р°Р№РґР¶РµСЃС‚ column in sellers table",
+                                                 "table_column":  "Р вЂќР В°Р в„–Р Т‘Р В¶Р ВµРЎРѓРЎвЂљ column in sellers table",
                                                  "edit_population":  "editSeller() populates all digest fields",
                                                  "save_payload":  "saveSeller() sends digest_* fields on PATCH and nested digest object on POST"
                                              },
@@ -626,7 +637,7 @@
                    },
                    {
                        "id":  "security_audit_agent",
-                       "name":  "Security Audit & Configuration Integrity Agent",
+                       "name":  "Security Audit \u0026 Configuration Integrity Agent",
                        "role":  "Performs periodic background security audits: inspects cryptographic keys, default passwords, SSL/TLS certificate lifecycles, and audit trail anomalies.",
                        "celery_task":  "app.agents.security_audit_agent.run_security_audit",
                        "queue":  "maintenance",
@@ -637,28 +648,34 @@
                        "arbitration_priority":  15,
                        "enabled":  true,
                        "polp_matrix":  {
-                           "allowed_read_paths":  [
-                               "app/agents/security_audit_agent.py",
-                               "certbot/conf/live/*",
-                               "/etc/letsencrypt/live/*"
-                           ],
-                           "allowed_write_paths":  [
-                               "logs/security_audit.log"
-                           ],
-                           "allowed_delete_paths":  [],
-                           "forbidden_paths":  [
-                               ".env*",
-                               "*.key"
-                           ],
-                           "database_table_permissions":  {
-                               "users":  "SELECT",
-                               "sellers":  "SELECT",
-                               "audit_logs":  "SELECT_INSERT"
-                           },
-                           "external_api_access":  [],
-                           "crypto_key_access":  "NONE"
-                       },
-                       "dependencies":  []
+                                           "allowed_read_paths":  [
+                                                                      "app/agents/security_audit_agent.py",
+                                                                      "certbot/conf/live/*",
+                                                                      "/etc/letsencrypt/live/*"
+                                                                  ],
+                                           "allowed_write_paths":  [
+                                                                       "logs/security_audit.log"
+                                                                   ],
+                                           "allowed_delete_paths":  [
+
+                                                                    ],
+                                           "forbidden_paths":  [
+                                                                   ".env*",
+                                                                   "*.key"
+                                                               ],
+                                           "database_table_permissions":  {
+                                                                              "users":  "SELECT",
+                                                                              "sellers":  "SELECT",
+                                                                              "audit_logs":  "SELECT_INSERT"
+                                                                          },
+                                           "external_api_access":  [
+
+                                                                   ],
+                                           "crypto_key_access":  "NONE"
+                                       },
+                       "dependencies":  [
+
+                                        ]
                    }
                ],
     "arbitration_rules":  {

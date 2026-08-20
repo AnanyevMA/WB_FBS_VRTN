@@ -63,8 +63,22 @@ async function handleLoginSubmit(event) {
             let errDetail = 'Неверный логин или пароль';
             try {
                 const errJson = await res.json();
-                if (errJson && errJson.detail) errDetail = errJson.detail;
-            } catch(e) {}
+                if (errJson) {
+                    if (typeof errJson.detail === 'string') {
+                        errDetail = errJson.detail;
+                    } else if (Array.isArray(errJson.detail)) {
+                        errDetail = errJson.detail.map(d => d.msg || d.loc?.join('.')).join('; ');
+                    } else if (errJson.message) {
+                        errDetail = errJson.message;
+                    }
+                }
+            } catch(e) {
+                if (res.status === 500) {
+                    errDetail = 'Внутренняя ошибка сервера (500). Проверьте логи Docker.';
+                } else if (res.status === 404) {
+                    errDetail = 'API endpoint не найден (404). Проверьте конфигурацию Nginx.';
+                }
+            }
             throw new Error(errDetail);
         }
 

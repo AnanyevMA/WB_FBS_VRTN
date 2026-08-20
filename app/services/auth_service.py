@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 
 try:
     import bcrypt
@@ -135,12 +135,15 @@ def decode_access_token(token: str) -> Optional[TokenPayload]:
 
 
 async def get_user_by_username(db: AsyncSession, username_or_email: str) -> Optional[User]:
-    """Find user by username or email."""
+    """Find user by username or email (case-insensitive and trimmed)."""
+    cleaned = (username_or_email or "").strip()
+    if not cleaned:
+        return None
     result = await db.execute(
         select(User).where(
             or_(
-                User.username == username_or_email,
-                User.email == username_or_email
+                func.lower(User.username) == cleaned.lower(),
+                func.lower(User.email) == cleaned.lower()
             )
         )
     )

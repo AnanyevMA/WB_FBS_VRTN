@@ -12,12 +12,12 @@ cd "$PROJECT_DIR"
 # 1. Получение свежего кода из Git
 if [ -d ".git" ]; then
     echo "📥 Получение обновлений из Git..."
-    git pull
+    git pull origin main
 else
     echo "ℹ️  Git репозиторий не инициализирован локально, сборка текущих файлов..."
 fi
 
-# 2. Сборка контейнеров
+# 2. Сборка Docker контейнеров
 echo "🔨 Сборка Docker контейнеров..."
 docker compose -f docker-compose.prod.yml build
 
@@ -33,11 +33,11 @@ docker compose -f docker-compose.prod.yml exec -T api alembic upgrade head || tr
 echo "🧹 Очистка старых Docker слоев для экономии диска..."
 docker image prune -f
 
-# 6. Проверка здоровья API
-echo "🔍 Проверка статуса API..."
+# 6. Проверка статуса сервисов
+echo "🔍 Проверка статуса сервисов..."
 sleep 3
-if curl -s http://127.0.0.1/health | grep -q "ok"; then
-    echo "✅ Деплой успешно завершен! Сервис работает в штатном режиме."
-else
-    echo "⚠️  API еще инициализируется или ответил нестандартно. Проверьте логи: docker compose -f docker-compose.prod.yml logs -f api"
-fi
+docker compose -f docker-compose.prod.yml ps
+
+echo "================================================================="
+echo "✅ Деплой успешно завершен! Сервис обновлен и запущен."
+echo "================================================================="

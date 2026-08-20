@@ -19,7 +19,7 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, func, or_
 from sqlalchemy.orm import Session
 
 # Add current directory to path
@@ -32,34 +32,43 @@ from app.services.auth_service import hash_password
 
 def set_admin_password(username: str, password: str, email: str = "admin@example.com") -> bool:
     """Update or create admin user with the specified password in the database."""
+    cleaned_uname = (username or "").strip()
+    cleaned_pwd = (password or "").strip()
     sync_engine = create_engine(settings.database_url_sync)
     with Session(sync_engine) as session:
         user = session.execute(
-            select(User).where(User.username == username)
+            select(User).where(
+                or_(
+                    func.lower(User.username) == cleaned_uname.lower(),
+                    func.lower(User.email) == cleaned_uname.lower()
+                )
+            )
         ).scalar_one_or_none()
 
         if user:
-            user.hashed_password = hash_password(password)
+            user.hashed_password = hash_password(cleaned_pwd)
             user.is_active = True
             user.is_superuser = True
+            user.must_change_password = False
             user.updated_at = datetime.now(timezone.utc)
             session.commit()
-            print(f"[OK] Пароль для пользователя '{username}' успешно обновлен!")
+            print(f"[OK] Пароль для пользователя '{user.username}' успешно обновлен в базе данных!")
             return True
         else:
             # Create user if does not exist
             new_user = User(
-                username=username,
+                username=cleaned_uname,
                 email=email,
-                hashed_password=hash_password(password),
+                hashed_password=hash_password(cleaned_pwd),
                 role=UserRole.ADMIN.value,
                 is_active=True,
                 is_superuser=True,
+                must_change_password=False,
                 created_at=datetime.now(timezone.utc),
             )
             session.add(new_user)
             session.commit()
-            print(f"[OK] Пользователь-администратор '{username}' успешно создан с указанным паролем!")
+            print(f"[OK] Пользователь-администратор '{cleaned_uname}' успешно создан с указанным паролем!")
             return True
 
 

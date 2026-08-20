@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-20T14:45:23.121295+00:00",
+  "updated_at": "2026-08-20T14:50:25.350693+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 71,
   "files": [
@@ -2990,7 +2990,7 @@
     {
       "file": "app/services/auth_service.py",
       "layer": "services",
-      "hash": "42ddd438a0eb",
+      "hash": "290d344a1597",
       "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
       "classes": [],
       "functions": [
@@ -3040,7 +3040,7 @@
             "username_or_email"
           ],
           "decorators": [],
-          "docstring": "Find user by username or email."
+          "docstring": "Find user by username or email (case-insensitive and trimmed)."
         },
         {
           "name": "get_user_by_id",
@@ -3700,7 +3700,7 @@
     {
       "file": "scripts/set_admin_password.py",
       "layer": "config",
-      "hash": "ff765b77e939",
+      "hash": "f7ef90f1be0e",
       "docstring": "Set or Reset Admin Password for WB FBS Manager",
       "classes": [],
       "functions": [

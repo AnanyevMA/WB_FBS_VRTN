@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-20T14:17:32.023062+00:00",
+  "updated_at": "2026-08-20T14:23:33.869441+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 70,
   "files": [
@@ -2956,7 +2956,7 @@
     {
       "file": "app/services/auth_service.py",
       "layer": "services",
-      "hash": "954308945d06",
+      "hash": "720ad9ac1e30",
       "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
       "classes": [],
       "functions": [
@@ -2967,7 +2967,7 @@
             "password"
           ],
           "decorators": [],
-          "docstring": "Hash plain text password safely."
+          "docstring": "Hash plain text password safely using native bcrypt with PBKDF2 fallback."
         },
         {
           "name": "verify_password",
@@ -2977,7 +2977,7 @@
             "hashed_password"
           ],
           "decorators": [],
-          "docstring": "Verify plain password against hashed password."
+          "docstring": "Verify plain password against hashed password (supports bcrypt, passlib, and pbkdf2)."
         },
         {
           "name": "create_access_token",
@@ -3046,6 +3046,7 @@
         "app.config",
         "app.models.user",
         "app.schemas.auth",
+        "bcrypt",
         "datetime",
         "hashlib",
         "hmac",

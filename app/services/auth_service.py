@@ -9,9 +9,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+
+try:
+    import bcrypt
+    HAS_BCRYPT = True
+except ImportError:
+    HAS_BCRYPT = False
 
 from app.config import settings
 from app.models.user import User, UserRole
@@ -19,31 +24,31 @@ from app.schemas.auth import TokenPayload
 
 logger = logging.getLogger(__name__)
 
-# Password hashing context with bcrypt, fallback to pbkdf2_sha256
-pwd_context = CryptContext(
-    schemes=["bcrypt", "pbkdf2_sha256"],
-    deprecated="auto"
-)
-
 
 def hash_password(password: str) -> str:
-    """Hash plain text password safely."""
-    try:
-        return pwd_context.hash(password)
-    except Exception as exc:
-        logger.warning(f"passlib bcrypt hashing failed: {exc}, using PBKDF2 HMAC SHA256 fallback.")
-        salt = os.urandom(16).hex()
-        key = hashlib.pbkdf2_hmac(
-            "sha256",
-            password.encode("utf-8"),
-            salt.encode("utf-8"),
-            100000
-        ).hex()
-        return f"pbkdf2_fallback${salt}${key}"
+    """Hash plain text password safely using native bcrypt with PBKDF2 fallback."""
+    if not password:
+        return ""
+    if HAS_BCRYPT:
+        try:
+            pwd_bytes = password.encode("utf-8")[:72]
+            salt = bcrypt.gensalt(rounds=12)
+            return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+        except Exception as exc:
+            logger.warning(f"Native bcrypt hashing failed: {exc}, using PBKDF2 fallback.")
+
+    salt = os.urandom(16).hex()
+    key = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        100000
+    ).hex()
+    return f"pbkdf2_fallback${salt}${key}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify plain password against hashed password."""
+    """Verify plain password against hashed password (supports bcrypt, passlib, and pbkdf2)."""
     if not hashed_password or not plain_password:
         return False
 
@@ -60,10 +65,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         except Exception:
             return False
 
+    # Check bcrypt hash format ($2a$, $2b$, $2y$)
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$")) and HAS_BCRYPT:
+        try:
+            pwd_bytes = plain_password.encode("utf-8")[:72]
+            hash_bytes = hashed_password.encode("utf-8")
+            return bcrypt.checkpw(pwd_bytes, hash_bytes)
+        except Exception as exc:
+            logger.debug(f"Native bcrypt verification failed: {exc}")
+
+    # Fallback to passlib if hash was generated with another scheme
     try:
+        from passlib.context import CryptContext
+        pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
         return pwd_context.verify(plain_password, hashed_password)
-    except Exception as exc:
-        logger.error(f"Password verification error: {exc}")
+    except Exception:
         return False
 
 

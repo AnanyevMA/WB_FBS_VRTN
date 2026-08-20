@@ -41,12 +41,14 @@ def main():
     jwt_secret = generate_random_token(32)
     encryption_key = generate_fernet_key()
     postgres_password = generate_password(20)
+    admin_password = generate_password(16)
     flower_password = generate_password(16)
 
     print(f"SECRET_KEY:        {secret_key}")
     print(f"JWT_SECRET_KEY:    {jwt_secret}")
     print(f"ENCRYPTION_KEY:    {encryption_key}")
     print(f"POSTGRES_PASSWORD: {postgres_password}")
+    print(f"ADMIN_PASSWORD:    {admin_password}")
     print(f"FLOWER_PASSWORD:   {flower_password}")
     print("=" * 60)
 
@@ -59,6 +61,7 @@ def main():
         content = content.replace("your-jwt-secret-key-change-this", jwt_secret)
         content = content.replace("jK4hdZuYiftat9StWo41NqsmE9HHzxj5I6tMNq4LgnA=", encryption_key)
         content = content.replace("wbfbs_password", postgres_password)
+        content = content.replace("ADMIN_PASSWORD=admin_password", f"ADMIN_PASSWORD={admin_password}")
         content = content.replace("admin_password", flower_password)
         env_path.write_text(content, encoding="utf-8")
         print("[OK] Файл .env успешно создан / синхронизирован с новыми ключами!")

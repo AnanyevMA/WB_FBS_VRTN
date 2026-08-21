@@ -129,58 +129,6 @@ async def login(
     }
 
 
-@router.post("/debug-login")
-async def debug_login(
-    login_data: LoginRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Diagnostic endpoint: traces every step of authentication without actually logging in.
-    Returns detailed info about what happens. REMOVE IN PRODUCTION after debugging.
-    """
-    from app.services.auth_service import verify_password, hash_password
-    result = {
-        "input_username": login_data.username,
-        "input_username_stripped": login_data.username.strip(),
-        "input_password_len": len(login_data.password),
-        "input_password_repr": repr(login_data.password),
-        "settings_admin_username": settings.admin_username,
-        "settings_admin_password": settings.admin_password,
-        "settings_admin_password_repr": repr(settings.admin_password),
-        "settings_database_url": settings.database_url[:50] + "...",
-    }
-
-    # 1. Find user
-    user = await get_user_by_username(db, login_data.username.strip())
-    if user:
-        result["user_found"] = True
-        result["user_id"] = user.id
-        result["user_username"] = user.username
-        result["user_is_active"] = user.is_active
-        result["user_is_superuser"] = user.is_superuser
-        result["user_role"] = user.role
-        result["user_hashed_password_prefix"] = user.hashed_password[:30] if user.hashed_password else "EMPTY"
-        result["user_hashed_password_len"] = len(user.hashed_password) if user.hashed_password else 0
-
-        # 2. Verify password
-        raw_pwd = login_data.password
-        clean_pwd = raw_pwd.strip()
-        result["verify_raw_password"] = verify_password(raw_pwd, user.hashed_password)
-        result["verify_clean_password"] = verify_password(clean_pwd, user.hashed_password)
-        result["verify_env_password"] = verify_password(settings.admin_password, user.hashed_password)
-
-        # 3. Check env match
-        result["raw_matches_env"] = raw_pwd == settings.admin_password
-        result["clean_matches_env"] = clean_pwd == settings.admin_password
-    else:
-        result["user_found"] = False
-        # Try to list all users
-        all_users = await db.execute(select(User))
-        users_list = all_users.scalars().all()
-        result["total_users_in_db"] = len(users_list)
-        result["all_usernames"] = [u.username for u in users_list]
-
-    return result
 
 
 @router.get("/me", response_model=UserResponse)

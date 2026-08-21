@@ -60,7 +60,17 @@ async function handleLoginSubmit(event) {
         });
 
         if (!res.ok) {
-            let errDetail = 'Неверный логин или пароль';
+            // Status-specific error messages to avoid misleading "wrong password" on server errors
+            let errDetail;
+            if (res.status === 502 || res.status === 503 || res.status === 504) {
+                errDetail = 'Сервер временно недоступен. Подождите 30 секунд и попробуйте снова.';
+            } else if (res.status === 429) {
+                errDetail = 'Слишком много попыток входа. Подождите минуту.';
+            } else if (res.status === 401) {
+                errDetail = 'Неверный логин или пароль';
+            } else {
+                errDetail = `Ошибка сервера (${res.status})`;
+            }
             try {
                 const errJson = await res.json();
                 if (errJson) {
@@ -73,11 +83,7 @@ async function handleLoginSubmit(event) {
                     }
                 }
             } catch(e) {
-                if (res.status === 500) {
-                    errDetail = 'Внутренняя ошибка сервера (500). Проверьте логи Docker.';
-                } else if (res.status === 404) {
-                    errDetail = 'API endpoint не найден (404). Проверьте конфигурацию Nginx.';
-                }
+                // JSON parse failed — keep status-specific message above
             }
             throw new Error(errDetail);
         }

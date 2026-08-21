@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-21T03:27:13.173549+00:00",
+  "updated_at": "2026-08-21T04:03:28.045539+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 73,
   "files": [
@@ -1266,7 +1266,7 @@
     {
       "file": "app/api/auth.py",
       "layer": "api",
-      "hash": "94bd7f768bdc",
+      "hash": "1845c0ba1c6f",
       "docstring": "Authentication Router & Dependencies — JWT Login, Current User, and User Management",
       "classes": [],
       "functions": [

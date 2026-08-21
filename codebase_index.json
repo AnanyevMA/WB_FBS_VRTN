@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-20T14:50:25.350693+00:00",
+  "updated_at": "2026-08-21T03:07:16.071169+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 71,
+  "total_files": 73,
   "files": [
     {
       "file": "alembic/env.py",
@@ -720,7 +720,7 @@
     {
       "file": "app/agents/morning_digest.py",
       "layer": "agents",
-      "hash": "4aee1535dc12",
+      "hash": "be87c710fd17",
       "docstring": "Morning Digest Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -729,10 +729,11 @@
           "is_async": false,
           "args": [
             "seller",
-            "now_utc"
+            "now_utc",
+            "db_session"
           ],
           "decorators": [],
-          "docstring": "Return True if the seller's digest should fire right now."
+          "docstring": "Check if the seller's morning digest is due."
         },
         {
           "name": "send_morning_digest",
@@ -778,13 +779,13 @@
         "app.models.seller",
         "app.services.encryption",
         "app.services.telegram_service",
+        "app.services.time_service",
         "asyncio",
         "datetime",
         "logging",
         "sqlalchemy",
         "sqlalchemy.orm",
-        "uuid",
-        "zoneinfo"
+        "uuid"
       ]
     },
     {
@@ -934,7 +935,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "db18c9b1724a",
+      "hash": "c2c681216e88",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1002,12 +1003,14 @@
         "app.config",
         "app.database",
         "app.models",
+        "app.models.order",
         "app.services.encryption",
         "app.services.security",
         "app.services.wb_client",
         "asyncio",
         "celery",
         "datetime",
+        "decimal",
         "inspect",
         "logging",
         "sqlalchemy",
@@ -1932,7 +1935,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "fc8606a34e47",
+      "hash": "7fa27ff9f64e",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2042,6 +2045,18 @@
           "docstring": ""
         },
         {
+          "name": "get_seller_time",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{seller_id}/time')"
+          ],
+          "docstring": "Получить системное время сервера и текущее локальное время магазина."
+        },
+        {
           "name": "get_pending_summary",
           "is_async": true,
           "args": [
@@ -2099,6 +2114,12 @@
         },
         {
           "method": "GET",
+          "path": "/{seller_id}/time",
+          "handler": "get_seller_time",
+          "docstring": "Получить системное время сервера и текущее локальное время магазина."
+        },
+        {
+          "method": "GET",
           "path": "/{seller_id}/pending-summary",
           "handler": "get_pending_summary",
           "docstring": "Быстрая сводка необработанных заказов продавца."
@@ -2112,6 +2133,7 @@
         "app.models.seller",
         "app.schemas.seller",
         "app.services.encryption",
+        "app.services.time_service",
         "app.services.wb_client",
         "datetime",
         "fastapi",
@@ -2274,7 +2296,7 @@
     {
       "file": "app/bot.py",
       "layer": "core",
-      "hash": "fd374e8648b2",
+      "hash": "1d85d400674a",
       "docstring": "Telegram Bot Handler & Dispatcher — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2320,6 +2342,7 @@
         "app.models.supply",
         "app.services.encryption",
         "app.services.telegram_service",
+        "app.services.time_service",
         "datetime",
         "decimal",
         "logging",
@@ -2432,7 +2455,7 @@
     {
       "file": "app/main.py",
       "layer": "core",
-      "hash": "03023f5a472f",
+      "hash": "d1c91806e05a",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2487,6 +2510,7 @@
         "app.api.auth",
         "app.config",
         "app.database",
+        "app.services.time_service",
         "contextlib",
         "fastapi",
         "fastapi.middleware.cors",
@@ -3481,6 +3505,86 @@
       ]
     },
     {
+      "file": "app/services/time_service.py",
+      "layer": "services",
+      "hash": "2cef4bf5add3",
+      "docstring": "Time & Timezone Management Service — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "resolve_timezone",
+          "is_async": false,
+          "args": [
+            "tz_name"
+          ],
+          "decorators": [],
+          "docstring": "Safely resolve a timezone string into a ZoneInfo instance."
+        },
+        {
+          "name": "get_server_time_info",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Inspect the host server's local operating system time and UTC reference."
+        },
+        {
+          "name": "get_now_in_timezone",
+          "is_async": false,
+          "args": [
+            "tz_name"
+          ],
+          "decorators": [],
+          "docstring": "Return the current datetime converted from server UTC time into the target timezone."
+        },
+        {
+          "name": "get_seller_local_time",
+          "is_async": false,
+          "args": [
+            "seller",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": "Get the seller's current local datetime based on their configured digest_timezone."
+        },
+        {
+          "name": "format_seller_digest_time",
+          "is_async": false,
+          "args": [
+            "seller",
+            "dt"
+          ],
+          "decorators": [],
+          "docstring": "Format time for display in messages with the correct local time and timezone label."
+        },
+        {
+          "name": "is_seller_digest_due",
+          "is_async": false,
+          "args": [
+            "seller",
+            "now_utc",
+            "db_session",
+            "in_memory_sent_tracker",
+            "grace_hours"
+          ],
+          "decorators": [],
+          "docstring": "Determine whether a morning digest is due for the seller right now."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "time",
+        "typing",
+        "zoneinfo"
+      ]
+    },
+    {
       "file": "app/services/wb_client.py",
       "layer": "services",
       "hash": "3da838a30710",
@@ -4289,7 +4393,7 @@
     {
       "file": "tests/test_morning_digest.py",
       "layer": "tests",
-      "hash": "a284421d9fd9",
+      "hash": "7d005bbdaa9d",
       "docstring": "Tests: morning_digest agent — timezone-aware fire logic, Telegram message content,",
       "classes": [
         {
@@ -4300,10 +4404,10 @@
             "_make_seller",
             "_utc",
             "test_fires_at_correct_hour_moscow",
-            "test_does_not_fire_wrong_hour",
+            "test_does_not_fire_before_hour",
+            "test_does_not_fire_after_grace_window",
             "test_fires_at_correct_hour_vladivostok",
-            "test_30_min_bucket_allows_early_match",
-            "test_30_min_bucket_miss_after_30_min",
+            "test_grace_window_allows_match_during_window",
             "test_invalid_timezone_falls_back_to_moscow"
           ]
         },
@@ -4470,6 +4574,66 @@
         "app.agents.security_audit_agent",
         "app.database",
         "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_time_service.py",
+      "layer": "tests",
+      "hash": "0256f9145797",
+      "docstring": "Unit tests for app.services.time_service.",
+      "classes": [
+        {
+          "name": "TestTimeServiceResolution",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_resolve_standard_timezones",
+            "test_resolve_invalid_or_empty_falls_back_to_moscow"
+          ]
+        },
+        {
+          "name": "TestServerTimeInfo",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_get_server_time_info_structure"
+          ]
+        },
+        {
+          "name": "TestSellerTimeFormatting",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_format_seller_digest_time_krasnoyarsk",
+            "test_format_seller_digest_time_moscow"
+          ]
+        },
+        {
+          "name": "TestIsSellerDigestDue",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "_make_seller",
+            "_utc",
+            "test_due_at_exact_time_moscow",
+            "test_not_due_before_target_time",
+            "test_due_within_grace_window_if_not_yet_sent",
+            "test_not_due_after_grace_window",
+            "test_not_due_if_already_sent_today_in_memory",
+            "test_due_in_krasnoyarsk_timezone",
+            "test_disabled_seller_never_due"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.time_service",
+        "datetime",
+        "pytest",
+        "types"
       ]
     },
     {

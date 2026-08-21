@@ -13,40 +13,30 @@ from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
 from app.config import settings
+from app.services.time_service import (
+    format_seller_digest_time,
+    is_seller_digest_due,
+    resolve_timezone,
+)
 
 logger = logging.getLogger(__name__)
 sync_engine = create_engine(settings.database_url_sync)
 
-
-def _seller_digest_due(seller, now_utc: datetime) -> bool:
-    """
-    Return True if the seller's digest should fire right now.
-
-    Logic:
-    - Convert now_utc to seller's local timezone.
-    - Check if (local_hour, local_minute // 30) matches (digest_hour, digest_minute // 30).
-      Using 30-min buckets so the task (running every 30 min) doesn't miss the window.
-    - Use a 'digest_sent_today' guard stored in-memory to avoid double-sends.
-    """
-    try:
-        import zoneinfo
-        tz = zoneinfo.ZoneInfo(seller.digest_timezone or "Europe/Moscow")
-    except Exception:
-        import zoneinfo
-        tz = zoneinfo.ZoneInfo("Europe/Moscow")
-
-    local_now = now_utc.astimezone(tz)
-    target_hour = getattr(seller, "digest_hour", 8)
-    target_minute = getattr(seller, "digest_minute", 0)
-
-    # Match within the same 30-min bucket
-    same_hour = local_now.hour == target_hour
-    same_bucket = (local_now.minute // 30) == (target_minute // 30)
-    return same_hour and same_bucket
-
-
 # Guard: tracks (seller_id, date) pairs where digest was already sent today
 _digest_sent: dict[str, str] = {}  # seller_id → "YYYY-MM-DD" (local date)
+
+
+def _seller_digest_due(seller, now_utc: datetime, db_session: Session = None) -> bool:
+    """
+    Check if the seller's morning digest is due.
+    Delegates to time_service.is_seller_digest_due with DB and memory checks.
+    """
+    return is_seller_digest_due(
+        seller=seller,
+        now_utc=now_utc,
+        db_session=db_session,
+        in_memory_sent_tracker=_digest_sent,
+    )
 
 
 @celery_app.task(
@@ -81,20 +71,16 @@ def send_morning_digest(self) -> dict:
         for seller in sellers:
             seller_id = str(seller.id)
 
-            # --- Skip if already sent today (in seller's local tz) ---
-            try:
-                import zoneinfo
-                tz = zoneinfo.ZoneInfo(seller.digest_timezone or "Europe/Moscow")
-            except Exception:
-                import zoneinfo
-                tz = zoneinfo.ZoneInfo("Europe/Moscow")
+            tz = resolve_timezone(getattr(seller, "digest_timezone", None))
             local_today = now_utc.astimezone(tz).strftime("%Y-%m-%d")
 
-            if _digest_sent.get(seller_id) == local_today:
-                continue
-
-            # --- Check if it's time ---
-            if not _seller_digest_due(seller, now_utc):
+            # --- Check if it's time (with DB persistence + memory cache) ---
+            if not is_seller_digest_due(
+                seller=seller,
+                now_utc=now_utc,
+                db_session=db,
+                in_memory_sent_tracker=_digest_sent,
+            ):
                 continue
 
             # --- Fetch pending orders ---
@@ -143,10 +129,7 @@ def send_morning_digest(self) -> dict:
                 from app.services.encryption import decrypt
                 bot_token = decrypt(seller.telegram_bot_token_encrypted)
 
-                digest_time_str = (
-                    f"{seller.digest_hour:02d}:{seller.digest_minute:02d} "
-                    f"{seller.digest_timezone or 'Europe/Moscow'}"
-                )
+                digest_time_str = format_seller_digest_time(seller, now_utc)
 
                 from app.services.telegram_service import TelegramService
 
@@ -164,7 +147,7 @@ def send_morning_digest(self) -> dict:
 
                 asyncio.run(_send())
 
-                # Mark as sent for today
+                # Mark as sent for today in memory
                 _digest_sent[seller_id] = local_today
                 sent_count += 1
 

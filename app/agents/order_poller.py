@@ -146,11 +146,13 @@ def get_order_sticker(seller_id: str, order_id: int) -> Optional[dict]:
 
             order = session.query(Order).filter(
                 Order.seller_id == seller_id,
-                Order.wb_order_id == order_id,
+                Order.id == order_id,
             ).first()
 
-            if order:
-                order.sticker_data = sticker_res
+            if order and sticker_res:
+                if isinstance(sticker_res, dict):
+                    order.sticker_base64 = sticker_res.get("file") or sticker_res.get("partA")
+                    order.sticker_id = str(sticker_res.get("orderId", order_id))
                 session.commit()
                 logger.info(f"Successfully saved sticker for order {order_id}")
 
@@ -205,11 +207,14 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
     d. Log to audit_log
     e. Return (order_ids, order_payloads) — caller dispatches notifications
     """
+    from decimal import Decimal
+    from app.models.order import OrderStatus, KizStatus
+
     seller_id_str = str(seller.id)
     raw_token = getattr(seller, "wb_api_token_encrypted", getattr(seller, "wb_api_token", getattr(seller, "wb_token", getattr(seller, "api_token", ""))))
     if not raw_token:
         logger.warning(f"Seller {seller_id_str} has no WB API token configured.")
-        return []
+        return [], []
 
     decrypted_token = EncryptionService.decrypt(raw_token)
     wb_client = WBClient(decrypted_token)
@@ -233,9 +238,14 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
         if not wb_order_id:
             continue
 
+        try:
+            wb_order_id_int = int(wb_order_id)
+        except (ValueError, TypeError):
+            continue
+
         existing_order = session.query(Order).filter(
             Order.seller_id == seller.id,
-            Order.wb_order_id == wb_order_id,
+            Order.id == wb_order_id_int,
         ).first()
 
         if existing_order:
@@ -243,25 +253,48 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
 
         kiz_required = _check_kiz_required(order_raw)
 
+        raw_created = order_raw.get("createdAt") or order_raw.get("created_at")
+        if raw_created:
+            try:
+                wb_created_dt = datetime.fromisoformat(str(raw_created).replace("Z", "+00:00"))
+            except Exception:
+                wb_created_dt = datetime.now(timezone.utc)
+        else:
+            wb_created_dt = datetime.now(timezone.utc)
+
+        raw_price = order_raw.get("price", 0)
+        if isinstance(raw_price, int) and raw_price > 10000:
+            price_dec = Decimal(str(raw_price / 100.0))
+        elif raw_price is not None:
+            price_dec = Decimal(str(raw_price))
+        else:
+            price_dec = Decimal("0.00")
+
         new_order = Order(
+            id=wb_order_id_int,
             seller_id=seller.id,
-            wb_order_id=wb_order_id,
-            status="NEW",
+            status=OrderStatus.NEW,
+            wb_created_at=wb_created_dt,
+            article=order_raw.get("article"),
+            brand=order_raw.get("brand"),
+            subject=order_raw.get("subject"),
+            name=order_raw.get("name") or order_raw.get("subject"),
+            price=price_dec,
             kiz_required=kiz_required,
-            raw_payload=order_raw,
+            kiz_status=KizStatus.PENDING if kiz_required else KizStatus.NOT_REQUIRED,
             created_at=datetime.now(timezone.utc),
         )
         session.add(new_order)
         session.commit()
 
-        processed_order_ids.append(wb_order_id)
+        processed_order_ids.append(wb_order_id_int)
         processed_order_payloads.append({
-            "id": wb_order_id,
-            "name": order_raw.get("name") or order_raw.get("subject", "—"),
-            "article": order_raw.get("article", ""),
-            "price": order_raw.get("price", 0),
+            "id": wb_order_id_int,
+            "name": new_order.name or "—",
+            "article": new_order.article or "",
+            "price": raw_price,
             "kiz_required": kiz_required,
-            "wb_created_at": order_raw.get("createdAt", ""),
+            "wb_created_at": wb_created_dt.isoformat(),
         })
 
     # Log to audit_log
@@ -295,7 +328,10 @@ def poll_all_sellers(self: Any) -> dict:
 
     with SyncSessionLocal() as session:
         try:
-            active_sellers = session.query(Seller).filter(Seller.is_active == True).all()
+            from sqlalchemy import and_
+            active_sellers = session.query(Seller).filter(
+                and_(Seller.is_active == True, Seller.polling_enabled == True)
+            ).all()
         except Exception as exc:
             logger.error(f"Error querying active sellers from database: {exc}")
             raise self.retry(exc=exc, countdown=30)

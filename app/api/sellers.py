@@ -268,6 +268,34 @@ async def toggle_polling(seller_id: str, enabled: bool, db: AsyncSession = Depen
     return {"message": f"Polling {'enabled' if enabled else 'disabled'}"}
 
 
+@router.get("/{seller_id}/time")
+async def get_seller_time(seller_id: str, db: AsyncSession = Depends(get_db)):
+    """Получить системное время сервера и текущее локальное время магазина."""
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Seller not found")
+
+    from app.services.time_service import (
+        get_server_time_info,
+        get_seller_local_time,
+        format_seller_digest_time,
+    )
+
+    server_info = get_server_time_info()
+    local_now = get_seller_local_time(seller)
+
+    return {
+        "seller_id": seller_id,
+        "seller_name": seller.name,
+        "digest_timezone": seller.digest_timezone or "Europe/Moscow",
+        "digest_hour": seller.digest_hour,
+        "digest_minute": seller.digest_minute,
+        "seller_local_now": local_now.strftime("%Y-%m-%d %H:%M:%S"),
+        "seller_local_formatted": format_seller_digest_time(seller),
+        "server_time": server_info,
+    }
+
+
 @router.get("/{seller_id}/pending-summary")
 async def get_pending_summary(seller_id: str, db: AsyncSession = Depends(get_db)):
     """

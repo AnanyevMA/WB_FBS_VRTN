@@ -32,6 +32,11 @@ from app.models.kiz import KizOperation, KizOperationType
 from app.models.audit import AuditLog
 from app.services.encryption import decrypt
 from app.services.telegram_service import TelegramService
+from app.services.time_service import (
+    format_seller_digest_time,
+    get_seller_local_time,
+    get_server_time_info,
+)
 
 logger = logging.getLogger(__name__)
 sync_engine = create_engine(settings.database_url_sync)
@@ -280,6 +285,11 @@ def create_bot_router() -> Router:
 
         kiz_warning = f"\n⚠️ <b>Ожидают КИЗ:</b> {kiz_req_count} шт." if kiz_req_count > 0 else ""
 
+        server_info = get_server_time_info()
+        seller_now_str = format_seller_digest_time(seller)
+        polling_sec = getattr(seller, "polling_interval_seconds", 60) or 60
+        polling_status = f"✅ Включен ({polling_sec} сек.)" if seller.polling_enabled else "❌ Выключен"
+
         text = (
             f"📊 <b>Статус магазина «{seller.name}»</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -290,8 +300,10 @@ def create_bot_router() -> Router:
             f"📦 <b>Поставок создано:</b> {supplies_count} шт."
             f"{kiz_warning}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"⚡ <b>WB Polling:</b> {'Включен' if seller.polling_enabled else 'Выключен'}\n"
-            f"🌅 <b>Дайджест:</b> {seller.digest_hour:02d}:{seller.digest_minute:02d} ({seller.digest_timezone})"
+            f"⚡ <b>WB Polling:</b> {polling_status}\n"
+            f"🖥️ <b>Время сервера:</b> {server_info['server_local_now']} ({server_info['server_timezone']})\n"
+            f"⏰ <b>Время магазина:</b> {seller_now_str}\n"
+            f"🌅 <b>Расписание дайджеста:</b> {seller.digest_hour:02d}:{seller.digest_minute:02d} ({seller.digest_timezone or 'Europe/Moscow'})"
         )
 
         keyboard = InlineKeyboardMarkup(
@@ -466,7 +478,7 @@ def create_bot_router() -> Router:
                 chat_ids=[chat_id],
                 seller_id=str(seller.id),
                 pending_orders=pending_data,
-                digest_time_str=datetime.now().strftime("%H:%M") + f" ({seller.digest_timezone})",
+                digest_time_str=format_seller_digest_time(seller),
             )
         finally:
             await svc.close()

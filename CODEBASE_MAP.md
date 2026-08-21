@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-20 14:50:25 UTC | **Файлов проиндексировано**: 71  
+> **Дата актуализации**: 2026-08-21 03:07:16 UTC | **Файлов проиндексировано**: 73  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -40,7 +40,7 @@
 | [`app/api/kiz.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz.py) | — | `POST /orders/{order_id}/kiz` → `attach_kiz`<br>`POST /kiz/attach` → `attach_kiz`<br>`POST /kiz/lookup` → `lookup_kiz`<br>`DELETE /orders/{order_id}/kiz` → `detach_kiz`<br>`GET /orders/{order_id}/kiz/validate` → `validate_kiz`<br>`POST /kiz/withdraw` → `withdraw_kiz`<br>`POST /kiz/return` → `return_kiz`<br>`POST /kiz/prepare-document` → `prepare_kiz_document`<br>`POST /kiz/submit-signed-document` → `submit_signed_kiz_document`<br>`GET /kiz/operations` → `list_kiz_operations` | Модуль кодовой базы |
 | [`app/api/orders.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/orders.py) | — | `GET /stats` → `get_dashboard_stats`<br>`GET ` → `list_orders`<br>`GET /{order_id}` → `get_order`<br>`POST /{order_id}/kiz-check` → `check_order_kiz_status`<br>`POST /{order_id}/cancel` → `cancel_order`<br>`POST /{order_id}/mark-assembling` → `mark_assembling`<br>`GET /{order_id}/sticker` → `get_sticker`<br>`POST /sync` → `refresh_orders`<br>`POST /refresh` → `refresh_orders` | Модуль кодовой базы |
 | [`app/api/qa.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/qa.py) | — | `POST /run-tests` → `run_qa_tests` | QA Router — Эндпоинты запуска автоматического тестировщика |
-| [`app/api/sellers.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/sellers.py) | — | `POST ` → `create_seller`<br>`GET ` → `list_sellers`<br>`GET /{seller_id}` → `get_seller`<br>`PATCH /{seller_id}` → `update_seller`<br>`DELETE /{seller_id}` → `deactivate_seller`<br>`POST /{seller_id}/test-connection` → `test_connection`<br>`POST /{seller_id}/toggle-polling` → `toggle_polling`<br>`GET /{seller_id}/pending-summary` → `get_pending_summary` | Модуль кодовой базы |
+| [`app/api/sellers.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/sellers.py) | — | `POST ` → `create_seller`<br>`GET ` → `list_sellers`<br>`GET /{seller_id}` → `get_seller`<br>`PATCH /{seller_id}` → `update_seller`<br>`DELETE /{seller_id}` → `deactivate_seller`<br>`POST /{seller_id}/test-connection` → `test_connection`<br>`POST /{seller_id}/toggle-polling` → `toggle_polling`<br>`GET /{seller_id}/time` → `get_seller_time`<br>`GET /{seller_id}/pending-summary` → `get_pending_summary` | Модуль кодовой базы |
 | [`app/api/supplies.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/supplies.py) | — | `GET ` → `list_supplies`<br>`POST /sync` → `sync_supplies`<br>`POST /refresh` → `sync_supplies`<br>`POST ` → `create_supply`<br>`GET /{supply_id}` → `get_supply`<br>`GET /{supply_id}/barcode` → `get_supply_barcode`<br>`POST /create-from-pending` → `create_supply_from_pending` | Модуль кодовой базы |
 
 ### ⚙️ Бизнес-Логика & Клиенты API (`app/services/`)
@@ -56,6 +56,7 @@
 | [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
 | [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `parse_kiz_code`, `resolve_kiz_product_info` | Модуль кодовой базы |
 | [`app/services/telegram_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/telegram_service.py) | `TelegramService` | `get_telegram_service` | Telegram Notification Service — отправка Push-уведомлений менеджерам |
+| [`app/services/time_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/time_service.py) | — | `resolve_timezone`, `get_server_time_info`, `get_now_in_timezone`, `get_seller_local_time`, +еще 2 | Time & Timezone Management Service — WB FBS Manager |
 | [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `is_kiz_required` | Wildberries Marketplace API Client. |
 
 ### 🤖 Мультиагентный Слой Celery (`app/agents/`)
@@ -110,6 +111,7 @@
 | [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
 | [`tests/test_polling_and_digest_schema.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_polling_and_digest_schema.py) | `TestDigestSettings`, `TestSellerCreatePollingInterval`, `TestSellerUpdateDigest`, `TestSellerResponseComputedInterval` | — | Tests: polling interval + digest settings — seller schema validation. |
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |
+| [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
 | [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status` | Модуль кодовой базы |
 
 ### 📄 Системные Конфигурации & Скрипты

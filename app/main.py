@@ -100,8 +100,10 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    from app.services.time_service import get_server_time_info
     return {
         "status": "ok",
         "version": settings.app_version,
         "service": settings.app_name,
+        "server_time": get_server_time_info(),
     }

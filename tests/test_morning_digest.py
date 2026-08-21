@@ -42,9 +42,16 @@ def _make_telegram_svc():
 # ---------------------------------------------------------------------------
 
 class TestSellerDigestDue:
-    def _make_seller(self, hour=8, minute=0, tz="Europe/Moscow"):
+    def _make_seller(self, hour=8, minute=0, tz="Europe/Moscow", active=True, enabled=True):
         import types
-        return types.SimpleNamespace(digest_hour=hour, digest_minute=minute, digest_timezone=tz)
+        return types.SimpleNamespace(
+            id="seller-test",
+            digest_hour=hour,
+            digest_minute=minute,
+            digest_timezone=tz,
+            is_active=active,
+            digest_enabled=enabled,
+        )
 
     def _utc(self, iso: str) -> datetime:
         return datetime.fromisoformat(iso.replace("Z", "+00:00"))
@@ -55,8 +62,15 @@ class TestSellerDigestDue:
         seller = self._make_seller(hour=8, minute=0, tz="Europe/Moscow")
         assert _seller_digest_due(seller, self._utc("2026-08-12T05:00:00Z")) is True
 
-    def test_does_not_fire_wrong_hour(self):
+    def test_does_not_fire_before_hour(self):
         from app.agents.morning_digest import _seller_digest_due
+        # 07:00 Moscow = 04:00 UTC
+        seller = self._make_seller(hour=8, minute=0, tz="Europe/Moscow")
+        assert _seller_digest_due(seller, self._utc("2026-08-12T04:00:00Z")) is False
+
+    def test_does_not_fire_after_grace_window(self):
+        from app.agents.morning_digest import _seller_digest_due
+        # 13:00 Moscow (5 hours after target) = 10:00 UTC
         seller = self._make_seller(hour=8, minute=0, tz="Europe/Moscow")
         assert _seller_digest_due(seller, self._utc("2026-08-12T10:00:00Z")) is False
 
@@ -66,17 +80,11 @@ class TestSellerDigestDue:
         seller = self._make_seller(hour=9, minute=0, tz="Asia/Vladivostok")
         assert _seller_digest_due(seller, self._utc("2026-08-11T23:00:00Z")) is True
 
-    def test_30_min_bucket_allows_early_match(self):
+    def test_grace_window_allows_match_during_window(self):
         from app.agents.morning_digest import _seller_digest_due
         # digest at 08:00, cron fires at 08:15 Moscow (05:15 UTC)
         seller = self._make_seller(hour=8, minute=0, tz="Europe/Moscow")
         assert _seller_digest_due(seller, self._utc("2026-08-12T05:15:00Z")) is True
-
-    def test_30_min_bucket_miss_after_30_min(self):
-        from app.agents.morning_digest import _seller_digest_due
-        # digest at 08:00, cron fires at 08:31 Moscow (05:31 UTC)
-        seller = self._make_seller(hour=8, minute=0, tz="Europe/Moscow")
-        assert _seller_digest_due(seller, self._utc("2026-08-12T05:31:00Z")) is False
 
     def test_invalid_timezone_falls_back_to_moscow(self):
         from app.agents.morning_digest import _seller_digest_due

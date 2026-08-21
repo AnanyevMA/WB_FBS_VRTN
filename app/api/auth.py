@@ -151,6 +151,13 @@ async def change_password(
     current_user.must_change_password = False
     await db.commit()
     await db.refresh(current_user)
+
+    # If this is admin, sync .env file and runtime settings so deploy/restart never loses it
+    if current_user.is_superuser or current_user.role == UserRole.ADMIN.value:
+        from app.services.auth_service import sync_env_admin_password
+        settings.admin_password = data.new_password
+        sync_env_admin_password(data.new_password)
+
     return {
         "success": True, 
         "message": "Пароль успешно изменен и сохранен в базе данных",

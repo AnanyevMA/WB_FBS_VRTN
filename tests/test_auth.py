@@ -241,3 +241,51 @@ async def test_admin_create_user_with_first_login_flag():
         assert change_res.status_code == 200
         assert change_res.json()["user"]["must_change_password"] is False
 
+
+@pytest.mark.asyncio
+async def test_env_master_password_sync():
+    """Verify that if DB password differs from settings.admin_password, authenticating with .env password succeeds and syncs DB."""
+    await init_db()
+
+    # 1. Manually set a dummy hash in DB
+    async with AsyncSessionLocal() as session:
+        from sqlalchemy import select
+        admin_user = await session.scalar(select(User).where(User.username == settings.admin_username))
+        assert admin_user is not None
+        admin_user.hashed_password = hash_password("OldUnknownDatabasePassword999!")
+        await session.commit()
+
+    # 2. Try authenticate via authenticate_user using settings.admin_password (.env)
+    async with AsyncSessionLocal() as session:
+        from app.services.auth_service import authenticate_user
+        user = await authenticate_user(session, settings.admin_username, settings.admin_password)
+        assert user is not None
+        assert user.username == settings.admin_username
+        # DB hash should now match settings.admin_password
+        assert verify_password(settings.admin_password, user.hashed_password) is True
+
+
+@pytest.mark.asyncio
+async def test_set_admin_password_direct_helper():
+    """Verify scripts/set_admin_password.py direct function updates user and restores active status."""
+    await init_db()
+    from scripts.set_admin_password import set_admin_password_direct
+    
+    new_test_pwd = "ResetHelperPassword777!"
+    success = set_admin_password_direct(settings.admin_username, new_test_pwd)
+    assert success is True
+
+    # Verify login with new password
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/api/v1/auth/login",
+            json={"username": settings.admin_username, "password": new_test_pwd}
+        )
+        assert res.status_code == 200
+        assert res.json()["user"]["is_active"] is True
+
+    # Restore default password
+    set_admin_password_direct(settings.admin_username, settings.admin_password)
+
+

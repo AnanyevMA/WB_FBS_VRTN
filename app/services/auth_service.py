@@ -150,6 +150,36 @@ async def get_user_by_username(db: AsyncSession, username_or_email: str) -> Opti
     return result.scalar_one_or_none()
 
 
+def sync_env_admin_password(new_password: str) -> bool:
+    """Safely update ADMIN_PASSWORD in .env file if it exists."""
+    from pathlib import Path
+    import re
+    candidates = [
+        Path(".env"),
+        Path("/app/.env"),
+        Path(__file__).resolve().parents[2] / ".env",
+    ]
+    for env_path in candidates:
+        try:
+            if env_path.exists() and os.access(env_path, os.W_OK):
+                content = env_path.read_text(encoding="utf-8")
+                if re.search(r"^ADMIN_PASSWORD=.*$", content, flags=re.MULTILINE):
+                    new_content = re.sub(
+                        r"^ADMIN_PASSWORD=.*$",
+                        f"ADMIN_PASSWORD={new_password}",
+                        content,
+                        flags=re.MULTILINE
+                    )
+                else:
+                    new_content = content.rstrip() + f"\nADMIN_PASSWORD={new_password}\n"
+                env_path.write_text(new_content, encoding="utf-8")
+                logger.info(f"Updated ADMIN_PASSWORD in {env_path}")
+                return True
+        except Exception as e:
+            logger.debug(f"Could not update .env at {env_path}: {e}")
+    return False
+
+
 async def get_user_by_id(db: AsyncSession, user_id: str) -> Optional[User]:
     """Find user by ID."""
     return await db.get(User, user_id)
@@ -166,7 +196,27 @@ async def authenticate_user(
         return None
     if not user.is_active:
         return None
-    if not verify_password(password, user.hashed_password):
+
+    # 1. Verify against stored password hash
+    password_valid = verify_password(password, user.hashed_password)
+
+    # 2. Master .env fallback for admin accounts
+    # If the user is admin/superuser, allow authenticating with settings.admin_password from .env
+    # and automatically sync the DB hash so credentials are always consistent across deploys
+    if not password_valid and (user.is_superuser or user.role == UserRole.ADMIN.value):
+        env_admin_pwd = (settings.admin_password or "").strip()
+        cleaned_input_uname = (username_or_email or "").strip().lower()
+        cfg_admin_uname = (settings.admin_username or "admin").strip().lower()
+
+        if env_admin_pwd and password == env_admin_pwd and (cleaned_input_uname == cfg_admin_uname or cleaned_input_uname == user.username.lower()):
+            logger.info(f"Admin '{user.username}' authenticated via master ADMIN_PASSWORD from .env; updating database hash.")
+            user.hashed_password = hash_password(password)
+            user.must_change_password = False
+            user.is_active = True
+            user.is_superuser = True
+            password_valid = True
+
+    if not password_valid:
         return None
 
     # Update last login timestamp
@@ -178,16 +228,32 @@ async def authenticate_user(
 
 async def ensure_initial_admin(db: AsyncSession) -> Optional[User]:
     """Bootstrap default admin account if no users exist in database."""
-    res = await db.execute(select(User))
-    first_user = res.scalars().first()
+    admin_username = (settings.admin_username or "admin").strip()
+    admin_password = (settings.admin_password or "admin_password").strip()
+    admin_email = (settings.admin_email or "admin@example.com").strip()
+
+    res = await db.execute(select(User).where(func.lower(User.username) == admin_username.lower()))
+    admin_user = res.scalar_one_or_none()
+
+    if admin_user:
+        # Ensure existing admin is active and superuser
+        changed = False
+        if not admin_user.is_active or not admin_user.is_superuser:
+            admin_user.is_active = True
+            admin_user.is_superuser = True
+            changed = True
+        if changed:
+            await db.commit()
+            await db.refresh(admin_user)
+        return admin_user
+
+    # If no user with admin_username exists, check if ANY user exists
+    all_users_res = await db.execute(select(User))
+    first_user = all_users_res.scalars().first()
     if first_user:
         return first_user
 
-    admin_username = settings.admin_username or "admin"
-    admin_password = settings.admin_password or "admin_password"
-    admin_email = settings.admin_email or "admin@example.com"
-
-    logger.info(f"Bootstrapping default admin user: '{admin_username}' with required first-login password change")
+    logger.info(f"Bootstrapping default admin user: '{admin_username}'")
     admin_user = User(
         username=admin_username,
         email=admin_email,
@@ -195,7 +261,7 @@ async def ensure_initial_admin(db: AsyncSession) -> Optional[User]:
         role=UserRole.ADMIN.value,
         is_active=True,
         is_superuser=True,
-        must_change_password=True
+        must_change_password=False
     )
     db.add(admin_user)
     await db.commit()

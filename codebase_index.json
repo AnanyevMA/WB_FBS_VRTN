@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-21T03:07:16.071169+00:00",
+  "updated_at": "2026-08-21T03:16:08.608145+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 73,
   "files": [
@@ -1266,7 +1266,7 @@
     {
       "file": "app/api/auth.py",
       "layer": "api",
-      "hash": "c67a8bafd9a3",
+      "hash": "dcfcbc2d06ba",
       "docstring": "Authentication Router & Dependencies — JWT Login, Current User, and User Management",
       "classes": [],
       "functions": [
@@ -3014,7 +3014,7 @@
     {
       "file": "app/services/auth_service.py",
       "layer": "services",
-      "hash": "290d344a1597",
+      "hash": "8d9c74fc6301",
       "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
       "classes": [],
       "functions": [
@@ -3067,6 +3067,15 @@
           "docstring": "Find user by username or email (case-insensitive and trimmed)."
         },
         {
+          "name": "sync_env_admin_password",
+          "is_async": false,
+          "args": [
+            "new_password"
+          ],
+          "decorators": [],
+          "docstring": "Safely update ADMIN_PASSWORD in .env file if it exists."
+        },
+        {
           "name": "get_user_by_id",
           "is_async": true,
           "args": [
@@ -3112,6 +3121,8 @@
         "logging",
         "os",
         "passlib.context",
+        "pathlib",
+        "re",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "typing"
@@ -3804,12 +3815,19 @@
     {
       "file": "scripts/set_admin_password.py",
       "layer": "config",
-      "hash": "f7ef90f1be0e",
+      "hash": "9c97369f742e",
       "docstring": "Set or Reset Admin Password for WB FBS Manager",
       "classes": [],
       "functions": [
         {
-          "name": "set_admin_password",
+          "name": "is_running_in_docker",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Check if current execution is inside a Docker container."
+        },
+        {
+          "name": "try_docker_compose_forward",
           "is_async": false,
           "args": [
             "username",
@@ -3817,7 +3835,18 @@
             "email"
           ],
           "decorators": [],
-          "docstring": "Update or create admin user with the specified password in the database."
+          "docstring": "If running on host with active Docker containers, forward command into the API container."
+        },
+        {
+          "name": "set_admin_password_direct",
+          "is_async": false,
+          "args": [
+            "username",
+            "password",
+            "email"
+          ],
+          "decorators": [],
+          "docstring": "Directly update or create admin user with the specified password in the database."
         },
         {
           "name": "main",
@@ -3836,10 +3865,12 @@
         "app.services.auth_service",
         "argparse",
         "datetime",
-        "getpass",
         "os",
+        "pathlib",
+        "shutil",
         "sqlalchemy",
         "sqlalchemy.orm",
+        "subprocess",
         "sys"
       ]
     },
@@ -3930,7 +3961,7 @@
     {
       "file": "tests/test_auth.py",
       "layer": "tests",
-      "hash": "f446c200e7d3",
+      "hash": "f2337b95d64d",
       "docstring": "Tests for Authentication, JWT, User Management, and Endpoint Security Protection",
       "classes": [],
       "functions": [
@@ -3987,6 +4018,24 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify admin can create a user and user has must_change_password=True."
+        },
+        {
+          "name": "test_env_master_password_sync",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that if DB password differs from settings.admin_password, authenticating with .env password succeeds and syncs DB."
+        },
+        {
+          "name": "test_set_admin_password_direct_helper",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify scripts/set_admin_password.py direct function updates user and restores active status."
         }
       ],
       "endpoints": [],
@@ -4001,6 +4050,7 @@
         "datetime",
         "httpx",
         "pytest",
+        "scripts.set_admin_password",
         "sqlalchemy",
         "uuid"
       ]

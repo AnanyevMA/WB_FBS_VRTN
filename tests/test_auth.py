@@ -290,3 +290,40 @@ async def test_set_admin_password_direct_helper():
     set_admin_password_direct(settings.admin_username, settings.admin_password)
 
 
+@pytest.mark.asyncio
+async def test_admin_login_resilience_cases():
+    """Verify admin login handles case insensitivity, spaces in password, deactivation auto-recovery."""
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # 1. Login with uppercase username ADMIN
+        res_upper = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "ADMIN", "password": settings.admin_password}
+        )
+        assert res_upper.status_code == 200
+
+        # 2. Login with password containing surrounding whitespace
+        res_space = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": f"  {settings.admin_password}  "}
+        )
+        assert res_space.status_code == 200
+
+        # 3. Deactivated admin recovery
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import select
+            admin_user = await session.scalar(select(User).where(User.username == "admin"))
+            if admin_user:
+                admin_user.is_active = False
+                await session.commit()
+
+        res_recover = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": settings.admin_password}
+        )
+        assert res_recover.status_code == 200
+        assert res_recover.json()["user"]["is_active"] is True
+
+
+

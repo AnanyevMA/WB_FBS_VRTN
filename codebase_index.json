@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-21T03:21:02.325329+00:00",
+  "updated_at": "2026-08-21T03:27:13.173549+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 73,
   "files": [
@@ -3014,7 +3014,7 @@
     {
       "file": "app/services/auth_service.py",
       "layer": "services",
-      "hash": "8d9c74fc6301",
+      "hash": "5e405b5b6ad5",
       "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
       "classes": [],
       "functions": [
@@ -3971,7 +3971,7 @@
     {
       "file": "tests/test_auth.py",
       "layer": "tests",
-      "hash": "cc3b2e4a069e",
+      "hash": "5c39ed06939b",
       "docstring": "Tests for Authentication, JWT, User Management, and Endpoint Security Protection",
       "classes": [],
       "functions": [
@@ -4046,6 +4046,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify scripts/set_admin_password.py direct function updates user and restores active status."
+        },
+        {
+          "name": "test_admin_login_resilience_cases",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify admin login handles case insensitivity, spaces in password, deactivation auto-recovery."
         }
       ],
       "endpoints": [],

@@ -42,7 +42,7 @@ function handleUnauthorized() {
 async function handleLoginSubmit(event) {
     event.preventDefault();
     const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const password = document.getElementById('loginPassword').value.trim();
     const btn = document.getElementById('loginSubmitBtn');
     const errBox = document.getElementById('loginErrorBox');
 

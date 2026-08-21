@@ -141,7 +141,13 @@ async def change_password(
     db: AsyncSession = Depends(get_db)
 ):
     """Change current user's password and save permanently in database."""
-    if not verify_password(data.old_password, current_user.hashed_password):
+    old_valid = verify_password(data.old_password, current_user.hashed_password)
+    if not old_valid and (current_user.is_superuser or current_user.role == UserRole.ADMIN.value):
+        env_admin_pwd = (settings.admin_password or "").strip()
+        if env_admin_pwd and data.old_password == env_admin_pwd:
+            old_valid = True
+
+    if not old_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Текущий пароль указан неверно"

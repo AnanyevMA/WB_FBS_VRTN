@@ -143,11 +143,11 @@ async def test_change_password_api_and_db_persistence():
         assert res_wrong_old.status_code == 400
 
         # Change password successfully
-        old_pass = "admin_password"
+        current_pass = settings.admin_password
         new_pass = "NewSecretPassword123!"
         res_change = await client.post(
             "/api/v1/auth/change-password",
-            json={"old_password": old_pass, "new_password": new_pass},
+            json={"old_password": current_pass, "new_password": new_pass},
             headers=headers
         )
         assert res_change.status_code == 200
@@ -158,7 +158,7 @@ async def test_change_password_api_and_db_persistence():
         # Old password must now fail
         res_old_fail = await client.post(
             "/api/v1/auth/login",
-            json={"username": settings.admin_username, "password": old_pass}
+            json={"username": settings.admin_username, "password": "OldDiscardedPasswordXYZ!"}
         )
         assert res_old_fail.status_code == 401
 
@@ -182,7 +182,7 @@ async def test_change_password_api_and_db_persistence():
         token2 = res_new_login.json()["access_token"]
         await client.post(
             "/api/v1/auth/change-password",
-            json={"old_password": new_pass, "new_password": old_pass},
+            json={"old_password": new_pass, "new_password": current_pass},
             headers={"Authorization": f"Bearer {token2}"}
         )
 

@@ -9,10 +9,10 @@ Set or Reset Admin Password for WB FBS Manager
 """
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 # Ensure UTF-8 output on Windows / Linux consoles
@@ -21,13 +21,35 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
 
-# Add current directory to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.config import settings
-from app.models.user import User, UserRole
-from app.services.auth_service import hash_password, sync_env_admin_password
+
+def sync_local_env_file(new_password: str) -> bool:
+    """Safely update ADMIN_PASSWORD in .env using standard library only."""
+    candidates = [
+        PROJECT_ROOT / ".env",
+        Path(".env"),
+        Path("/app/.env"),
+    ]
+    updated = False
+    for env_path in candidates:
+        try:
+            if env_path.exists() and os.access(env_path, os.W_OK):
+                content = env_path.read_text(encoding="utf-8")
+                if re.search(r"^ADMIN_PASSWORD=.*$", content, flags=re.MULTILINE):
+                    new_content = re.sub(
+                        r"^ADMIN_PASSWORD=.*$",
+                        f"ADMIN_PASSWORD={new_password}",
+                        content,
+                        flags=re.MULTILINE
+                    )
+                else:
+                    new_content = content.rstrip() + f"\nADMIN_PASSWORD={new_password}\n"
+                env_path.write_text(new_content, encoding="utf-8")
+                updated = True
+        except Exception:
+            pass
+    return updated
 
 
 def is_running_in_docker() -> bool:
@@ -35,8 +57,11 @@ def is_running_in_docker() -> bool:
     return os.path.exists("/.dockerenv") or os.environ.get("RUNNING_IN_DOCKER") == "1"
 
 
-def try_docker_compose_forward(username: str, password: str, email: str) -> bool:
-    """If running on host with active Docker containers, forward command into the API container."""
+def try_docker_forward(username: str, password: str, email: str) -> bool:
+    """
+    If running on the host OS and Docker is active, forward the password update command
+    into the running API container where all DB drivers and models reside.
+    """
     if is_running_in_docker():
         return False
 
@@ -44,45 +69,70 @@ def try_docker_compose_forward(username: str, password: str, email: str) -> bool
     if not docker_bin:
         return False
 
-    # Check if docker-compose.prod.yml exists and api container is running
+    # Strategy 1: docker compose exec api
     compose_file = PROJECT_ROOT / "docker-compose.prod.yml"
-    if not compose_file.exists():
-        return False
+    if compose_file.exists():
+        try:
+            ps_proc = subprocess.run(
+                [docker_bin, "compose", "-f", str(compose_file), "ps", "--services", "--filter", "status=running"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                cwd=str(PROJECT_ROOT)
+            )
+            if "api" in ps_proc.stdout.split():
+                print("[INFO] Обнаружен работающий Docker контейнер API. Выполняю смену пароля в PostgreSQL контейнера...")
+                exec_proc = subprocess.run(
+                    [
+                        docker_bin, "compose", "-f", str(compose_file), "exec", "-T", "api",
+                        "python", "scripts/set_admin_password.py", "--direct",
+                        "--username", username, "--password", password, "--email", email
+                    ],
+                    text=True,
+                    cwd=str(PROJECT_ROOT)
+                )
+                if exec_proc.returncode == 0:
+                    sync_local_env_file(password)
+                    print("[OK] Пароль успешно обновлен в работающем Docker контейнере и локальном .env!")
+                    return True
+        except Exception as e:
+            print(f"[DEBUG] docker compose check: {e}")
 
+    # Strategy 2: docker exec wbfbs_api
     try:
-        ps_proc = subprocess.run(
-            [docker_bin, "compose", "-f", str(compose_file), "ps", "--services", "--filter", "status=running"],
+        ps_c = subprocess.run(
+            [docker_bin, "ps", "--filter", "name=wbfbs_api", "--format", "{{.Names}}"],
             capture_output=True,
             text=True,
-            timeout=5,
-            cwd=str(PROJECT_ROOT)
+            timeout=5
         )
-        if "api" in ps_proc.stdout.split():
-            print("[INFO] Обнаружен работающий Docker контейнер API. Выполняю смену пароля в PostgreSQL контейнера...")
+        if "wbfbs_api" in ps_c.stdout.split():
+            print("[INFO] Обнаружен контейнер wbfbs_api. Выполняю смену пароля...")
             exec_proc = subprocess.run(
                 [
-                    docker_bin, "compose", "-f", str(compose_file), "exec", "-T", "api",
+                    docker_bin, "exec", "-i", "wbfbs_api",
                     "python", "scripts/set_admin_password.py", "--direct",
                     "--username", username, "--password", password, "--email", email
                 ],
-                text=True,
-                cwd=str(PROJECT_ROOT)
+                text=True
             )
             if exec_proc.returncode == 0:
-                # Also sync local .env on host
-                sync_env_admin_password(password)
-                print(f"[OK] Пароль успешно обновлен в работающем Docker контейнере и локальном .env!")
+                sync_local_env_file(password)
+                print("[OK] Пароль успешно обновлен в работающем контейнере и локальном .env!")
                 return True
-            else:
-                print("[WARN] Не удалось выполнить смену пароля через Docker exec, пробую прямое подключение...")
     except Exception as e:
-        print(f"[WARN] Ошибка при проверке Docker Compose: {e}")
+        print(f"[DEBUG] docker exec check: {e}")
 
     return False
 
 
 def set_admin_password_direct(username: str, password: str, email: str = "admin@example.com") -> bool:
     """Directly update or create admin user with the specified password in the database."""
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from datetime import datetime, timezone
+    from app.config import settings
+    from app.models.user import User, UserRole
+    from app.services.auth_service import hash_password
     from sqlalchemy import create_engine, select, func, or_
     from sqlalchemy.orm import Session
 
@@ -126,9 +176,9 @@ def set_admin_password_direct(username: str, password: str, email: str = "admin@
             session.commit()
             print(f"[OK] Пользователь-администратор '{cleaned_uname}' успешно создан с указанным паролем!")
 
-    # Synchronize .env file so credentials are never out of sync
-    if sync_env_admin_password(cleaned_pwd):
-        print(f"[OK] Файл конфигурации .env успешно синхронизирован (ADMIN_PASSWORD).")
+    # Synchronize .env file
+    if sync_local_env_file(cleaned_pwd):
+        print("[OK] Файл конфигурации .env успешно синхронизирован (ADMIN_PASSWORD).")
 
     return True
 
@@ -153,11 +203,18 @@ def main():
         print("[ERROR] Пароль должен быть не менее 6 символов!")
         sys.exit(1)
 
-    if not args.direct and try_docker_compose_forward(args.username, pwd, args.email):
+    if not args.direct and try_docker_forward(args.username, pwd, args.email):
         return
 
     try:
         set_admin_password_direct(args.username, pwd, args.email)
+    except ModuleNotFoundError as e:
+        # If running on host without venv or docker
+        sync_local_env_file(pwd)
+        print(f"[WARN] Локальное окружение Python не содержит зависимостей ({e.name}).")
+        print(f"[OK] Пароль записан в файл .env (ADMIN_PASSWORD).")
+        print("Для применения пароля в контейнерах перезапустите проект или выполните:")
+        print("  docker compose -f docker-compose.prod.yml exec api python scripts/set_admin_password.py --password \"...\"")
     except Exception as e:
         print(f"[ERROR] Не удалось установить пароль: {e}")
         sys.exit(1)

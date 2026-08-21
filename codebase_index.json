@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-21T03:17:39.009997+00:00",
+  "updated_at": "2026-08-21T03:21:02.325329+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 73,
   "files": [
@@ -3815,10 +3815,19 @@
     {
       "file": "scripts/set_admin_password.py",
       "layer": "config",
-      "hash": "9c97369f742e",
+      "hash": "1ac8ce6e128e",
       "docstring": "Set or Reset Admin Password for WB FBS Manager",
       "classes": [],
       "functions": [
+        {
+          "name": "sync_local_env_file",
+          "is_async": false,
+          "args": [
+            "new_password"
+          ],
+          "decorators": [],
+          "docstring": "Safely update ADMIN_PASSWORD in .env using standard library only."
+        },
         {
           "name": "is_running_in_docker",
           "is_async": false,
@@ -3827,7 +3836,7 @@
           "docstring": "Check if current execution is inside a Docker container."
         },
         {
-          "name": "try_docker_compose_forward",
+          "name": "try_docker_forward",
           "is_async": false,
           "args": [
             "username",
@@ -3835,7 +3844,7 @@
             "email"
           ],
           "decorators": [],
-          "docstring": "If running on host with active Docker containers, forward command into the API container."
+          "docstring": "If running on the host OS and Docker is active, forward the password update command"
         },
         {
           "name": "set_admin_password_direct",
@@ -3867,6 +3876,7 @@
         "datetime",
         "os",
         "pathlib",
+        "re",
         "shutil",
         "sqlalchemy",
         "sqlalchemy.orm",

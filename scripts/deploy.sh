@@ -20,7 +20,19 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# 2. Получение свежего кода из Git
+# 2. Проверка и активация 2 ГБ Swap (критично для защиты от OOM killer на VPS с 1 ГБ RAM)
+if [ -w / ] && [ $(swapon --show | wc -l) -le 1 ]; then
+    echo "🧠 Проверка Swap: файл подкачки не найден. Активация 2 ГБ Swap..."
+    if [ ! -f /swapfile ]; then
+        fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+        chmod 600 /swapfile
+        mkswap /swapfile
+    fi
+    swapon /swapfile || true
+    echo "✅ Swap память (2 ГБ) успешно подключена."
+fi
+
+# 3. Получение свежего кода из Git
 if [ -d ".git" ]; then
     echo "📥 Получение обновлений из Git..."
     git fetch origin main
@@ -79,7 +91,16 @@ if [ -n "$ADMIN_PWD" ] && [ "$API_READY" = true ]; then
     fi
 fi
 
-# 7. Очистка старых Docker слоев
+# 7. Проверка Nginx веб-сервера
+echo "🌐 Проверка Nginx веб-сервера..."
+if curl -sf http://localhost/ > /dev/null 2>&1 || curl -sf http://127.0.0.1/ > /dev/null 2>&1; then
+    echo "✅ Nginx веб-сервер доступен и отдаёт дашборд!"
+else
+    echo "⚠️ Nginx не ответил на порту 80. Проверка логов Nginx..."
+    docker compose -f docker-compose.prod.yml logs --tail=20 nginx || true
+fi
+
+# 8. Очистка старых Docker слоев
 echo "🧹 Очистка старых Docker слоев..."
 docker image prune -f
 

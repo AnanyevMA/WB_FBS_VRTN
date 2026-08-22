@@ -1,9 +1,9 @@
 {
     "$schema":  "http://json-schema.org/draft-07/schema#",
-    "version":  "1.1.0",
+    "version":  "1.2.0",
     "system_name":  "WB FBS Manager Multi-Agent System",
     "description":  "Unified Configuration Manifest \u0026 Principle of Least Privilege (PoLP) File Access Matrix",
-    "updated_at":  "2026-08-20T14:16:12Z",
+    "updated_at":  "2026-08-22T10:30:00Z",
     "development_rules":  {
                               "frontend_coverage_required":  true,
                               "frontend_coverage_policy":  "CRITICAL: Any feature that adds user-configurable settings (fields in API schema, seller model, or any model exposed to users) MUST include corresponding changes to frontend/index.html in the SAME implementation task. This includes: form inputs, edit population (editSeller/editXxx JS), save payload (saveSeller/saveXxx JS), and table/list display columns. Omitting frontend changes for backend-added settings is a defect and must not happen.",
@@ -11,18 +11,18 @@
                                                                "enabled":  true,
                                                                "policy":  "REQUIRED: Before implementing ANY change, the agent MUST perform a full project impact scan. The agent must explicitly list every layer of the system that the change touches or might touch, and confirm that changes are applied to ALL affected layers in a single task.",
                                                                "layers_to_scan":  [
-                                                                                      "app/models/        РІР‚вЂќ ORM models, DB schema",
-                                                                                      "app/schemas/       РІР‚вЂќ Pydantic validation, API contracts",
-                                                                                      "app/api/           РІР‚вЂќ FastAPI endpoints, request/response handling",
-                                                                                      "app/agents/        РІР‚вЂќ Celery tasks, background workers",
-                                                                                      "app/services/      РІР‚вЂќ Business logic, external API clients",
-                                                                                      "app/celery_app.py  РІР‚вЂќ Beat schedule, task routing, includes",
-                                                                                      "app/agent_manifest.py РІР‚вЂќ PoLP Pydantic models",
-                                                                                      "agents_config.json РІР‚вЂќ Agent registry, development rules",
-                                                                                      "frontend/index.html РІР‚вЂќ All UI: forms, tables, JS save/load logic",
-                                                                                      "tests/             РІР‚вЂќ Existing and new tests",
-                                                                                      "alembic/           РІР‚вЂќ DB migration scripts",
-                                                                                      "docs/              РІР‚вЂќ README, API docs if applicable"
+                                                                                      "app/models/        — ORM models, DB schema",
+                                                                                      "app/schemas/       — Pydantic validation, API contracts",
+                                                                                      "app/api/           — FastAPI endpoints, request/response handling",
+                                                                                      "app/agents/        — Celery tasks, background workers",
+                                                                                      "app/services/      — Business logic, external API clients",
+                                                                                      "app/celery_app.py  — Beat schedule, task routing, includes",
+                                                                                      "app/agent_manifest.py — PoLP Pydantic models",
+                                                                                      "agents_config.json — Agent registry, development rules",
+                                                                                      "frontend/index.html — All UI: forms, tables, JS save/load logic",
+                                                                                      "tests/             — Existing and new tests",
+                                                                                      "alembic/           — DB migration scripts",
+                                                                                      "docs/              — README, API docs if applicable"
                                                                                   ],
                                                                "required_pre_implementation_steps":  [
                                                                                                          "1. Read and understand the user request fully.",
@@ -34,11 +34,11 @@
                                                            },
                               "post_change_test_analysis":  {
                                                                 "enabled":  true,
-                                                                "policy":  "REQUIRED: After completing any implementation, the agent MUST analyze what tests are needed and implement them. Tests are not optional РІР‚вЂќ a feature is not complete without corresponding test coverage.",
+                                                                "policy":  "REQUIRED: After completing any implementation, the agent MUST analyze what tests are needed and implement them. Tests are not optional — a feature is not complete without corresponding test coverage.",
                                                                 "required_post_implementation_steps":  [
                                                                                                            "1. List every changed or new module/function/endpoint.",
                                                                                                            "2. For each changed unit, identify what behavior needs to be verified.",
-                                                                                                           "3. Check tests/ directory for existing coverage РІР‚вЂќ extend rather than duplicate.",
+                                                                                                           "3. Check tests/ directory for existing coverage — extend rather than duplicate.",
                                                                                                            "4. Write new tests covering: happy path, edge cases, validation errors, and integration with adjacent components.",
                                                                                                            "5. Run existing tests to confirm no regressions introduced.",
                                                                                                            "6. Document which tests were added and why in the walkthrough or task notes."
@@ -50,7 +50,7 @@
                                                                                         "frontend_contract":  "Verify API response shape matches what frontend JS expects",
                                                                                         "regression":  "Existing tests must still pass after every change"
                                                                                     },
-                                                                "test_file_convention":  "tests/test_\u003cfeature_area\u003e.py РІР‚вЂќ group tests by feature domain, not by layer"
+                                                                "test_file_convention":  "tests/test_<feature_area>.py — group tests by feature domain, not by layer"
                                                             },
                               "token_efficient_codebase_indexing":  {
                                                                         "enabled":  true,
@@ -75,17 +75,20 @@
                                                                "[ ] Frontend SAVE payload JS updated (send new fields to API)",
                                                                "[ ] Frontend TABLE/LIST display updated (show new fields in rows)",
                                                                "[ ] DB migration executed (non-destructive)",
+                                                               "[ ] Nginx & Docker Compose configuration verified (DNS resolver, volume mounts, cgroup limits)",
+                                                               "[ ] Celery worker memory limits and task recycling parameters maintained",
+                                                               "[ ] CLI scripts verified for zero host-level dependency and container auto-forwarding",
                                                                "[ ] agents_config.json updated if new agent or rule added",
-                                                               "[ ] Instructions \u0026 docs updated (DEPLOY_VPS_GUIDE.md, README.md, docs/ if affected)",
-                                                               "[ ] Codebase index updated (codebase_index.json \u0026 CODEBASE_MAP.md via CodebaseIndexer)",
+                                                               "[ ] Instructions & docs updated (DEPLOY_VPS_GUIDE.md, README.md, docs/ if affected)",
+                                                               "[ ] Codebase index updated (codebase_index.json & CODEBASE_MAP.md via CodebaseIndexer)",
                                                                "[ ] Post-change: test analysis completed, new tests written and passing",
                                                                "[ ] Existing tests confirmed not broken",
-                                                               "[ ] Data \u0026 credentials preserved (no destructive volume down -v, .env protected)",
+                                                               "[ ] Data & credentials preserved (no destructive volume down -v, .env protected)",
                                                                "[ ] GitHub sync: changes committed and pushed to remote repository (AnanyevMA/WB_FBS_VRTN)"
                                                            ],
                               "github_sync_and_documentation_policy":  {
                                                                            "enabled":  true,
-                                                                           "policy":  "REQUIRED: Whenever ANY code, configuration, database schema, script, or environment variable is modified, added, or removed, the agent MUST perform two mandatory actions: (1) Keep all user guides, deployment manuals, and documentation strictly up-to-date in the SAME task (DEPLOY_VPS_GUIDE.md, README.md, docs/, codebase_index.json, CODEBASE_MAP.md); (2) Ensure all modified and relevant project files are committed with a clear commit message and pushed to the GitHub repository (https://github.com/AnanyevMA/WB_FBS_VRTN) on branch \u0027main\u0027.",
+                                                                           "policy":  "REQUIRED: Whenever ANY code, configuration, database schema, script, or environment variable is modified, added, or removed, the agent MUST perform two mandatory actions: (1) Keep all user guides, deployment manuals, and documentation strictly up-to-date in the SAME task (DEPLOY_VPS_GUIDE.md, README.md, docs/, codebase_index.json, CODEBASE_MAP.md); (2) Ensure all modified and relevant project files are committed with a clear commit message and pushed to the GitHub repository (https://github.com/AnanyevMA/WB_FBS_VRTN) on branch 'main'.",
                                                                            "required_steps":  [
                                                                                                   "1. Identify whether changes affect architecture, models, APIs, deployment scripts, environment variables, or operations.",
                                                                                                   "2. Update corresponding user guides and instructions (DEPLOY_VPS_GUIDE.md for VPS setup/commands, README.md for overview/quickstart, docs/ for architectural references).",
@@ -94,23 +97,63 @@
                                                                                                   "5. Stage changed files, commit with descriptive message, and push to GitHub remote origin main."
                                                                                               ],
                                                                            "documentation_targets":  {
-                                                                                                         "deployment_and_vps":  "DEPLOY_VPS_GUIDE.md вЂ” server setup, cron, systemd, docker compose, memory tuning",
-                                                                                                         "general_and_quickstart":  "README.md вЂ” system features, tech stack, quick start, API overview",
-                                                                                                         "architecture_and_rules":  "docs/ARCHITECTURE_PLAYBOOK.md and agents_config.json вЂ” agent registry, PoLP, workflow rules",
-                                                                                                         "knowledge_base":  "docs/ вЂ” API references, troubleshooting, recipes, docs/INDEX.json",
-                                                                                                         "codebase_map":  "codebase_index.json and CODEBASE_MAP.md вЂ” symbol maps, routes, classes, tasks"
+                                                                                                         "deployment_and_vps":  "DEPLOY_VPS_GUIDE.md — server setup, cron, systemd, docker compose, memory tuning",
+                                                                                                         "general_and_quickstart":  "README.md — system features, tech stack, quick start, API overview",
+                                                                                                         "architecture_and_rules":  "docs/ARCHITECTURE_PLAYBOOK.md and agents_config.json — agent registry, PoLP, workflow rules",
+                                                                                                         "knowledge_base":  "docs/ — API references, troubleshooting, recipes, docs/INDEX.json",
+                                                                                                         "codebase_map":  "codebase_index.json and CODEBASE_MAP.md — symbol maps, routes, classes, tasks"
                                                                                                      }
                                                                        },
                               "data_and_credential_persistence_policy":  {
                                                                              "enabled":  true,
-                                                                             "policy":  "CRITICAL: During updates, deployments, or bugfixes, user data and credentials MUST NEVER be wiped or reset. Agents must NEVER instruct users to run destructive volume commands (docker compose down -v) or overwrite existing .env files. Standard updates must only use \u0027git pull origin main\u0027 and \u0027docker compose up -d --build\u0027 without -v. Any password or credential management must be done via dedicated non-destructive scripts (scripts/set_admin_password.py) preserving all database records.",
+                                                                             "policy":  "CRITICAL: During updates, deployments, or bugfixes, user data and credentials MUST NEVER be wiped or reset. Agents must NEVER instruct users to run destructive volume commands (docker compose down -v) or overwrite existing .env files. Standard updates must only use 'git pull origin main' and 'bash scripts/deploy.sh'. Any password or credential management must be done via dedicated non-destructive scripts (scripts/set_admin_password.py) preserving all database records.",
                                                                              "required_steps":  [
-                                                                                                    "1. Never use or recommend \u0027docker compose down -v\u0027 for deployment updates.",
+                                                                                                    "1. Never use or recommend 'docker compose down -v' for deployment updates.",
                                                                                                     "2. Ensure scripts/generate_secrets.py never overwrites an existing .env file.",
                                                                                                     "3. Ensure all DB migrations and schema changes are non-destructive and preserve user data.",
                                                                                                     "4. Provide scripts/set_admin_password.py for safe password updates without data loss."
                                                                                                 ]
-                                                                         }
+                                                                         },
+                              "zero_downtime_deployment_and_nginx_rules":  {
+                                                                               "enabled":  true,
+                                                                               "policy":  "CRITICAL: Any update, deployment, or configuration change touching Nginx, Docker Compose, or networking MUST follow zero-downtime and persistent routing rules: (1) docker-compose.prod.yml MUST mount BOTH ./nginx/nginx.conf and ./nginx/conf.d/app.conf; (2) Nginx MUST use dynamic Docker DNS resolution (resolver 127.0.0.11 valid=10s ipv6=off and variable-based proxy_pass $upstream_api) to prevent 502 Bad Gateway upon API container recreation; (3) scripts/deploy.sh must perform non-destructive updates with --force-recreate, explicit health-check polling, admin login validation, and port 80 accessibility verification; (4) Frontend auth error handlers must NEVER mask HTTP 502/503/504 as 'wrong password'.",
+                                                                               "required_steps":  [
+                                                                                                      "1. Always ensure nginx.conf contains rate-limiting zones (api_limit, login_limit) and is mounted in docker-compose.prod.yml.",
+                                                                                                      "2. Always configure Docker embedded DNS resolver (127.0.0.11) in Nginx when proxying to container services.",
+                                                                                                      "3. Ensure deploy script (scripts/deploy.sh) executes health checks against /health before reporting success.",
+                                                                                                      "4. Ensure deploy script checks port 80 and verifies admin login with ADMIN_PASSWORD from .env.",
+                                                                                                      "5. Ensure frontend JS distinguishes between HTTP 401 (wrong credentials) and 502/503 (server unavailable)."
+                                                                                                  ]
+                                                                           },
+                              "unbreakable_auth_and_credential_lifecycle_rules":  {
+                                                                                      "enabled":  true,
+                                                                                      "policy":  "CRITICAL: Administrator authentication MUST be 100% resilient and self-healing across updates, redeploys, or config changes: (1) authenticate_user() MUST support multi-strategy verification: stored DB hash (raw & trimmed), master .env ADMIN_PASSWORD fallback with automatic DB hash resynchronization, and automatic bootstrapping/unlocking if the admin account is disabled or missing; (2) Frontend forms must trim username and password inputs to prevent whitespace/copy-paste errors; (3) Password change via Web UI or CLI (scripts/set_admin_password.py) must update BOTH PostgreSQL and the .env file.",
+                                                                                      "required_steps":  [
+                                                                                                             "1. Never allow admin account to be locked out due to DB hash desync; keep Strategy B .env master fallback active.",
+                                                                                                             "2. On admin login, automatically restore is_active=True and is_superuser=True if account was deactivated.",
+                                                                                                             "3. Ensure scripts/set_admin_password.py supports zero-dependency host execution with auto-forwarding to Docker (try_docker_forward) and synchronizes .env.",
+                                                                                                             "4. Write automated tests for all admin resilience cases in tests/test_auth.py."
+                                                                                                         ]
+                                                                                  },
+                              "agent_resource_and_oom_protection_rules":  {
+                                                                              "enabled":  true,
+                                                                              "policy":  "CRITICAL: On resource-constrained VPS environments (1 CPU / 1 GB RAM), background agents and Celery workers must be protected from memory exhaustion (OOM crashes): (1) 2 GB Swap file MUST be active (enforced automatically in setup_vps.sh and deploy.sh); (2) Celery workers must enforce --max-memory-per-child=120000 (120MB) and --max-tasks-per-child=50 to proactively recycle worker processes; (3) Celery worker concurrency must remain strictly bounded (--concurrency=1 on 1-core VPS); (4) Docker Compose cgroup limits must provide adequate headroom (worker >= 300M, api >= 280M).",
+                                                                              "required_steps":  [
+                                                                                                     "1. Check and activate Swap (/swapfile) before building or launching containers.",
+                                                                                                     "2. Keep Celery worker task and memory limits strictly configured in docker-compose.prod.yml.",
+                                                                                                     "3. Avoid spawning unconstrained background threads or memory-heavy in-memory buffers in agent code.",
+                                                                                                     "4. Monitor memory consumption via scripts/check_memory.sh."
+                                                                                                 ]
+                                                                          },
+                              "cli_scripts_isolation_and_zero_host_dependency_rules":  {
+                                                                                           "enabled":  true,
+                                                                                           "policy":  "REQUIRED: All CLI maintenance scripts executed directly on the host OS (scripts/set_admin_password.py, scripts/backup_db.sh, scripts/check_memory.sh, scripts/deploy.sh) must have ZERO external Python dependencies at top level. They must run with standard library only (sys, os, re, subprocess, shutil, pathlib) and delegate heavy ORM/database operations into running Docker containers.",
+                                                                                           "required_steps":  [
+                                                                                                                  "1. Never put top-level imports of pydantic, sqlalchemy, fastapi, or application modules in host-facing CLI scripts.",
+                                                                                                                  "2. Implement try_docker_forward() pattern for any script needing access to database models or cryptographic libraries.",
+                                                                                                                  "3. Provide clear fallback instructions or regex-based config updates when executed outside Docker."
+                                                                                                              ]
+                                                                                       }
                           },
     "global_polp_policy":  {
                                "default_deny":  true,

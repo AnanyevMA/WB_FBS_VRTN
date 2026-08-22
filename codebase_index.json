@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-21T04:10:27.935910+00:00",
+  "updated_at": "2026-08-22T03:34:15.379642+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 73,
   "files": [
@@ -3926,7 +3926,7 @@
     {
       "file": "tests/test_agent_manifest.py",
       "layer": "tests",
-      "hash": "7bd4481fbd55",
+      "hash": "04ffde414905",
       "docstring": "Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer.",
       "classes": [],
       "functions": [

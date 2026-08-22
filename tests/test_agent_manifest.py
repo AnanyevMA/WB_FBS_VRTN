@@ -69,10 +69,34 @@ def test_development_rules_holistic_and_test_policies():
     assert cred_policy.get("enabled") is True
     assert len(cred_policy.get("required_steps", [])) >= 4
 
+    assert "zero_downtime_deployment_and_nginx_rules" in dev_rules, "zero_downtime_deployment_and_nginx_rules missing"
+    assert "unbreakable_auth_and_credential_lifecycle_rules" in dev_rules, "unbreakable_auth_and_credential_lifecycle_rules missing"
+    assert "agent_resource_and_oom_protection_rules" in dev_rules, "agent_resource_and_oom_protection_rules missing"
+    assert "cli_scripts_isolation_and_zero_host_dependency_rules" in dev_rules, "cli_scripts_isolation_and_zero_host_dependency_rules missing"
+
+    nginx_rules = dev_rules["zero_downtime_deployment_and_nginx_rules"]
+    assert nginx_rules.get("enabled") is True
+    assert len(nginx_rules.get("required_steps", [])) >= 4
+
+    auth_rules = dev_rules["unbreakable_auth_and_credential_lifecycle_rules"]
+    assert auth_rules.get("enabled") is True
+    assert len(auth_rules.get("required_steps", [])) >= 4
+
+    oom_rules = dev_rules["agent_resource_and_oom_protection_rules"]
+    assert oom_rules.get("enabled") is True
+    assert len(oom_rules.get("required_steps", [])) >= 4
+
+    cli_rules = dev_rules["cli_scripts_isolation_and_zero_host_dependency_rules"]
+    assert cli_rules.get("enabled") is True
+    assert len(cli_rules.get("required_steps", [])) >= 3
+
     checklist = dev_rules.get("implementation_checklist", [])
     checklist_str = " ".join(checklist)
     assert "holistic project scan" in checklist_str
     assert "test analysis" in checklist_str
+    assert "Nginx & Docker Compose configuration verified" in checklist_str
+    assert "Celery worker memory limits" in checklist_str
+    assert "CLI scripts verified" in checklist_str
     assert "Instructions & docs updated" in checklist_str
     assert "GitHub sync" in checklist_str
     assert "Data & credentials preserved" in checklist_str

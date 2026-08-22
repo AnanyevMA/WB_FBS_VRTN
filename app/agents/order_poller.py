@@ -297,6 +297,16 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
             "wb_created_at": wb_created_dt.isoformat(),
         })
 
+    # Also sync status for existing active orders
+    try:
+        sync_seller_active_orders_status(seller, session, wb_client)
+    except Exception as exc:
+        logger.debug(f"Status sync during polling error for seller {seller.id}: {exc}")
+
+    # Update seller last_polled_at
+    seller.last_polled_at = datetime.now(timezone.utc)
+    session.commit()
+
     # Log to audit_log
     if processed_order_ids:
         import uuid
@@ -313,6 +323,91 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
         session.commit()
 
     return processed_order_ids, processed_order_payloads
+
+
+def sync_seller_active_orders_status(seller: Seller, session: Session, wb_client: WBClient) -> int:
+    """
+    Syncs WB status (POST /api/v3/orders/status) for active orders (NEW, ASSEMBLING, DELIVERING).
+    Updates statuses, triggers CZ withdrawal for sold orders, and return for cancelled orders.
+    """
+    from app.models.order import OrderStatus, KizStatus
+
+    active_orders = session.query(Order).filter(
+        Order.seller_id == seller.id,
+        Order.status.in_([OrderStatus.NEW, OrderStatus.ASSEMBLING, OrderStatus.DELIVERING])
+    ).all()
+
+    if not active_orders:
+        return 0
+
+    order_ids = [o.id for o in active_orders]
+    updated_count = 0
+
+    try:
+        status_res = wb_client.get_orders_status(order_ids)
+        if inspect.isawaitable(status_res):
+            status_res = asyncio.run(status_res)
+
+        status_by_id = {st["id"]: st for st in (status_res or []) if isinstance(st, dict) and "id" in st}
+
+        for order in active_orders:
+            st = status_by_id.get(order.id)
+            if not st:
+                continue
+
+            wb_status = st.get("wbStatus")
+            supp_status = st.get("supplierStatus")
+            order_updated = False
+
+            if wb_status and order.wb_status != wb_status:
+                order.wb_status = wb_status
+                order_updated = True
+            if supp_status and order.supplier_status != supp_status:
+                order.supplier_status = supp_status
+                order_updated = True
+
+            if wb_status == "sold" and order.status != OrderStatus.DELIVERED:
+                order.status = OrderStatus.DELIVERED
+                order_updated = True
+                if order.kiz_code and order.kiz_status == KizStatus.ATTACHED:
+                    try:
+                        from app.agents.cz_withdrawal import withdraw_order_kiz
+                        price_kop = int((order.price or 0) * 100)
+                        withdraw_order_kiz.delay(
+                            seller_id=str(seller.id),
+                            order_id=order.id,
+                            kiz_code=order.kiz_code,
+                            price_kopecks=price_kop,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Could not dispatch withdraw_order_kiz for {order.id}: {e}")
+            elif wb_status in ["canceled", "canceled_by_client", "declined_by_client", "defect"] and order.status != OrderStatus.CANCELLED:
+                order.status = OrderStatus.CANCELLED
+                order_updated = True
+                if order.kiz_code and order.kiz_status == KizStatus.WITHDRAWN:
+                    try:
+                        from app.agents.cz_return import return_order_kiz
+                        return_order_kiz.delay(
+                            seller_id=str(seller.id),
+                            order_id=order.id,
+                            kiz_code=order.kiz_code,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Could not dispatch return_order_kiz for {order.id}: {e}")
+            elif wb_status in ["sorted", "ready_for_pickup", "waiting"] and order.status != OrderStatus.DELIVERING:
+                order.status = OrderStatus.DELIVERING
+                order_updated = True
+
+            if order_updated:
+                order.updated_at = datetime.now(timezone.utc)
+                updated_count += 1
+
+        if updated_count > 0:
+            session.commit()
+    except Exception as exc:
+        logger.warning(f"Failed to sync active order statuses for seller {seller.id}: {exc}")
+
+    return updated_count
 
 
 @celery_app.task(name="app.agents.order_poller.poll_all_sellers", queue="orders", bind=True, max_retries=3)
@@ -339,10 +434,16 @@ def poll_all_sellers(self: Any) -> dict:
         for seller in active_sellers:
             seller_id_str = str(seller.id)
 
-            # --- Per-seller interval throttle ---
+            # --- Per-seller interval throttle (DB-persisted & in-memory) ---
             interval_sec = getattr(seller, "polling_interval_seconds", 60) or 60
-            last_poll = _last_polled.get(seller_id_str)
-            if last_poll is not None:
+            db_last_poll = getattr(seller, "last_polled_at", None)
+            mem_last_poll = _last_polled.get(seller_id_str)
+
+            candidates = [t for t in (db_last_poll, mem_last_poll) if t is not None]
+            if candidates:
+                last_poll = max(candidates)
+                if last_poll.tzinfo is None:
+                    last_poll = last_poll.replace(tzinfo=timezone.utc)
                 elapsed = (now - last_poll).total_seconds()
                 if elapsed < interval_sec:
                     logger.debug(
@@ -350,6 +451,7 @@ def poll_all_sellers(self: Any) -> dict:
                         f"{elapsed:.0f}s elapsed, interval={interval_sec}s"
                     )
                     continue
+
             _last_polled[seller_id_str] = now
 
             try:

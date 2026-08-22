@@ -118,6 +118,7 @@ class SellerResponse(SellerBase):
     digest_hour: int = 8
     digest_minute: int = 0
     digest_timezone: str = "Europe/Moscow"
+    last_polled_at: Optional[datetime] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 
@@ -138,6 +139,7 @@ class SellerListItem(BaseModel):
     digest_enabled: bool = True
     digest_hour: int = 8
     digest_timezone: str = "Europe/Moscow"
+    last_polled_at: Optional[datetime] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 

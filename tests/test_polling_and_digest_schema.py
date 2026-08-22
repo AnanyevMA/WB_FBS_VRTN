@@ -185,3 +185,12 @@ class TestSellerResponseComputedInterval:
         from app.schemas.seller import SellerResponse
         r = SellerResponse.model_validate(self._make_seller_obj(0))
         assert r.polling_interval_minutes >= 1
+
+    def test_last_polled_at_field(self):
+        from app.schemas.seller import SellerResponse
+        from datetime import datetime, timezone
+        obj = self._make_seller_obj(600)
+        obj.last_polled_at = datetime(2026, 8, 22, 10, 0, tzinfo=timezone.utc)
+        r = SellerResponse.model_validate(obj)
+        assert r.last_polled_at is not None
+        assert r.polling_interval_minutes == 10

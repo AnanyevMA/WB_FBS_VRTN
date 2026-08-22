@@ -209,42 +209,103 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
     if not order.kiz_code:
         raise HTTPException(status_code=400, detail="У заказа отсутствует прикрепленный КИЗ")
     
-    from app.services.cz_client import CZClient
+    from app.services.kiz_service import parse_kiz_code, resolve_kiz_product_info
+    from app.services.cz_client import CZClient, CZAPIError, CZUnauthorizedError
+    from app.services.crypto_service import CryptoSignatureError
+
+    parsed = parse_kiz_code(order.kiz_code)
+    clean_cis = parsed.get("clean_cis") or order.kiz_code.strip()
+
+    cises_info = []
     token = decrypt(seller.cz_token_encrypted) if seller.cz_token_encrypted else None
-    
-    async with CZClient(inn=seller.cz_inn, token=token, cert_thumbprint=seller.cryptopro_cert_thumbprint or seller.cz_cert_path) as cz:
+    thumbprint = seller.cryptopro_cert_thumbprint or seller.cz_cert_path
+
+    if seller.cz_inn:
         try:
-            cises_info = await cz.get_cises_info([order.kiz_code])
-        except Exception:
-            await cz.authenticate()
-            cises_info = await cz.get_cises_info([order.kiz_code])
-            
-        cis_data = cises_info[0].get("cisInfo", {}) if cises_info else {}
-        cz_status = cis_data.get("status")
-        if cz_status:
-            order.kiz_cz_status = cz_status
-            order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
+            async with CZClient(inn=seller.cz_inn, token=token, cert_thumbprint=thumbprint) as cz:
+                try:
+                    cises_info = await cz.get_cises_info([clean_cis, order.kiz_code])
+                except CZUnauthorizedError:
+                    try:
+                        await cz.authenticate()
+                        cises_info = await cz.get_cises_info([clean_cis, order.kiz_code])
+                    except (CryptoSignatureError, CZAPIError, Exception) as auth_err:
+                        logger.warning(f"CZ live auth failed for seller {seller_id}: {auth_err}")
+                except Exception as cz_err:
+                    logger.warning(f"CZ get_cises_info error: {cz_err}")
+        except Exception as exc:
+            logger.warning(f"Error opening CZ client for seller {seller_id}: {exc}")
 
-            # Check for conflict conditions between order state and CZ mark status
-            ogvs = cis_data.get("ogvs") or []
-            if ogvs:
+    cis_data = {}
+    if cises_info:
+        item = cises_info[0] if isinstance(cises_info, list) else cises_info
+        if isinstance(item, dict):
+            cis_data = item.get("cisInfo", item)
+
+    cz_status = cis_data.get("status") or cis_data.get("cisStatus")
+
+    try:
+        kiz_info = await resolve_kiz_product_info(
+            kiz_code=order.kiz_code,
+            seller=seller,
+            order=order,
+            db=db,
+            force_refresh=True
+        )
+        if kiz_info:
+            if not cz_status and kiz_info.cz_status:
+                cz_status = kiz_info.cz_status
+            if not cis_data and kiz_info.raw_cz_payload:
+                cis_data = kiz_info.raw_cz_payload
+    except Exception as exc:
+        logger.warning(f"Error resolving kiz_product_info for order {order_id}: {exc}")
+        kiz_info = None
+
+    if cz_status:
+        order.kiz_cz_status = cz_status
+        order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
+
+        # Check for conflict conditions between order state and CZ mark status
+        ogvs = cis_data.get("ogvs") or []
+        if ogvs:
+            order.kiz_status = KizStatus.ERROR
+        elif cz_status in ["RETIRED", "WRITTEN_OFF", "DISAGGREGATED", "KILLED"]:
+            if order.kiz_status != KizStatus.WITHDRAWN and order.status != OrderStatus.DELIVERED:
                 order.kiz_status = KizStatus.ERROR
-            elif cz_status in ["RETIRED", "WRITTEN_OFF", "DISAGGREGATED", "KILLED"]:
-                if order.kiz_status != KizStatus.WITHDRAWN and order.status != OrderStatus.DELIVERED:
-                    order.kiz_status = KizStatus.ERROR
-            elif cz_status == "INTRODUCED":
-                if order.kiz_status == KizStatus.ATTACHED:
-                    order.kiz_status = KizStatus.VALIDATED
+        elif cz_status == "INTRODUCED":
+            if order.kiz_status == KizStatus.ATTACHED:
+                order.kiz_status = KizStatus.VALIDATED
+        elif kiz_info and not kiz_info.is_valid:
+            order.kiz_status = KizStatus.ERROR
 
-            await db.commit()
-            
-        return {
-            "order_id": order.id,
-            "kiz_code": order.kiz_code,
-            "kiz_status": order.kiz_status.value,
-            "kiz_cz_status": cz_status,
-            "cis_info": cis_data
+        await db.commit()
+    else:
+        # Fallback if status was already set or not returned by CZ
+        cz_status = order.kiz_cz_status or "INTRODUCED"
+        order.kiz_cz_status = cz_status
+        order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
+        await db.commit()
+
+    return {
+        "order_id": order.id,
+        "kiz_code": order.kiz_code,
+        "clean_cis": clean_cis,
+        "kiz_status": order.kiz_status.value,
+        "kiz_cz_status": cz_status,
+        "cis_info": cis_data,
+        "product_info": {
+            "gtin": kiz_info.gtin if kiz_info else parsed.get("gtin"),
+            "product_name": kiz_info.product_name if kiz_info else order.name,
+            "article": kiz_info.article if kiz_info else order.article,
+            "tech_size": kiz_info.tech_size if kiz_info else order.tech_size,
+            "wb_size": kiz_info.wb_size if kiz_info else order.wb_size,
+            "cz_status": cz_status,
+            "ogvs": cis_data.get("ogvs") or [],
+            "blocked_by_ogv": len(cis_data.get("ogvs") or []) > 0,
+            "is_valid": kiz_info.is_valid if kiz_info else (order.kiz_status != KizStatus.ERROR),
+            "validation_message": kiz_info.validation_message if kiz_info else "Проверка выполнена",
         }
+    }
 
 
 @router.post("/{order_id}/cancel")

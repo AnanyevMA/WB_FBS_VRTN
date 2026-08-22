@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-22T03:34:15.379642+00:00",
+  "updated_at": "2026-08-22T03:50:46.489194+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 73,
+  "total_files": 74,
   "files": [
     {
       "file": "alembic/env.py",
@@ -132,6 +132,37 @@
       "layer": "migrations",
       "hash": "69347a830ffe",
       "docstring": "add_must_change_password_to_users",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/9c0a1b2c3d4e_add_last_polled_at_to_sellers.py",
+      "layer": "migrations",
+      "hash": "4bf840774b2b",
+      "docstring": "add_last_polled_at_to_sellers",
       "classes": [],
       "functions": [
         {
@@ -720,7 +751,7 @@
     {
       "file": "app/agents/morning_digest.py",
       "layer": "agents",
-      "hash": "be87c710fd17",
+      "hash": "da935199a466",
       "docstring": "Morning Digest Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -935,7 +966,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "c2c681216e88",
+      "hash": "9ee0b3881ae6",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -971,6 +1002,17 @@
           "docstring": "Poll new WB orders for a single seller."
         },
         {
+          "name": "sync_seller_active_orders_status",
+          "is_async": false,
+          "args": [
+            "seller",
+            "session",
+            "wb_client"
+          ],
+          "decorators": [],
+          "docstring": "Syncs WB status (POST /api/v3/orders/status) for active orders (NEW, ASSEMBLING, DELIVERING)."
+        },
+        {
           "name": "poll_all_sellers",
           "is_async": false,
           "args": [
@@ -997,6 +1039,8 @@
       ],
       "db_tables": [],
       "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
         "app.agents.notifications",
         "app.agents.notifier",
         "app.celery_app",
@@ -1705,7 +1749,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "0224503ede43",
+      "hash": "a14db078d5f4",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -1886,6 +1930,7 @@
         "app.models.seller",
         "app.models.supply",
         "app.schemas.order",
+        "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
@@ -2356,7 +2401,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "9a894cb07cad",
+      "hash": "2bad616889a7",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -2671,7 +2716,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "6f615f90bcc5",
+      "hash": "c5ce0e67bb96",
       "docstring": "",
       "classes": [
         {
@@ -2928,7 +2973,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "a1329e143809",
+      "hash": "61aa7dfdba0b",
       "docstring": "",
       "classes": [
         {
@@ -3169,7 +3214,7 @@
     {
       "file": "app/services/crypto_service.py",
       "layer": "services",
-      "hash": "309fb7962863",
+      "hash": "1a1b61f4793f",
       "docstring": "КриптоПро Digital Signature Service",
       "classes": [
         {
@@ -3182,16 +3227,6 @@
         }
       ],
       "functions": [
-        {
-          "name": "sign_document",
-          "is_async": true,
-          "args": [
-            "data",
-            "cert_thumbprint"
-          ],
-          "decorators": [],
-          "docstring": "Sign a document body using КриптоПро УКЭП."
-        },
         {
           "name": "_find_cryptopro_bin",
           "is_async": false,
@@ -4262,7 +4297,7 @@
     {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
-      "hash": "e00882e4753f",
+      "hash": "754c4754cdb5",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4322,6 +4357,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify that check_order_kiz_status sets KizStatus.ERROR when mark is RETIRED on active order."
+        },
+        {
+          "name": "test_check_order_kiz_status_handles_cz_exceptions_without_500",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that check_order_kiz_status handles CZ API errors gracefully without crashing."
         }
       ],
       "endpoints": [],
@@ -4335,6 +4379,7 @@
         "app.models.order",
         "app.models.seller",
         "app.schemas.order",
+        "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
         "datetime",
@@ -4462,7 +4507,7 @@
     {
       "file": "tests/test_morning_digest.py",
       "layer": "tests",
-      "hash": "7d005bbdaa9d",
+      "hash": "cdd8b6e9e3af",
       "docstring": "Tests: morning_digest agent — timezone-aware fire logic, Telegram message content,",
       "classes": [
         {
@@ -4507,7 +4552,15 @@
           "docstring": "",
           "methods": [
             "test_morning_digest_in_beat_schedule",
-            "test_morning_digest_scheduled_every_30min"
+            "test_morning_digest_scheduled_properly"
+          ]
+        },
+        {
+          "name": "TestMorningDigestFailureHandling",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "test_morning_digest_failed_send_does_not_mark_sent"
           ]
         }
       ],
@@ -4547,7 +4600,7 @@
     {
       "file": "tests/test_polling_and_digest_schema.py",
       "layer": "tests",
-      "hash": "fcaee6e3ebbc",
+      "hash": "c03ad11ea6e1",
       "docstring": "Tests: polling interval + digest settings — seller schema validation.",
       "classes": [
         {
@@ -4596,7 +4649,8 @@
             "_make_seller_obj",
             "test_60_seconds_gives_1_minute",
             "test_300_seconds_gives_5_minutes",
-            "test_zero_seconds_gives_1_minute_minimum"
+            "test_zero_seconds_gives_1_minute_minimum",
+            "test_last_polled_at_field"
           ]
         }
       ],

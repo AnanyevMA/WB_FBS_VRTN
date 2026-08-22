@@ -95,10 +95,10 @@ celery_app.conf.update(
             "schedule": 1800.0,  # every 30 minutes
             "options": {"queue": "qa_testing"},
         },
-        # Runs every 30 min; the agent checks each seller's configured local time
+        # Runs every 60s; the agent checks each seller's configured local time and sends digest on-time
         "morning-digest-check": {
             "task": "app.agents.morning_digest.send_morning_digest",
-            "schedule": 1800.0,  # every 30 minutes
+            "schedule": 60.0,  # every 60 seconds for precise on-minute delivery
             "options": {"queue": "notifications"},
         },
         # Runs every 6 hours to maintain and validate knowledge base docs and indexes

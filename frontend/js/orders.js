@@ -82,10 +82,12 @@ async function checkKizLiveStatus(orderId) {
     try {
         showToast('Честный Знак', 'Запрос статуса КИЗ в ГИС МТ...', 'info');
         const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/kiz-check`, { method: 'POST' });
-        const czName = STATUS_MAP_CZ[res.kiz_cz_status] || res.kiz_cz_status;
-        const statusName = `${czName} (${res.kiz_cz_status})`;
-        if (res.kiz_status === 'ERROR') {
-            showToast('Внимание! Ошибка КИЗ', `Статус в ЧЗ: ${statusName}. Обнаружено несоответствие!`, 'error');
+        const czStatus = res.kiz_cz_status || 'INTRODUCED';
+        const czName = STATUS_MAP_CZ[czStatus] || czStatus;
+        const statusName = `${czName} (${czStatus})`;
+        if (res.kiz_status === 'ERROR' || (res.product_info && res.product_info.is_valid === false)) {
+            const msg = res.product_info?.validation_message || `Статус в ЧЗ: ${statusName}. Обнаружено несоответствие!`;
+            showToast('Внимание! Ошибка КИЗ', msg, 'error');
         } else {
             showToast('Статус КИЗ в ГИС МТ', `Статус: ${statusName}`, 'success');
         }

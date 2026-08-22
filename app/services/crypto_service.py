@@ -21,24 +21,6 @@ class CryptoSignatureError(Exception):
     pass
 
 
-async def sign_document(
-    data: str,
-    cert_thumbprint: Optional[str] = None,
-) -> str:
-    """
-    Sign a document body using КриптоПро УКЭП.
-
-    Args:
-        data: Document content to sign (JSON string)
-        cert_thumbprint: Certificate thumbprint (SHA-1), defaults to settings
-
-    Returns:
-        Base64-encoded CMS/PKCS#7 detached signature
-
-    Note:
-        Requires КриптоПро CSP installed on the server.
-        Certificate must be in user's certificate store.
-    """
 def _find_cryptopro_bin() -> Optional[str]:
     """Find CryptoPro executable (csptest or cryptcp) on Windows/Linux."""
     configured = settings.cryptopro_bin_path

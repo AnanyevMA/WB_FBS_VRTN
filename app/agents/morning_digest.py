@@ -133,10 +133,10 @@ def send_morning_digest(self) -> dict:
 
                 from app.services.telegram_service import TelegramService
 
-                async def _send():
+                async def _send() -> bool:
                     svc = TelegramService(bot_token)
                     try:
-                        await svc.send_morning_digest(
+                        return await svc.send_morning_digest(
                             chat_ids=chat_ids,
                             seller_id=seller_id,
                             pending_orders=pending_payload,
@@ -145,24 +145,35 @@ def send_morning_digest(self) -> dict:
                     finally:
                         await svc.close()
 
-                asyncio.run(_send())
+                sent_ok = asyncio.run(_send())
 
-                # Mark as sent for today in memory
-                _digest_sent[seller_id] = local_today
-                sent_count += 1
+                if sent_ok:
+                    # Mark as sent for today in memory
+                    _digest_sent[seller_id] = local_today
+                    sent_count += 1
 
-                # Audit log
-                _log_audit(
-                    db, seller_id,
-                    action="MORNING_DIGEST_SENT",
-                    entity_type="seller",
-                    entity_id=seller_id,
-                    payload={
-                        "pending_count": len(pending_payload),
-                        "digest_time": digest_time_str,
-                    },
-                )
-                db.commit()
+                    # Audit log
+                    _log_audit(
+                        db, seller_id,
+                        action="MORNING_DIGEST_SENT",
+                        entity_type="seller",
+                        entity_id=seller_id,
+                        payload={
+                            "pending_count": len(pending_payload),
+                            "digest_time": digest_time_str,
+                        },
+                    )
+                    db.commit()
+                else:
+                    logger.warning(f"[MorningDigest] Telegram broadcast returned False for seller {seller_id}")
+                    _log_audit(
+                        db, seller_id,
+                        action="MORNING_DIGEST_FAILED",
+                        entity_type="seller",
+                        entity_id=seller_id,
+                        error="Telegram broadcast returned False (failed to send to all chat_ids)",
+                    )
+                    db.commit()
 
             except Exception as exc:
                 logger.error(f"[MorningDigest] Failed to send digest for seller {seller_id}: {exc}")

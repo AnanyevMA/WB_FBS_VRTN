@@ -84,8 +84,18 @@
                                                                "[ ] Post-change: test analysis completed, new tests written and passing",
                                                                "[ ] Existing tests confirmed not broken",
                                                                "[ ] Data & credentials preserved (no destructive volume down -v, .env protected)",
-                                                               "[ ] GitHub sync: changes committed and pushed to remote repository (AnanyevMA/WB_FBS_VRTN)"
+                                                               "[ ] GitHub sync: changes committed and pushed to remote repository (AnanyevMA/WB_FBS_VRTN)",
+                                                               "[ ] VPS update instructions: Explicit step-by-step update commands for the VPS server included in the final user response"
                                                            ],
+                              "vps_update_notification_policy":  {
+                                                                     "enabled":  true,
+                                                                     "policy":  "REQUIRED: Upon completing ANY change (backend code, database schema/migration, API, agents, celery tasks, frontend UI, dependencies, or configuration), the agent MUST ALWAYS include in its final message to the user clear, exact, step-by-step instructions on what commands need to be run on the VPS server to apply the update cleanly without downtime or data loss.",
+                                                                     "required_steps":  [
+                                                                                            "1. State whether a git pull, DB migration (alembic upgrade head), container rebuild, or secret update is needed.",
+                                                                                            "2. Provide the exact shell commands for the VPS: git pull origin main, bash scripts/deploy.sh (or specific container restart).",
+                                                                                            "3. Specify post-update verification commands (health check, docker ps, logs inspection)."
+                                                                                        ]
+                                                                 },
                               "github_sync_and_documentation_policy":  {
                                                                            "enabled":  true,
                                                                            "policy":  "REQUIRED: Whenever ANY code, configuration, database schema, script, or environment variable is modified, added, or removed, the agent MUST perform two mandatory actions: (1) Keep all user guides, deployment manuals, and documentation strictly up-to-date in the SAME task (DEPLOY_VPS_GUIDE.md, README.md, docs/, codebase_index.json, CODEBASE_MAP.md); (2) Ensure all modified and relevant project files are committed with a clear commit message and pushed to the GitHub repository (https://github.com/AnanyevMA/WB_FBS_VRTN) on branch 'main'.",
@@ -581,7 +591,7 @@
                        "role":  "Sends a daily morning digest to each seller via Telegram at their configured local time. Includes a summary of all pending (NEW/ASSEMBLING) orders and a one-tap \u0027Create Supply\u0027 button. Runs every 30 minutes and uses an in-memory guard to prevent double-sending on the same day.",
                        "celery_task":  "app.agents.morning_digest.send_morning_digest",
                        "queue":  "notifications",
-                       "schedule":  "every 30m (fires per-seller based on their digest_hour/digest_minute/digest_timezone)",
+                       "schedule":  "every 60s (fires per-seller based on their digest_hour/digest_minute/digest_timezone)",
                        "timeout_seconds":  120,
                        "max_retries":  3,
                        "concurrency_limit":  5,

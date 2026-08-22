@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-22 03:34:15 UTC | **Файлов проиндексировано**: 73  
+> **Дата актуализации**: 2026-08-22 03:50:46 UTC | **Файлов проиндексировано**: 74  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -50,7 +50,7 @@
 | [`app/services/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/__init__.py) | — | — | WB FBS Manager — README |
 | [`app/services/auth_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/auth_service.py) | — | `hash_password`, `verify_password`, `create_access_token`, `decode_access_token`, +еще 5 | Authentication Service — Password hashing, JWT token handling, and user authentication |
 | [`app/services/codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/codebase_indexer.py) | `CodebaseIndexer` | — | Codebase Semantic & Symbol Indexer — WB FBS Manager |
-| [`app/services/crypto_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/crypto_service.py) | `CryptoSignatureError` | `sign_document`, `_find_cryptopro_bin`, `sign_document`, `_mock_signature`, +еще 1 | КриптоПро Digital Signature Service |
+| [`app/services/crypto_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/crypto_service.py) | `CryptoSignatureError` | `_find_cryptopro_bin`, `sign_document`, `_mock_signature`, `is_cryptopro_available` | КриптоПро Digital Signature Service |
 | [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | — | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
 | [`app/services/encryption.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/encryption.py) | `EncryptionService` | `_get_fernet`, `encrypt`, `decrypt` | Encryption Service — шифрование чувствительных данных (токены API, credentials) |
 | [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
@@ -105,10 +105,10 @@
 | [`tests/test_codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_codebase_indexer.py) | — | `test_codebase_indexer_scan_and_save`, `test_codebase_indexer_fast_symbol_query`, `test_lookup_code_symbol_helper`, `test_codebase_indexing_rule_in_manifest`, +еще 1 | Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule. |
 | [`tests/test_cz_client_and_queues.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_and_queues.py) | — | `test_encryption_service_compatibility`, `test_cz_client_authenticate_flow`, `test_cz_client_suz_endpoints_and_cises_info`, `test_agent_task_queue_decorators_match_manifest`, +еще 1 | Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService. |
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |
-| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_kiz_product_info_model_and_validation`, +еще 3 | Модуль кодовой базы |
+| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_kiz_product_info_model_and_validation`, +еще 4 | Модуль кодовой базы |
 | [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
 | [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_return_document_building`, `test_cz_client_withdraw_and_return_execution`, +еще 2 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
-| [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
+| [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest`, `TestMorningDigestFailureHandling` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
 | [`tests/test_polling_and_digest_schema.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_polling_and_digest_schema.py) | `TestDigestSettings`, `TestSellerCreatePollingInterval`, `TestSellerUpdateDigest`, `TestSellerResponseComputedInterval` | — | Tests: polling interval + digest settings — seller schema validation. |
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |

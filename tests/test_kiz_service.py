@@ -294,3 +294,51 @@ async def test_check_order_kiz_status_detects_conflict():
             assert updated_order.kiz_status == KizStatus.ERROR
             assert updated_order.kiz_cz_status == "RETIRED"
 
+
+@pytest.mark.asyncio
+async def test_check_order_kiz_status_handles_cz_exceptions_without_500():
+    """Verify that check_order_kiz_status handles CZ API errors gracefully without crashing."""
+    from app.api.orders import check_order_kiz_status
+    from app.services.encryption import encrypt
+    from app.services.cz_client import CZAPIError
+    from unittest.mock import patch, AsyncMock
+
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Safe KIZ Check",
+            cz_inn="7700123456",
+            wb_api_token_encrypted=encrypt("wb_test"),
+            cz_token_encrypted=encrypt("cz_test"),
+            is_active=True
+        )
+        session.add(seller)
+
+        order_id = random.randint(700000000, 799999999)
+        kiz_code = f"0104630199251332215{uuid.uuid4().hex[:10]}91ffd92qwe"
+        order = Order(
+            id=order_id,
+            seller_id=seller.id,
+            status=OrderStatus.ASSEMBLING,
+            wb_created_at=datetime.now(timezone.utc),
+            article="hood.brown.100",
+            tech_size="ONE SIZE",
+            name="Капор утепленный",
+            kiz_required=True,
+            kiz_code=kiz_code,
+            kiz_status=KizStatus.ATTACHED,
+        )
+        session.add(order)
+        await session.commit()
+
+        # Simulate CZ API error / signature failure
+        with patch("app.services.cz_client.CZClient.get_cises_info", side_effect=CZAPIError("CZ Service Unavailable", 503)):
+            res = await check_order_kiz_status(seller_id=seller_id, order_id=order_id, db=session)
+            assert res is not None
+            assert res["order_id"] == order_id
+            assert "kiz_status" in res
+            assert "kiz_cz_status" in res
+            assert "clean_cis" in res
+

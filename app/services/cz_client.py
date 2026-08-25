@@ -176,6 +176,34 @@ class CZClient:
         logger.info(f"Successfully authenticated with ГИС МТ for INN {self.inn}")
         return token
 
+    async def get_auth_challenge(self) -> dict:
+        """Fetch auth challenge (uuid, data) from True API."""
+        await self._ensure_client()
+        res = await self._client.get("/api/v3/true-api/auth/key")
+        if not res.is_success:
+            raise CZAPIError(f"Ошибка получения challenge: {res.status_code} {res.text}", res.status_code)
+        return res.json() if res.content else {}
+
+    async def signin_with_signature(self, auth_uuid: str, signed_data: str) -> str:
+        """Authenticate with True API using pre-signed challenge data."""
+        await self._ensure_client()
+        payload = {"uuid": auth_uuid, "data": signed_data}
+        if self.inn:
+            payload["inn"] = self.inn
+        res = await self._client.post(
+            "/api/v3/true-api/auth/simpleSignIn",
+            json=payload,
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+        )
+        if not res.is_success:
+            raise CZAPIError(f"Ошибка входа в ГИС МТ: {res.status_code} {res.text}", res.status_code)
+        data = res.json() if res.content else {}
+        token = data.get("token")
+        if not token:
+            raise CZAPIError(f"Токен не получен от ГИС МТ: {data}")
+        self.token = token
+        return token
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=2, min=2, max=30),

@@ -152,3 +152,56 @@ def test_seller_oms_and_cert_thumbprint_fields():
     )
     assert seller_model.cz_oms_id == "8ed74f90-0119-48f2-b289-379707934e2f"
     assert seller_model.cryptopro_cert_thumbprint == "a1b2c3d4e5f67890"
+
+
+def test_cz_token_refresher_skips_when_no_server_crypto():
+    """Verify cz_token_refresher gracefully skips sellers without server-side CryptoPro/cert without errors."""
+    from app.agents.cz_token_refresher import refresh_all_tokens
+    with patch("app.services.crypto_service.is_cryptopro_available", return_value=False):
+        res = refresh_all_tokens()
+        assert res["status"] == "success"
+        assert res["failed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_browser_cz_auth_endpoints():
+    """Verify GET cz-challenge and POST cz-signin endpoints for browser UKEP."""
+    import uuid
+    from app.database import AsyncSessionLocal, init_db
+    from app.api.sellers import get_cz_auth_challenge, cz_signin_with_signature
+
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Browser Auth",
+            cz_inn="7700123456",
+            wb_api_token_encrypted=encrypt("wb_test"),
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+        with patch.object(CZClient, "get_auth_challenge", new_callable=AsyncMock) as mock_chal, \
+             patch.object(CZClient, "signin_with_signature", new_callable=AsyncMock) as mock_sig:
+            mock_chal.return_value = {"uuid": "test-uuid", "data": "random-challenge-string"}
+            mock_sig.return_value = "jwt-token-12345"
+
+            # 1. Challenge
+            chal = await get_cz_auth_challenge(seller_id=seller_id, db=session)
+            assert chal["uuid"] == "test-uuid"
+            assert chal["data"] == "random-challenge-string"
+
+            # 2. Signin
+            res = await cz_signin_with_signature(
+                seller_id=seller_id,
+                payload={"uuid": "test-uuid", "data": "cades-signed-data-base64"},
+                db=session
+            )
+            assert res["success"] is True
+            assert "jwt-toke" in res["token_preview"] or "***" in res["token_preview"]
+
+            # Verify token saved in DB
+            updated = await session.get(Seller, seller_id)
+            assert decrypt(updated.cz_token_encrypted) == "jwt-token-12345"

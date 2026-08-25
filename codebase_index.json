@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-25T13:29:31.396219+00:00",
+  "updated_at": "2026-08-25T13:41:58.248176+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 75,
   "files": [
@@ -503,7 +503,7 @@
     {
       "file": "app/agents/cz_token_refresher.py",
       "layer": "agents",
-      "hash": "ae049b4fd453",
+      "hash": "b450cd560e77",
       "docstring": "Chestny Znak Token Refresher Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -560,6 +560,7 @@
         "app.config",
         "app.models.audit",
         "app.models.seller",
+        "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
         "asyncio",
@@ -2023,7 +2024,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "7fa27ff9f64e",
+      "hash": "5f42d2ff5645",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2155,6 +2156,31 @@
             "router.get('/{seller_id}/pending-summary')"
           ],
           "docstring": "Быстрая сводка необработанных заказов продавца."
+        },
+        {
+          "name": "get_cz_auth_challenge",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{seller_id}/cz-challenge')"
+          ],
+          "docstring": "Request dynamic auth challenge from GIS MT True API for browser signing."
+        },
+        {
+          "name": "cz_signin_with_signature",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{seller_id}/cz-signin')"
+          ],
+          "docstring": "Authenticate with GIS MT True API using signature created in browser by CryptoPro Plugin."
         }
       ],
       "endpoints": [
@@ -2211,15 +2237,29 @@
           "path": "/{seller_id}/pending-summary",
           "handler": "get_pending_summary",
           "docstring": "Быстрая сводка необработанных заказов продавца."
+        },
+        {
+          "method": "GET",
+          "path": "/{seller_id}/cz-challenge",
+          "handler": "get_cz_auth_challenge",
+          "docstring": "Request dynamic auth challenge from GIS MT True API for browser signing."
+        },
+        {
+          "method": "POST",
+          "path": "/{seller_id}/cz-signin",
+          "handler": "cz_signin_with_signature",
+          "docstring": "Authenticate with GIS MT True API using signature created in browser by CryptoPro Plugin."
         }
       ],
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
         "app.database",
+        "app.models.audit",
         "app.models.order",
         "app.models.seller",
         "app.schemas.seller",
+        "app.services.cz_client",
         "app.services.encryption",
         "app.services.time_service",
         "app.services.wb_client",
@@ -3376,7 +3416,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "3e21adef3427",
+      "hash": "f59c17d1ae5b",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -3416,6 +3456,8 @@
             "_get_headers",
             "_ensure_client",
             "authenticate",
+            "get_auth_challenge",
+            "signin_with_signature",
             "_request",
             "create_order_emission",
             "get_order_status",
@@ -4272,7 +4314,7 @@
     {
       "file": "tests/test_cz_client_and_queues.py",
       "layer": "tests",
-      "hash": "b4cdbe0c5c85",
+      "hash": "2aed186b2ea0",
       "docstring": "Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService.",
       "classes": [],
       "functions": [
@@ -4314,6 +4356,22 @@
           "args": [],
           "decorators": [],
           "docstring": "Verify Seller model and schemas support cz_oms_id and cryptopro_cert_thumbprint."
+        },
+        {
+          "name": "test_cz_token_refresher_skips_when_no_server_crypto",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify cz_token_refresher gracefully skips sellers without server-side CryptoPro/cert without errors."
+        },
+        {
+          "name": "test_browser_cz_auth_endpoints",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify GET cz-challenge and POST cz-signin endpoints for browser UKEP."
         }
       ],
       "endpoints": [],
@@ -4321,14 +4379,18 @@
       "db_tables": [],
       "imports": [
         "app.agent_manifest",
+        "app.agents.cz_token_refresher",
+        "app.api.sellers",
         "app.celery_app",
+        "app.database",
         "app.models.seller",
         "app.schemas.seller",
         "app.services.cz_client",
         "app.services.encryption",
         "pathlib",
         "pytest",
-        "unittest.mock"
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -4910,7 +4972,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "c10184e4ea81",
+      "hash": "eecaeedcdacd",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

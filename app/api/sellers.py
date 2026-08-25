@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import List
@@ -357,3 +357,71 @@ async def get_pending_summary(seller_id: str, db: AsyncSession = Depends(get_db)
         "oldest_order_age_hours": oldest_age_hours,
         "has_pending": count > 0,
     }
+
+
+@router.get("/{seller_id}/cz-challenge")
+async def get_cz_auth_challenge(seller_id: str, db: AsyncSession = Depends(get_db)):
+    """Request dynamic auth challenge from GIS MT True API for browser signing."""
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+    if not seller.cz_inn:
+        raise HTTPException(status_code=400, detail="У продавца не указан ИНН для Честного Знака")
+
+    from app.services.cz_client import CZClient, CZAPIError
+    try:
+        async with CZClient(inn=seller.cz_inn) as client:
+            return await client.get_auth_challenge()
+    except CZAPIError as err:
+        raise HTTPException(status_code=err.status_code or 502, detail=str(err))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Не удалось связаться с ГИС МТ: {str(exc)}")
+
+
+@router.post("/{seller_id}/cz-signin")
+async def cz_signin_with_signature(
+    seller_id: str,
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Authenticate with GIS MT True API using signature created in browser by CryptoPro Plugin."""
+    from app.models.audit import AuditLog
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    auth_uuid = payload.get("uuid")
+    signed_data = payload.get("data")
+    if not auth_uuid or not signed_data:
+        raise HTTPException(status_code=400, detail="Необходимо передать uuid и подписанные данные data")
+
+    from app.services.cz_client import CZClient, CZAPIError
+    try:
+        async with CZClient(inn=seller.cz_inn or "") as client:
+            token = await client.signin_with_signature(auth_uuid=auth_uuid, signed_data=signed_data)
+
+            seller.cz_token_encrypted = encrypt(token)
+            seller.updated_at = datetime.now(timezone.utc)
+
+            # Audit log
+            audit = AuditLog(
+                seller_id=seller_id,
+                agent="cz_auth_ui",
+                action="BROWSER_AUTH_SUCCESS",
+                entity_type="seller",
+                entity_id=seller_id,
+                payload={"inn": seller.cz_inn},
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(audit)
+            await db.commit()
+
+            return {
+                "success": True,
+                "message": "Токен Честного Знака успешно получен и сохранен в системе!",
+                "token_preview": f"{token[:8]}...{token[-6:]}" if len(token) > 14 else "***",
+            }
+    except CZAPIError as err:
+        raise HTTPException(status_code=err.status_code or 400, detail=str(err))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Ошибка аутентификации: {str(exc)}")

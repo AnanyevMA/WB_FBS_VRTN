@@ -46,11 +46,20 @@ def refresh_all_tokens(self) -> Dict[str, Any]:
             if not seller.cz_inn:
                 continue
 
+            thumbprint = seller.cryptopro_cert_thumbprint or seller.cz_cert_path
+            from app.services.crypto_service import is_cryptopro_available
+            if not is_cryptopro_available() or not thumbprint:
+                logger.debug(
+                    f"[CZ Token Refresher] Server-side CryptoPro or certificate not configured for seller {seller.id}. "
+                    f"Skipping background token refresh (token is managed via UI or browser UKEP)."
+                )
+                continue
+
             try:
                 new_token = asyncio.run(
                     _refresh_seller_cz_token(
                         inn=seller.cz_inn,
-                        cert_thumbprint=seller.cz_cert_path,
+                        cert_thumbprint=thumbprint,
                     )
                 )
 

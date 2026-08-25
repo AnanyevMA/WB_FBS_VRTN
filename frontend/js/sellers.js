@@ -289,3 +289,100 @@ async function togglePollingFor(sellerId, enable) {
         showToast('Ошибка', e.message, 'error');
     }
 }
+
+async function fetchCzTokenViaBrowser() {
+    if (!currentEditingSellerId) {
+        return showToast('Внимание', 'Сначала выберите или сохраните продавца', 'warning');
+    }
+    const inn = document.getElementById('seller_cz_inn').value.trim();
+    if (!inn) {
+        return showToast('Внимание', 'Укажите ИНН организации для Честного Знака', 'warning');
+    }
+
+    if (!window.cadesplugin) {
+        return showToast('КриптоПро', 'Плагин CAdES / КриптоПро не обнаружен в браузере. Убедитесь, что плагин установлен и включен.', 'error');
+    }
+
+    const btn = document.getElementById('btnFetchCzToken');
+    const statusEl = document.getElementById('seller_cz_token_status');
+    if (btn) btn.disabled = true;
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary-hover);">⏳ Запрос данных для подписи в ГИС МТ...</span>';
+
+    try {
+        // 1. Get challenge from True API
+        const challenge = await apiFetch(`/sellers/${currentEditingSellerId}/cz-challenge`);
+        const authUuid = challenge.uuid;
+        const authData = challenge.data;
+        if (!authUuid || !authData) {
+            throw new Error("Не удалось получить строку аутентификации от ГИС МТ");
+        }
+
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary-hover);">✍️ Подписание сертификатом УКЭП...</span>';
+
+        // 2. Open cert store and find matching cert
+        const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+        await oStore.Open(window.cadesplugin.CAPICOM_CURRENT_USER_STORE, window.cadesplugin.CAPICOM_MY_STORE, window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED);
+        const certs = await oStore.Certificates;
+        const count = await certs.Count;
+
+        if (count === 0) {
+            throw new Error("В хранилище сертификатов не найдено личных сертификатов УКЭП");
+        }
+
+        // Pick selected cert or matching INN cert or first cert
+        const targetThumbprint = document.getElementById('seller_cert_path').value.trim();
+        let selectedCert = null;
+
+        for (let i = 1; i <= count; i++) {
+            const c = await certs.Item(i);
+            const thumb = await c.Thumbprint;
+            const sub = await c.SubjectName;
+            if (targetThumbprint && thumb.toLowerCase() === targetThumbprint.toLowerCase()) {
+                selectedCert = c;
+                break;
+            }
+            if (inn && sub.includes(inn)) {
+                selectedCert = c;
+                break;
+            }
+        }
+        if (!selectedCert) {
+            selectedCert = await certs.Item(1);
+        }
+
+        // 3. Create attached CMS signature of authData
+        const oSigner = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+        await oSigner.propset_Certificate(selectedCert);
+
+        const oSignedData = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+        await oSignedData.propset_Content(authData);
+
+        // Attached signature (false = attached content in signed blob)
+        const signature = await oSignedData.SignCades(oSigner, window.cadesplugin.CADESCOM_CADES_BES, false);
+        await oStore.Close();
+
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary-hover);">🔐 Получение токена сессии ГИС МТ...</span>';
+
+        // 4. Send signed challenge to API
+        const signinRes = await apiFetch(`/sellers/${currentEditingSellerId}/cz-signin`, {
+            method: 'POST',
+            body: JSON.stringify({
+                uuid: authUuid,
+                data: signature
+            })
+        });
+
+        showToast('Успех', signinRes.message || 'Токен Честного Знака успешно обновлен!', 'success');
+        if (statusEl) {
+            statusEl.innerHTML = `<span style="color:var(--status-delivered);">✅ Токен активен (${signinRes.token_preview || 'сохранен'})</span>`;
+        }
+        document.getElementById('seller_cz_token').placeholder = 'Токен активен (обновлен через ЭЦП)';
+    } catch (e) {
+        showToast('Ошибка аутентификации в ЧЗ', e.message, 'error');
+        if (statusEl) {
+            statusEl.innerHTML = `<span style="color:var(--status-cancelled);">❌ Ошибка: ${e.message}</span>`;
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}

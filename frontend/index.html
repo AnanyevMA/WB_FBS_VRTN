@@ -213,12 +213,40 @@
             <div id="page-/kiz" class="page">
                 <div class="page-header">
                     <div>
-                        <h1 class="page-title">Сканер и Привязка КИЗ</h1>
-                        <p class="page-subtitle">Сканирование штрихкодов DataMatrix (SGTIN) для привязки к заказам и выбытия в ЧЗ.</p>
+                        <h1 class="page-title">Маркировка и Сканер КИЗ</h1>
+                        <p class="page-subtitle">Сканирование DataMatrix, привязка КИЗ, загрузка архива WB и операции с Честным Знаком.</p>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                            📁 Загрузить архив WB (.xlsx)
+                        </button>
                         <button class="btn btn-secondary" onclick="triggerCzAction('withdraw')">Выбытие в ЧЗ</button>
                         <button class="btn btn-secondary" onclick="triggerCzAction('return')">Возврат в ЧЗ</button>
+                    </div>
+                </div>
+
+                <!-- Archive Upload Card -->
+                <div class="glass-card" style="margin-bottom: 24px; padding: 20px; border: 1px solid rgba(124, 58, 237, 0.25); background: linear-gradient(180deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div>
+                            <h3 style="margin: 0 0 4px; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                                <span>📊</span> Пакетный вывод КИЗ по чекам и возврат в оборот (Архив WB)
+                            </h3>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 13px;">
+                                Загрузите файл <code>archive.xlsx</code> (выгрузка отчёта из ЛК WB) — система автоматически извлечёт номера чеков для дистанционной продажи и отберёт возвраты.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div id="archiveDropZone" class="dropzone" onclick="openArchiveFileInput()"
+                        style="border: 2px dashed rgba(124,58,237,0.4); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; background: rgba(124,58,237,0.03); transition: all 0.2s ease;"
+                        ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'; this.style.background='rgba(124,58,237,0.08)';"
+                        ondragleave="event.preventDefault(); this.style.borderColor='rgba(124,58,237,0.4)'; this.style.background='rgba(124,58,237,0.03)';"
+                        ondrop="handleArchiveDrop(event)">
+                        <div style="font-size: 28px; margin-bottom: 8px;">📑</div>
+                        <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Перетащите файл <code>archive.xlsx</code> сюда или нажмите для выбора</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Листы «КИЗ» и «Сборочные задания» с чеками продажи и возвратами</div>
+                        <input type="file" id="archiveFileInput" accept=".xlsx,.xls" style="display: none;" onchange="handleArchiveFileSelect(event)">
                     </div>
                 </div>
 
@@ -577,10 +605,10 @@
             <h3 id="kizSigningModalTitle">✍️ Подписание документа в Честный Знак</h3>
             <button class="icon-btn" onclick="closeModal('kizSigningModal')">✕</button>
         </div>
-        <div class="modal-body">
             <div id="kizSigningHeaderBanner" style="padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #c7d2fe;">
                 <div style="font-weight: 600;" id="kizSigningActionName">Вывод из оборота (Дистанционная продажа LK_RECEIPT)</div>
                 <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;" id="kizSigningActionDesc">Документ формируется на сервере VPS и подписывается вашей локальной УКЭП через плагин КриптоПро.</div>
+                <div id="kizSigningFiasInfo" style="font-size: 11px; margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);"></div>
             </div>
 
             <!-- Orders to process -->
@@ -744,6 +772,131 @@
         <div class="modal-footer" style="display:flex; justify-content:space-between;">
             <button class="btn btn-danger" onclick="logout()">Выйти из аккаунта</button>
             <button class="btn btn-secondary" onclick="closeModal('userAccountModal')">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- WB Archive Preview & Processing Modal -->
+<div class="modal-overlay" id="archivePreviewModal">
+    <div class="modal-content" style="max-width: 950px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 22px;">📑</span>
+                <div>
+                    <h3 id="archiveModalTitle" style="margin: 0;">Архив WB: Предпросмотр операций</h3>
+                    <div id="archiveModalSubtitle" style="font-size: 12px; color: var(--text-muted);">Файл: archive.xlsx</div>
+                    <div id="archiveModalFiasInfo" style="font-size: 12px; margin-top: 4px; color: var(--text-muted);"></div>
+                </div>
+            </div>
+            <button class="icon-btn" onclick="closeModal('archivePreviewModal')">✕</button>
+        </div>
+
+        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 16px 20px;">
+            <!-- Summary Badges -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div class="glass-card" style="padding: 12px; border-left: 4px solid var(--status-delivered); background: rgba(34, 197, 94, 0.08);">
+                    <div style="font-size: 12px; color: var(--text-muted);">🟢 Продажи (к выводу с чеком)</div>
+                    <div id="archiveSummarySales" style="font-size: 20px; font-weight: 700; color: #4ade80;">0</div>
+                </div>
+                <div class="glass-card" style="padding: 12px; border-left: 4px solid var(--status-assembling); background: rgba(234, 179, 8, 0.08);">
+                    <div style="font-size: 12px; color: var(--text-muted);">🔄 Отказы / Возвраты</div>
+                    <div id="archiveSummaryReturns" style="font-size: 20px; font-weight: 700; color: #facc15;">0</div>
+                </div>
+                <div class="glass-card" style="padding: 12px; border-left: 4px solid var(--primary); background: rgba(124, 58, 237, 0.08);">
+                    <div style="font-size: 12px; color: var(--text-muted);">📊 Всего записей в архиве</div>
+                    <div id="archiveSummaryTotal" style="font-size: 20px; font-weight: 700; color: #c4b5fd;">0</div>
+                </div>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                <button id="archiveTabSalesBtn" class="btn" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-bottom: 2px solid #22c55e; border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600;" onclick="switchArchiveTab('sales')">
+                    🟢 Продажи с чеками (<span id="archiveTabSalesCount">0</span>)
+                </button>
+                <button id="archiveTabReturnsBtn" class="btn" style="background: transparent; color: var(--text-muted); border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600;" onclick="switchArchiveTab('returns')">
+                    🔄 Отказы / Возвраты (<span id="archiveTabReturnsCount">0</span>)
+                </button>
+            </div>
+
+            <!-- Tab 1: Sales / Withdrawals -->
+            <div id="archiveTabSalesContent">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="font-size: 13px; color: var(--text-muted);">
+                        Будет сформирован документ вывода из оборота ГИС МТ (<code>LK_RECEIPT</code>) по причине «Дистанционная продажа».
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllArchiveCheckboxes('withdrawals', true)">Выбрать все</button>
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllArchiveCheckboxes('withdrawals', false)">Снять выбор</button>
+                    </div>
+                </div>
+                <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="archiveSelectAllWithdrawals" onchange="toggleAllArchiveCheckboxes('withdrawals', this.checked)" checked></th>
+                                <th>№ Задания</th>
+                                <th>Код КИЗ (SGTIN)</th>
+                                <th>🧾 Номер чека</th>
+                                <th>📅 Дата чека</th>
+                                <th>Стоимость</th>
+                                <th>Статус в БД</th>
+                                <th>Статус КИЗ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archiveWithdrawalsTableBody">
+                            <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Нет данных о продажах</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Returns -->
+            <div id="archiveTabReturnsContent" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="font-size: 13px; color: var(--text-muted);">
+                        Товары, от которых покупатель отказался. Если КИЗ был выведен, сформируется документ возврата в оборот (<code>LP_RETURN</code>).
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllArchiveCheckboxes('returns', true)">Выбрать все</button>
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllArchiveCheckboxes('returns', false)">Снять выбор</button>
+                    </div>
+                </div>
+                <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="archiveSelectAllReturns" onchange="toggleAllArchiveCheckboxes('returns', this.checked)" checked></th>
+                                <th>№ Задания</th>
+                                <th>Код КИЗ (SGTIN)</th>
+                                <th>Товар / Артикул</th>
+                                <th>Рекомендуемое действие</th>
+                                <th>Статус в БД</th>
+                                <th>Статус в ЧЗ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archiveReturnsTableBody">
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Нет данных о возвратах</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border-top: 1px solid var(--border-color); padding: 12px 20px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="font-size: 13px; color: var(--text-muted);">Режим подписания:</label>
+                <select id="archiveSignModeSelect" class="form-control" style="width: auto; padding: 6px 10px; font-size: 13px;">
+                    <option value="server">⚙️ Серверная очередь (Celery)</option>
+                    <option value="client_cades">✍️ КриптоПро плагин в браузере</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeModal('archivePreviewModal')">Отмена</button>
+                <button class="btn btn-primary" id="archiveProcessBtn" onclick="submitArchiveProcessing()" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 600;">
+                    <span class="btn-text">🚀 Выполнить операции</span>
+                    <div class="loader" style="display:none;"></div>
+                </button>
+            </div>
         </div>
     </div>
 </div>

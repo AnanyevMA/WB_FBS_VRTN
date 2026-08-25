@@ -37,6 +37,8 @@ def withdraw_order_kiz(
     order_id: int,
     kiz_code: str,
     price_kopecks: int,
+    receipt_number: Optional[str] = None,
+    receipt_date: Optional[str] = None,
     wb_order_data: Optional[dict] = None,
 ):
     """
@@ -48,12 +50,14 @@ def withdraw_order_kiz(
         order_id: WB order ID
         kiz_code: SGTIN код для вывода
         price_kopecks: цена в копейках
+        receipt_number: номер кассового чека WB
+        receipt_date: дата чека (YYYY-MM-DD)
         wb_order_data: дополнительные данные заказа из WB
     """
     import asyncio
     from app.services.cz_client import CZClient, CZAPIError
 
-    logger.info(f"[CZ Withdrawal] Starting for order {order_id}, KIZ: {kiz_code[:20]}...")
+    logger.info(f"[CZ Withdrawal] Starting for order {order_id}, KIZ: {kiz_code[:20]}..., Receipt: {receipt_number}")
 
     with Session(sync_engine) as db:
         # Get seller
@@ -120,6 +124,8 @@ def withdraw_order_kiz(
                             mod_fias=seller.mod_fias,
                             mod_kpp=seller.mod_kpp,
                             wb_order_id=order_id,
+                            receipt_number=receipt_number,
+                            receipt_date=receipt_date,
                         )
                     ).result()
             else:
@@ -133,6 +139,8 @@ def withdraw_order_kiz(
                         mod_fias=seller.mod_fias,
                         mod_kpp=seller.mod_kpp,
                         wb_order_id=order_id,
+                        receipt_number=receipt_number,
+                        receipt_date=receipt_date,
                     )
                 )
 
@@ -150,7 +158,7 @@ def withdraw_order_kiz(
 
             _log_audit(db, seller_id, "cz_withdrawal", "SUCCESS",
                        "order", str(order_id),
-                       payload={"doc_id": doc_id, "kiz_code": kiz_code[:20]})
+                       payload={"doc_id": doc_id, "kiz_code": kiz_code[:20], "receipt_number": receipt_number})
 
             db.commit()
             logger.info(f"[CZ Withdrawal] SUCCESS for order {order_id}, doc_id: {doc_id}")
@@ -204,6 +212,8 @@ async def _do_withdrawal(
     mod_fias: Optional[str],
     mod_kpp: Optional[str],
     wb_order_id: int,
+    receipt_number: Optional[str] = None,
+    receipt_date: Optional[str] = None,
 ) -> str:
     """Async withdrawal using CZClient."""
     from app.services.cz_client import CZClient
@@ -215,6 +225,8 @@ async def _do_withdrawal(
             mod_fias=mod_fias,
             mod_kpp=mod_kpp,
             wb_order_id=wb_order_id,
+            receipt_number=receipt_number,
+            receipt_date=receipt_date,
             wait_for_result=True,  # Wait for GIS MT processing
         )
     return doc_id
@@ -245,23 +257,27 @@ def process_seller_archive(self, seller_id: str, archive_data: list[dict]):
         kiz_code = record.get("kiz_code")
         status = record.get("status", "sold")
         price_rubles = record.get("price", 0)
-        price_kopecks = int(price_rubles * 100)
+        price_kopecks = record.get("price_kopecks") or int(price_rubles * 100)
+        receipt_number = record.get("receipt_number")
+        receipt_date = record.get("receipt_date") or record.get("sale_date")
 
         if not kiz_code or not order_id:
             continue
 
-        if status == "sold":
+        if status in ("sold", "sale", "Продажа", "Продано"):
             withdraw_order_kiz.apply_async(
                 kwargs={
                     "seller_id": seller_id,
                     "order_id": order_id,
                     "kiz_code": kiz_code,
                     "price_kopecks": price_kopecks,
+                    "receipt_number": receipt_number,
+                    "receipt_date": receipt_date,
                 },
                 queue="cz_operations",
                 countdown=2,  # Small delay to avoid overwhelming ГИС МТ
             )
-        elif status == "returned":
+        elif status in ("returned", "return", "Возврат", "Отказ покупателем"):
             from app.agents.cz_return import return_order_kiz
             return_order_kiz.apply_async(
                 kwargs={

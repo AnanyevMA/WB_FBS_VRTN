@@ -85,3 +85,71 @@ def test_kb_and_code_sync_execution():
     assert isinstance(result, dict)
     assert result["status"] == "HEALTHY"
     assert result["codebase_files_count"] >= 30
+
+
+def test_dynamic_change_indexing_on_file_creation_and_modification(tmp_path):
+    """
+    Verify that when new files are created or modified in the project,
+    the indexer immediately detects new classes, functions, hashes, and updates maps.
+    """
+    indexer = CodebaseIndexer()
+    
+    # 1. Create a dummy service file
+    test_file = indexer.root_dir / "app" / "services" / "_test_dummy_service.py"
+    try:
+        test_file.write_text(
+            '"""Dummy service for index verification."""\n\n'
+            'class DummyIndexerService:\n'
+            '    """Service class docstring."""\n'
+            '    def perform_dummy_action(self):\n'
+            '        pass\n\n'
+            'def standalone_dummy_helper(arg1: str):\n'
+            '    """Helper docstring."""\n'
+            '    return arg1\n',
+            encoding="utf-8"
+        )
+
+        # 2. Run indexer
+        indexer.save_index()
+
+        # 3. Verify it appears in codebase_index.json and CODEBASE_MAP.md
+        index_data = indexer.load_index(force_reload=True)
+        files = {f["file"]: f for f in index_data.get("files", [])}
+        rel_key = "app/services/_test_dummy_service.py"
+        assert rel_key in files, f"Created file {rel_key} was not found in codebase_index.json"
+        
+        file_info = files[rel_key]
+        assert any(c["name"] == "DummyIndexerService" for c in file_info.get("classes", []))
+        assert any(fn["name"] == "standalone_dummy_helper" for fn in file_info.get("functions", []))
+        initial_hash = file_info["hash"]
+
+        # 4. Verify querying returns it
+        res = indexer.query(symbol="DummyIndexerService")
+        assert len(res) > 0
+        assert "_test_dummy_service.py" in res[0]["file"]
+
+        # 5. Modify the file (add new function)
+        test_file.write_text(
+            '"""Updated dummy service."""\n\n'
+            'class DummyIndexerService:\n'
+            '    def new_method_added(self):\n'
+            '        pass\n\n'
+            'def newly_added_function():\n'
+            '    pass\n',
+            encoding="utf-8"
+        )
+
+        indexer.save_index()
+        updated_index = indexer.load_index(force_reload=True)
+        updated_files = {f["file"]: f for f in updated_index.get("files", [])}
+        updated_info = updated_files[rel_key]
+        
+        assert updated_info["hash"] != initial_hash, "Hash should change when file content is modified"
+        assert any(fn["name"] == "newly_added_function" for fn in updated_info.get("functions", []))
+
+    finally:
+        # Cleanup
+        if test_file.exists():
+            test_file.unlink()
+        indexer.save_index()
+

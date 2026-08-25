@@ -12,7 +12,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 try:
     import httpx
@@ -347,21 +347,26 @@ class CZClient:
         price_kopecks: int,
         mod_fias: Optional[str] = None,
         mod_kpp: Optional[str] = None,
-        document_date: Optional[datetime] = None,
+        document_date: Optional[Union[datetime, str]] = None,
         primary_document_number: str = "",
+        document_type: Optional[str] = None,
         action: str = "DISTANCE",
     ) -> dict:
         """Build LK_RECEIPT document for ГИС МТ / ISMP (Вывод из оборота: Дистанционная продажа)."""
         if document_date is None:
-            document_date = datetime.now(timezone.utc)
+            doc_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        elif isinstance(document_date, datetime):
+            doc_date_str = document_date.strftime("%Y-%m-%d")
+        else:
+            doc_date_str = str(document_date).strip()
 
-        doc_date_str = document_date.strftime("%Y-%m-%d")
+        resolved_doc_type = document_type or "OTHER"
 
         doc_body = {
             "inn": self.inn,
             "action": action,
             "action_date": doc_date_str,
-            "document_type": "OTHER",
+            "document_type": resolved_doc_type,
             "document_number": primary_document_number or str(uuid.uuid4())[:8].upper(),
             "document_date": doc_date_str,
             "primary_document_custom_name": "Продажа через Wildberries FBS",
@@ -522,18 +527,24 @@ class CZClient:
         mod_fias: Optional[str] = None,
         mod_kpp: Optional[str] = None,
         wb_order_id: Optional[int] = None,
+        receipt_number: Optional[str] = None,
+        receipt_date: Optional[Union[datetime, str]] = None,
+        document_type: Optional[str] = None,
         wait_for_result: bool = False,
     ) -> str:
         """Вывод КИЗ из оборота при продаже WB FBS."""
         if not kiz_codes:
             raise ValueError("kiz_codes cannot be empty")
 
+        doc_num = receipt_number or (str(wb_order_id) if wb_order_id else "")
         document = self._build_withdrawal_document(
             kiz_codes=kiz_codes,
             price_kopecks=price_kopecks,
             mod_fias=mod_fias,
             mod_kpp=mod_kpp,
-            primary_document_number=str(wb_order_id) if wb_order_id else "",
+            document_date=receipt_date,
+            primary_document_number=doc_num,
+            document_type=document_type,
         )
 
         doc_id = await self._create_document(document, sign=True)
@@ -548,14 +559,20 @@ class CZClient:
         mod_fias: Optional[str] = None,
         mod_kpp: Optional[str] = None,
         wb_order_id: Optional[int] = None,
+        receipt_number: Optional[str] = None,
+        receipt_date: Optional[Union[datetime, str]] = None,
+        document_type: Optional[str] = None,
     ) -> dict:
         """Построение структуры и Base64-данных документа вывода для клиентского подписания."""
+        doc_num = receipt_number or (str(wb_order_id) if wb_order_id else "")
         doc = self._build_withdrawal_document(
             kiz_codes=kiz_codes,
             price_kopecks=price_kopecks,
             mod_fias=mod_fias,
             mod_kpp=mod_kpp,
-            primary_document_number=str(wb_order_id) if wb_order_id else "",
+            document_date=receipt_date,
+            primary_document_number=doc_num,
+            document_type=document_type,
         )
         inner_json = doc.get("product_document", "")
         b64_doc = base64.b64encode(inner_json.encode('utf-8')).decode('ascii')

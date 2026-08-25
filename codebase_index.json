@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-22T03:50:46.489194+00:00",
+  "updated_at": "2026-08-25T13:29:31.396219+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 74,
+  "total_files": 75,
   "files": [
     {
       "file": "alembic/env.py",
@@ -574,7 +574,7 @@
     {
       "file": "app/agents/cz_withdrawal.py",
       "layer": "agents",
-      "hash": "0bfd1a3ab67d",
+      "hash": "9aa5b6268119",
       "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -587,6 +587,8 @@
             "order_id",
             "kiz_code",
             "price_kopecks",
+            "receipt_number",
+            "receipt_date",
             "wb_order_data"
           ],
           "decorators": [
@@ -605,7 +607,9 @@
             "price_kopecks",
             "mod_fias",
             "mod_kpp",
-            "wb_order_id"
+            "wb_order_id",
+            "receipt_number",
+            "receipt_date"
           ],
           "decorators": [],
           "docstring": "Async withdrawal using CZClient."
@@ -1536,7 +1540,7 @@
     {
       "file": "app/api/kiz.py",
       "layer": "api",
-      "hash": "e3a48b9baf7a",
+      "hash": "ed350332d410",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -1658,6 +1662,32 @@
             "router.get('/kiz/operations')"
           ],
           "docstring": ""
+        },
+        {
+          "name": "preview_wb_archive",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "file",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/preview')"
+          ],
+          "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
+        },
+        {
+          "name": "process_wb_archive",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/process')"
+          ],
+          "docstring": "Обработка выбранных позиций из архива WB:"
         }
       ],
       "endpoints": [
@@ -1720,6 +1750,18 @@
           "path": "/kiz/operations",
           "handler": "list_kiz_operations",
           "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/archive/preview",
+          "handler": "preview_wb_archive",
+          "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
+        },
+        {
+          "method": "POST",
+          "path": "/archive/process",
+          "handler": "process_wb_archive",
+          "docstring": "Обработка выбранных позиций из архива WB:"
         }
       ],
       "celery_tasks": [],
@@ -1734,6 +1776,7 @@
         "app.models.order",
         "app.models.seller",
         "app.schemas.order",
+        "app.services.archive_service",
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
@@ -3057,6 +3100,59 @@
       "imports": []
     },
     {
+      "file": "app/services/archive_service.py",
+      "layer": "services",
+      "hash": "7d66ce7c6394",
+      "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_parse_date_str",
+          "is_async": false,
+          "args": [
+            "val"
+          ],
+          "decorators": [],
+          "docstring": "Преобразует дату в формат YYYY-MM-DD для True API."
+        },
+        {
+          "name": "parse_wb_archive_excel",
+          "is_async": false,
+          "args": [
+            "file_bytes"
+          ],
+          "decorators": [],
+          "docstring": "Парсит бинарные данные Excel файла архива WB."
+        },
+        {
+          "name": "analyze_archive_data",
+          "is_async": true,
+          "args": [
+            "seller",
+            "archive_data",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Анализирует распарсенные данные архива WB, сопоставляет с заказами в БД"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.order",
+        "app.models.seller",
+        "datetime",
+        "io",
+        "logging",
+        "openpyxl",
+        "re",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
       "file": "app/services/auth_service.py",
       "layer": "services",
       "hash": "5e405b5b6ad5",
@@ -3280,7 +3376,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "3bc6c89c199d",
+      "hash": "3e21adef3427",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -4112,7 +4208,7 @@
     {
       "file": "tests/test_codebase_indexer.py",
       "layer": "tests",
-      "hash": "0c8499eef099",
+      "hash": "6ca4dfaecd6d",
       "docstring": "Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule.",
       "classes": [],
       "functions": [
@@ -4150,6 +4246,15 @@
           "args": [],
           "decorators": [],
           "docstring": "Verify that sync_knowledge_base Celery task syncs both docs and codebase."
+        },
+        {
+          "name": "test_dynamic_change_indexing_on_file_creation_and_modification",
+          "is_async": false,
+          "args": [
+            "tmp_path"
+          ],
+          "decorators": [],
+          "docstring": "Verify that when new files are created or modified in the project,"
         }
       ],
       "endpoints": [],
@@ -4805,7 +4910,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "b0139bb2ecd4",
+      "hash": "c10184e4ea81",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],
@@ -4823,6 +4928,10 @@
       "modals": [
         "accountModalRole",
         "accountModalUsername",
+        "archiveModalFiasInfo",
+        "archiveModalSubtitle",
+        "archiveModalTitle",
+        "archivePreviewModal",
         "attachKizModal",
         "attachKizModalTitle",
         "barcodeModal",

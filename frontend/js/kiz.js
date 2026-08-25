@@ -273,6 +273,18 @@ async function openKizSigningModal(orderIds, action = 'WITHDRAWAL') {
     document.getElementById('kizSigningActionName').innerText = isWithdrawal ? 'Вывод из оборота (Дистанционная продажа LK_RECEIPT)' : 'Возврат в оборот (Дистанционная продажа LP_RETURN)';
     document.getElementById('kizSigningActionDesc').innerText = isWithdrawal ? 'Документ дистанционной продажи формируется на VPS и подписывается локальной УКЭП.' : 'Документ возврата в оборот формируется на VPS и подписывается локальной УКЭП.';
 
+    const currentSeller = (currentSellersList || []).find(s => String(s.id) === String(currentSellerId));
+    const fiasEl = document.getElementById('kizSigningFiasInfo');
+    if (fiasEl) {
+        if (currentSeller && currentSeller.mod_fias) {
+            fiasEl.innerHTML = `📍 Место деятельности (ФИАС ID): <code style="color:#67e8f9; font-weight:600;">${currentSeller.mod_fias}</code>`;
+            fiasEl.style.display = 'block';
+        } else {
+            fiasEl.innerHTML = `⚠️ <span style="color:#facc15;">ФИАС ID склада не указан в настройках продавца (требуется ГИС МТ при выводе из оборота).</span>`;
+            fiasEl.style.display = 'block';
+        }
+    }
+
     document.getElementById('kizSigningOrdersCount').innerText = orderIds.length;
     document.getElementById('kizSigningOrdersList').innerHTML = '<div style="color:var(--text-muted); padding:4px;">Загрузка данных заказов...</div>';
     document.getElementById('kizSigningJsonPreview').innerText = 'Подготовка документа на сервере...';
@@ -449,3 +461,256 @@ async function submitKizViaServerFallback() {
         showToast('Ошибка фонового агента', e.message, 'error');
     }
 }
+
+
+/** --- WB Archive Processing (.xlsx) --- */
+
+let currentArchiveData = null;
+
+function openArchiveFileInput() {
+    const input = document.getElementById('archiveFileInput');
+    if (input) {
+        input.value = '';
+        input.click();
+    }
+}
+
+function handleArchiveFileSelect(event) {
+    const file = event.target.files?.[0];
+    if (file) {
+        uploadAndPreviewArchive(file);
+    }
+}
+
+function handleArchiveDrop(event) {
+    event.preventDefault();
+    const dropZone = document.getElementById('archiveDropZone');
+    if (dropZone) {
+        dropZone.style.borderColor = 'rgba(124,58,237,0.4)';
+        dropZone.style.background = 'rgba(124,58,237,0.03)';
+    }
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+        uploadAndPreviewArchive(file);
+    }
+}
+
+async function uploadAndPreviewArchive(file) {
+    if (!currentSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активный магазин', 'error');
+    }
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        return showToast('Ошибка', 'Пожалуйста, загрузите файл формата Excel (.xlsx или .xls)', 'error');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    showToast('Обработка файла', `Чтение архива ${file.name}...`, 'info');
+
+        const token = authToken || localStorage.getItem('wbfbs_auth_token') || localStorage.getItem('token');
+        const res = await fetch(`${API_BASE}/sellers/${currentSellerId}/archive/preview`, {
+            method: 'POST',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                'X-Seller-ID': currentSellerId,
+            },
+            body: formData
+        });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Ошибка сервера (${res.status})`);
+        }
+
+        const data = await res.json();
+        currentArchiveData = data;
+        renderArchivePreview(data);
+        openModal('archivePreviewModal');
+    } catch (e) {
+        showToast('Ошибка разбора архива', e.message, 'error');
+    }
+}
+
+function renderArchivePreview(data) {
+    const summary = data.summary || {};
+    document.getElementById('archiveModalSubtitle').textContent = `Файл: ${data.filename || 'archive.xlsx'}`;
+
+    const currentSeller = (currentSellersList || []).find(s => String(s.id) === String(currentSellerId));
+    const archiveFiasEl = document.getElementById('archiveModalFiasInfo');
+    if (archiveFiasEl) {
+        if (currentSeller && currentSeller.mod_fias) {
+            archiveFiasEl.innerHTML = `📍 Место деятельности (ФИАС ID): <code style="color:#67e8f9; font-weight:600;">${currentSeller.mod_fias}</code>`;
+        } else {
+            archiveFiasEl.innerHTML = `⚠️ <span style="color:#facc15;">ФИАС ID склада не указан в настройках продавца (требуется ГИС МТ при выводе из оборота).</span>`;
+        }
+    }
+
+    document.getElementById('archiveSummarySales').textContent = summary.sales_count || 0;
+    document.getElementById('archiveSummaryReturns').textContent = summary.returns_count || 0;
+    document.getElementById('archiveSummaryTotal').textContent = summary.total_rows || 0;
+
+    document.getElementById('archiveTabSalesCount').textContent = summary.sales_count || 0;
+    document.getElementById('archiveTabReturnsCount').textContent = summary.returns_count || 0;
+
+    // Render withdrawals (sales)
+    const withdrawalsBody = document.getElementById('archiveWithdrawalsTableBody');
+    if (data.withdrawals && data.withdrawals.length > 0) {
+        withdrawalsBody.innerHTML = data.withdrawals.map((w, idx) => `
+            <tr>
+                <td><input type="checkbox" class="archive-item-withdrawal" data-idx="${idx}" ${w.selected ? 'checked' : ''}></td>
+                <td style="font-weight: 600;">#${w.order_id || '-'}</td>
+                <td style="font-family: monospace; font-size: 13px;">${w.kiz_code || '<span style="color:var(--text-muted)">нет КИЗ</span>'}</td>
+                <td><span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; font-weight: 700;">🧾 ${w.receipt_number || '-'}</span></td>
+                <td style="color: var(--text-muted); font-size: 13px;">${w.receipt_date || '-'}</td>
+                <td style="font-weight: 600;">${w.price ? w.price.toLocaleString('ru-RU') + ' ₽' : '-'}</td>
+                <td><span class="badge ${w.db_status === 'DELIVERED' ? 'badge-delivered' : 'badge-neutral'}">${w.db_status}</span></td>
+                <td><span class="badge ${w.needs_withdrawal ? 'badge-warning' : 'badge-delivered'}">${w.needs_withdrawal ? '⚠️ Требует выбытия' : '✅ Выведен'}</span></td>
+            </tr>
+        `).join('');
+    } else {
+        withdrawalsBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Нет данных о продажах</td></tr>';
+    }
+
+    // Render returns
+    const returnsBody = document.getElementById('archiveReturnsTableBody');
+    if (data.returns && data.returns.length > 0) {
+        returnsBody.innerHTML = data.returns.map((r, idx) => `
+            <tr>
+                <td><input type="checkbox" class="archive-item-return" data-idx="${idx}" ${r.selected ? 'checked' : ''}></td>
+                <td style="font-weight: 600;">#${r.order_id || '-'}</td>
+                <td style="font-family: monospace; font-size: 13px;">${r.kiz_code || '<span style="color:var(--text-muted)">нет КИЗ</span>'}</td>
+                <td>
+                    <div style="font-weight: 500;">${r.name || 'Товар'}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${r.article || ''}</div>
+                </td>
+                <td><span class="badge ${r.needs_cz_return ? 'badge-warning' : 'badge-neutral'}">${r.action_recommended}</span></td>
+                <td><span class="badge ${r.db_status === 'CANCELLED' ? 'badge-cancelled' : 'badge-neutral'}">${r.db_status}</span></td>
+                <td>${r.db_cz_status ? `<span class="badge badge-info">${r.db_cz_status}</span>` : '<span style="color:var(--text-muted)">-</span>'}</td>
+            </tr>
+        `).join('');
+    } else {
+        returnsBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Нет данных о возвратах</td></tr>';
+    }
+
+    switchArchiveTab('sales');
+}
+
+function switchArchiveTab(tab) {
+    const salesContent = document.getElementById('archiveTabSalesContent');
+    const returnsContent = document.getElementById('archiveTabReturnsContent');
+    const salesBtn = document.getElementById('archiveTabSalesBtn');
+    const returnsBtn = document.getElementById('archiveTabReturnsBtn');
+
+    if (tab === 'sales') {
+        salesContent.style.display = 'block';
+        returnsContent.style.display = 'none';
+        salesBtn.style.background = 'rgba(34, 197, 94, 0.15)';
+        salesBtn.style.color = '#4ade80';
+        salesBtn.style.borderBottom = '2px solid #22c55e';
+        returnsBtn.style.background = 'transparent';
+        returnsBtn.style.color = 'var(--text-muted)';
+        returnsBtn.style.borderBottom = 'none';
+    } else {
+        salesContent.style.display = 'none';
+        returnsContent.style.display = 'block';
+        returnsBtn.style.background = 'rgba(234, 179, 8, 0.15)';
+        returnsBtn.style.color = '#facc15';
+        returnsBtn.style.borderBottom = '2px solid #eab308';
+        salesBtn.style.background = 'transparent';
+        salesBtn.style.color = 'var(--text-muted)';
+        salesBtn.style.borderBottom = 'none';
+    }
+}
+
+function toggleAllArchiveCheckboxes(type, checked) {
+    const selector = type === 'withdrawals' ? '.archive-item-withdrawal' : '.archive-item-return';
+    document.querySelectorAll(selector).forEach(cb => {
+        cb.checked = checked;
+    });
+}
+
+async function submitArchiveProcessing() {
+    if (!currentArchiveData || !currentSellerId) return;
+
+    const selectedWithdrawals = [];
+    document.querySelectorAll('.archive-item-withdrawal:checked').forEach(cb => {
+        const idx = parseInt(cb.getAttribute('data-idx'));
+        if (currentArchiveData.withdrawals?.[idx]) {
+            selectedWithdrawals.push(currentArchiveData.withdrawals[idx]);
+        }
+    });
+
+    const selectedReturns = [];
+    document.querySelectorAll('.archive-item-return:checked').forEach(cb => {
+        const idx = parseInt(cb.getAttribute('data-idx'));
+        if (currentArchiveData.returns?.[idx]) {
+            selectedReturns.push(currentArchiveData.returns[idx]);
+        }
+    });
+
+    if (selectedWithdrawals.length === 0 && selectedReturns.length === 0) {
+        return showToast('Внимание', 'Не выбрано ни одной позиции для обработки', 'warning');
+    }
+
+    const signMode = document.getElementById('archiveSignModeSelect').value;
+    const btn = document.getElementById('archiveProcessBtn');
+    const loader = btn.querySelector('.loader');
+    const btnText = btn.querySelector('.btn-text');
+
+    loader.style.display = 'inline-block';
+    btnText.style.display = 'none';
+    btn.disabled = true;
+
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/archive/process`, {
+            method: 'POST',
+            body: JSON.stringify({
+                withdrawals: selectedWithdrawals,
+                returns: selectedReturns,
+                sign_mode: signMode,
+            })
+        });
+
+        if (signMode === 'client_cades' && res.cades_payloads && res.cades_payloads.length > 0) {
+            showToast('КриптоПро', `Подписание ${res.cades_payloads.length} документов в браузере...`, 'info');
+            closeModal('archivePreviewModal');
+
+            // Sign each payload with CAdES browser plugin
+            let successCount = 0;
+            for (const item of res.cades_payloads) {
+                try {
+                    const signature = await signBase64WithCades(item.document_base64, null);
+                    await apiFetch(`/sellers/${currentSellerId}/kiz/submit-signed-doc`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            document_type: item.type,
+                            document_base64: item.document_base64,
+                            signature_base64: signature,
+                            order_ids: item.order_id ? [item.order_id] : [],
+                            action: item.action,
+                        })
+                    });
+                    successCount++;
+                } catch (signErr) {
+                    showToast('Ошибка ЭЦП', `Не удалось подписать заказ #${item.order_id}: ${signErr.message}`, 'error');
+                }
+            }
+            showToast('Успешно', `Подписано и отправлено в ГИС МТ: ${successCount} из ${res.cades_payloads.length}`, 'success');
+        } else {
+            showToast('Успешно', res.message || 'Операции запущены', 'success');
+            closeModal('archivePreviewModal');
+        }
+
+        if (typeof loadDashboard === 'function') await loadDashboard();
+        if (typeof loadOrders === 'function') await loadOrders();
+
+    } catch (e) {
+        showToast('Ошибка обработки', e.message, 'error');
+    } finally {
+        loader.style.display = 'none';
+        btnText.style.display = 'inline';
+        btn.disabled = false;
+    }
+}
+

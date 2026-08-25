@@ -405,17 +405,55 @@ async function signDataWithCryptoPro(base64Data, thumbprint) {
     const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
     await oStore.Open(window.cadesplugin.CAPICOM_CURRENT_USER_STORE, window.cadesplugin.CAPICOM_MY_STORE, window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED);
     const certs = await oStore.Certificates;
+    const count = await certs.Count;
+
+    if (count === 0) {
+        await oStore.Close();
+        throw new Error("В личном хранилище сертификатов не найдено ни одного сертификата УКЭП");
+    }
+
     let selectedCert = null;
 
+    // 1. If explicit thumbprint passed
     if (thumbprint) {
         const found = await certs.Find(window.cadesplugin.CAPICOM_CERTIFICATE_FIND_SHA1_HASH, thumbprint);
         if (await found.Count > 0) {
             selectedCert = await found.Item(1);
         }
     }
-    if (!selectedCert && (await certs.Count > 0)) {
+
+    // 2. If no thumbprint, check selected cert in UI or matching seller INN
+    if (!selectedCert) {
+        const uiCertSelect = document.getElementById('kizSigningCertSelect') || document.getElementById('seller_cert_select');
+        const selectedVal = uiCertSelect ? uiCertSelect.value : null;
+        if (selectedVal) {
+            const found = await certs.Find(window.cadesplugin.CAPICOM_CERTIFICATE_FIND_SHA1_HASH, selectedVal);
+            if (await found.Count > 0) {
+                selectedCert = await found.Item(1);
+            }
+        }
+    }
+
+    // 3. Fallback: match by current seller INN if known
+    if (!selectedCert && typeof currentSellersList !== 'undefined' && currentSellerId) {
+        const seller = currentSellersList.find(s => String(s.id) === String(currentSellerId));
+        if (seller && seller.cz_inn) {
+            for (let i = 1; i <= count; i++) {
+                const c = await certs.Item(i);
+                const sub = await c.SubjectName;
+                if (sub && sub.includes(seller.cz_inn)) {
+                    selectedCert = c;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 4. Default to first cert
+    if (!selectedCert && count > 0) {
         selectedCert = await certs.Item(1);
     }
+
     if (!selectedCert) {
         await oStore.Close();
         throw new Error("Не выбран действующий сертификат для подписания");
@@ -429,10 +467,15 @@ async function signDataWithCryptoPro(base64Data, thumbprint) {
     await oSignedData.propset_ContentEncoding(window.cadesplugin.CADESCOM_BASE64_TO_BINARY);
     await oSignedData.propset_Content(base64Data);
 
+    // Detached CAdES-BES signature
     const signature = await oSignedData.SignCades(oSigner, window.cadesplugin.CADESCOM_CADES_BES, true);
     await oStore.Close();
     return signature;
 }
+
+// Global aliases for CAdES signing
+window.signDataWithCryptoPro = signDataWithCryptoPro;
+window.signBase64WithCades = signDataWithCryptoPro;
 
 async function submitKizViaServerFallback() {
     if (!currentSigningPayload) return;
@@ -688,8 +731,8 @@ async function submitArchiveProcessing() {
             let successCount = 0;
             for (const item of res.cades_payloads) {
                 try {
-                    const signature = await signBase64WithCades(item.document_base64, null);
-                    await apiFetch(`/sellers/${currentSellerId}/kiz/submit-signed-doc`, {
+                    const signature = await signDataWithCryptoPro(item.document_base64, null);
+                    await apiFetch(`/sellers/${currentSellerId}/kiz/submit-signed-document`, {
                         method: 'POST',
                         body: JSON.stringify({
                             document_type: item.type,

@@ -8,7 +8,7 @@ import uuid
 from app.database import get_db
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus, OrderStatus
-from app.models.kiz import KizOperation, KizOperationType
+from app.models.kiz import KizOperation, KizOperationType, KizProductInfo
 from app.models.audit import AuditLog
 from app.schemas.order import KIZAttachRequest, KIZValidationResponse
 
@@ -463,6 +463,17 @@ async def submit_signed_kiz_document(
                 cz_doc_id=doc_id,
             )
             db.add(kiz_op)
+
+            if o.kiz_code:
+                stmt_kiz = select(KizProductInfo).where(
+                    KizProductInfo.seller_id == seller.id,
+                    KizProductInfo.kiz_code == o.kiz_code
+                )
+                res_kiz = await db.execute(stmt_kiz)
+                kiz_info_row = res_kiz.scalars().first()
+                if kiz_info_row:
+                    kiz_info_row.cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
+                    kiz_info_row.checked_at = now
 
     audit = AuditLog(
         seller_id=seller_id,

@@ -209,7 +209,14 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
     if not order.kiz_code:
         raise HTTPException(status_code=400, detail="У заказа отсутствует прикрепленный КИЗ")
     
-    from app.services.kiz_service import parse_kiz_code, resolve_kiz_product_info
+    from app.services.kiz_service import (
+        parse_kiz_code,
+        resolve_kiz_product_info,
+        is_kiz_withdrawn,
+        extract_cz_item_info,
+        CZ_WITHDRAWAL_STATUSES,
+        CZ_NOT_INTRODUCED_STATUSES,
+    )
     from app.services.cz_client import CZClient, CZAPIError, CZUnauthorizedError
     from app.services.crypto_service import CryptoSignatureError
 
@@ -224,11 +231,11 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
         try:
             async with CZClient(inn=seller.cz_inn, token=token, cert_thumbprint=thumbprint) as cz:
                 try:
-                    cises_info = await cz.get_cises_info([clean_cis, order.kiz_code])
+                    cises_info = await cz.get_cises_info([clean_cis])
                 except CZUnauthorizedError:
                     try:
                         await cz.authenticate()
-                        cises_info = await cz.get_cises_info([clean_cis, order.kiz_code])
+                        cises_info = await cz.get_cises_info([clean_cis])
                     except (CryptoSignatureError, CZAPIError, Exception) as auth_err:
                         logger.warning(f"CZ live auth failed for seller {seller_id}: {auth_err}")
                 except Exception as cz_err:
@@ -236,13 +243,10 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
         except Exception as exc:
             logger.warning(f"Error opening CZ client for seller {seller_id}: {exc}")
 
-    cis_data = {}
-    if cises_info:
-        item = cises_info[0] if isinstance(cises_info, list) else cises_info
-        if isinstance(item, dict):
-            cis_data = item.get("cisInfo", item)
-
+    cis_data = extract_cz_item_info(cises_info) or {}
     cz_status = cis_data.get("status") or cis_data.get("cisStatus")
+    if cz_status:
+        cz_status = str(cz_status).upper().strip()
 
     try:
         kiz_info = await resolve_kiz_product_info(
@@ -261,6 +265,13 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
         logger.warning(f"Error resolving kiz_product_info for order {order_id}: {exc}")
         kiz_info = None
 
+    # Проверка признаков выбытия и блокировок
+    is_withdrawn, withdraw_reason = is_kiz_withdrawn(
+        status=cz_status or (kiz_info.cz_status if kiz_info else None),
+        status_ex=cis_data.get("statusEx") or (kiz_info.cz_status_ex if kiz_info else None),
+        raw_payload=cis_data or (kiz_info.raw_cz_payload if kiz_info else {})
+    )
+
     if cz_status:
         order.kiz_cz_status = cz_status
         order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
@@ -269,21 +280,25 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
         ogvs = cis_data.get("ogvs") or []
         if ogvs:
             order.kiz_status = KizStatus.ERROR
-        elif cz_status in ["RETIRED", "WRITTEN_OFF", "DISAGGREGATED", "KILLED"]:
+        elif is_withdrawn:
             if order.kiz_status != KizStatus.WITHDRAWN and order.status != OrderStatus.DELIVERED:
                 order.kiz_status = KizStatus.ERROR
-        elif cz_status == "INTRODUCED":
-            if order.kiz_status == KizStatus.ATTACHED:
+        elif cz_status in CZ_NOT_INTRODUCED_STATUSES:
+            order.kiz_status = KizStatus.ERROR
+        elif cz_status in ["INTRODUCED", "IN_CIRCULATION"]:
+            if order.kiz_status in [KizStatus.ATTACHED, KizStatus.PENDING]:
                 order.kiz_status = KizStatus.VALIDATED
         elif kiz_info and not kiz_info.is_valid:
             order.kiz_status = KizStatus.ERROR
 
         await db.commit()
     else:
-        # Fallback if status was already set or not returned by CZ
-        cz_status = order.kiz_cz_status or "INTRODUCED"
-        order.kiz_cz_status = cz_status
-        order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
+        # If status was not returned by CZ, check kiz_info validation or existing status
+        if is_withdrawn:
+            if order.kiz_status != KizStatus.WITHDRAWN and order.status != OrderStatus.DELIVERED:
+                order.kiz_status = KizStatus.ERROR
+        elif kiz_info and not kiz_info.is_valid:
+            order.kiz_status = KizStatus.ERROR
         await db.commit()
 
     return {

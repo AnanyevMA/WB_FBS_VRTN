@@ -560,8 +560,8 @@ def create_bot_router() -> Router:
 
             order.kiz_code = kiz_code
             order.kiz_status = KizStatus.ATTACHED
-            order.kiz_cz_status = "INTRODUCED"
-            order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
+            order.kiz_cz_status = None
+            order.kiz_cz_status_updated_at = None
             order.kiz_attached_at = datetime.now(timezone.utc)
 
             kiz_op = KizOperation(
@@ -904,8 +904,8 @@ def create_bot_router() -> Router:
             # Save KIZ to order
             order.kiz_code = text
             order.kiz_status = KizStatus.ATTACHED
-            order.kiz_cz_status = "INTRODUCED"
-            order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
+            order.kiz_cz_status = None
+            order.kiz_cz_status_updated_at = None
             order.kiz_attached_at = datetime.now(timezone.utc)
 
             kiz_op = KizOperation(

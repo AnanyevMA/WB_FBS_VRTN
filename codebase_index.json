@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-25T13:41:58.248176+00:00",
+  "updated_at": "2026-08-25T14:27:14.548966+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 75,
   "files": [
@@ -1541,7 +1541,7 @@
     {
       "file": "app/api/kiz.py",
       "layer": "api",
-      "hash": "ed350332d410",
+      "hash": "6aecabb2313b",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -1793,7 +1793,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "a14db078d5f4",
+      "hash": "fb879adf26b9",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2424,7 +2424,7 @@
     {
       "file": "app/bot.py",
       "layer": "core",
-      "hash": "1d85d400674a",
+      "hash": "6c5d7509b314",
       "docstring": "Telegram Bot Handler & Dispatcher — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3142,7 +3142,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "7d66ce7c6394",
+      "hash": "d3e043501d5c",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -3182,6 +3182,7 @@
       "imports": [
         "app.models.order",
         "app.models.seller",
+        "app.services.kiz_service",
         "datetime",
         "io",
         "logging",
@@ -3416,7 +3417,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "f59c17d1ae5b",
+      "hash": "a3af01f08d76",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -3473,6 +3474,7 @@
             "build_return_payload",
             "submit_signed_document",
             "return_to_circulation",
+            "_clean_cis_for_true_api",
             "get_cises_info",
             "get_cises_short_list",
             "get_document_receipt",
@@ -3496,6 +3498,7 @@
         "httpx",
         "json",
         "logging",
+        "re",
         "tenacity",
         "typing",
         "uuid"
@@ -3590,10 +3593,30 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "9670b22bd2cc",
+      "hash": "d1cea8e88472",
       "docstring": "",
       "classes": [],
       "functions": [
+        {
+          "name": "is_kiz_withdrawn",
+          "is_async": false,
+          "args": [
+            "status",
+            "status_ex",
+            "raw_payload"
+          ],
+          "decorators": [],
+          "docstring": "Проверяет, является ли КИЗ выведенным из оборота / выбывшим / списанным по спецификации ГИС МТ (Честный Знак)."
+        },
+        {
+          "name": "extract_cz_item_info",
+          "is_async": false,
+          "args": [
+            "cises_info"
+          ],
+          "decorators": [],
+          "docstring": "Извлекает валидный объект информации о КИЗ из ответа True API (/cises/info или /cises/short/list)."
+        },
         {
           "name": "parse_kiz_code",
           "is_async": false,
@@ -4464,7 +4487,7 @@
     {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
-      "hash": "754c4754cdb5",
+      "hash": "9ba58ca537af",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4533,6 +4556,29 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify that check_order_kiz_status handles CZ API errors gracefully without crashing."
+        },
+        {
+          "name": "test_is_kiz_withdrawn_comprehensive_matrix",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify all True API v719.0 withdrawal statuses and edge cases."
+        },
+        {
+          "name": "test_extract_cz_item_info_handles_mixed_and_error_responses",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that extract_cz_item_info skips 404 error items and extracts valid payload."
+        },
+        {
+          "name": "test_check_order_kiz_status_detects_withdrawn_and_mark_withdraw",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that check_order_kiz_status catches WITHDRAWN and markWithdraw flags."
         }
       ],
       "endpoints": [],
@@ -4972,7 +5018,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "eecaeedcdacd",
+      "hash": "d25a16a5809d",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

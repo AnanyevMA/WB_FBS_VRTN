@@ -64,14 +64,17 @@ function getCzStatusBadge(czStatus, kizStatus, hasKizCode) {
     const s = czStatus.toUpperCase();
     if (s === 'INTRODUCED' || s === 'IN_CIRCULATION') {
         return `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);" title="Код находится в обороте в ГИС МТ (Честный Знак)">ЧЗ: В обороте</span>`;
-    } else if (s === 'RETIRED' || s === 'OUT_OF_CIRCULATION') {
-        return `<span style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.3);" title="Код официально выведен из оборота в ГИС МТ">ЧЗ: Выведен</span>`;
+    } else if (s === 'RETIRED' || s === 'WITHDRAWN' || s === 'OUT_OF_CIRCULATION' || s === 'LOAN_RETIRED') {
+        const title = s === 'LOAN_RETIRED' ? 'Код выведен по договору рассрочки' : 'Код официально выведен из оборота в ГИС МТ';
+        return `<span style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.3);" title="${title}">ЧЗ: Выведен</span>`;
     } else if (s === 'EMITTED' || s === 'EMISSION') {
-        return `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);" title="Код эмитирован в СУЗ">ЧЗ: Эмитирован</span>`;
+        return `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);" title="Код эмитирован в СУЗ (еще не введен в оборот)">ЧЗ: Эмитирован</span>`;
     } else if (s === 'APPLIED') {
-        return `<span style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(168, 85, 247, 0.3);" title="Код нанесен">ЧЗ: Нанесен</span>`;
-    } else if (s === 'DISAGGREGATED' || s === 'WRITTEN_OFF' || s === 'KILLED') {
-        return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Код списан или расформирован в ГИС МТ">ЧЗ: Списан</span>`;
+        return `<span style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(168, 85, 247, 0.3);" title="Код нанесен (еще не введен в оборот)">ЧЗ: Нанесен</span>`;
+    } else if (s === 'APPLIED_NOT_PAID') {
+        return `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3);" title="Код нанесен, но не оплачен в СУЗ">ЧЗ: Не оплачен</span>`;
+    } else if (s === 'DISAGGREGATED' || s === 'DISAGGREGATION' || s === 'WRITTEN_OFF' || s === 'KILLED' || s === 'RETIRED_CANCELLATION' || s === 'REMARK_RETIRED' || s === 'LOST_INVENTORY') {
+        return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Код списан, расформирован или утрачен в ГИС МТ">ЧЗ: Списан</span>`;
     }
     return `<span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">ЧЗ: ${STATUS_MAP_CZ[s] || s}</span>`;
 }

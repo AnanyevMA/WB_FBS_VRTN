@@ -108,7 +108,7 @@ async def attach_kiz(
 
     return {
         "success": True,
-        "message": f"КИЗ успешно прикреплен к заказу #{target_order.id}",
+        "message": f"КИЗ успешно прикреплен к заказу #{target_order.id}" if kiz_info.is_valid else f"КИЗ прикреплен к заказу #{target_order.id} (Обнаружены ошибки: {kiz_info.validation_message})",
         "order_id": target_order.id,
         "kiz_code": kiz_code,
         "kiz_status": target_order.kiz_status.value,
@@ -119,6 +119,7 @@ async def attach_kiz(
             "tech_size": kiz_info.tech_size,
             "wb_size": kiz_info.wb_size,
             "cz_status": kiz_info.cz_status,
+            "cz_status_ex": kiz_info.cz_status_ex,
             "ogvs": ogvs,
             "blocked_by_ogv": len(ogvs) > 0,
             "is_valid": kiz_info.is_valid,

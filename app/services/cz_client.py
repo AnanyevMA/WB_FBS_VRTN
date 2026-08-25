@@ -10,6 +10,7 @@ import asyncio
 import base64
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, Any, Union
@@ -687,15 +688,44 @@ class CZClient:
             await self.wait_for_document(doc_id)
         return doc_id
 
+    def _clean_cis_for_true_api(self, raw_code: str) -> str:
+        """Нормализует код маркировки для передачи в True API (убирает скобки и криптохвосты)."""
+        if not raw_code:
+            return ""
+        code = raw_code.strip()
+        code = re.sub(r'\(01\)', '01', code)
+        code = re.sub(r'\(21\)', '21', code)
+        code = re.sub(r'\(91\)', '91', code)
+        code = re.sub(r'\(92\)', '92', code)
+        if code.startswith("01") and len(code) >= 16:
+            gtin = code[2:16]
+            rest = code[16:]
+            if rest.startswith("21"):
+                rest = rest[2:]
+            parts = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f]', rest)
+            serial_raw = parts[0]
+            match_crypto = re.search(r'91(.{4})92(.+)$', serial_raw)
+            serial = serial_raw[:match_crypto.start()] if match_crypto else serial_raw
+            return f"01{gtin}21{serial}"
+        return code
+
     async def get_cises_info(self, cises: list[str]) -> list[dict]:
         """
         Онлайн-валидация кодов маркировки через True API (POST /api/v3/true-api/cises/info).
-        Возвращает полную информацию о статусе КИЗ (INTRODUCED, EMITTED, RETIRED), владельце и блокировках ОГВ (ogvs).
+        Возвращает полную информацию о статусе КИЗ (INTRODUCED, EMITTED, RETIRED, WITHDRAWN), владельце и блокировках ОГВ (ogvs).
         """
         if not cises:
             return []
+        cleaned_cises = []
+        for c in cises:
+            cl = self._clean_cis_for_true_api(c)
+            if cl and cl not in cleaned_cises:
+                cleaned_cises.append(cl)
+        if not cleaned_cises:
+            cleaned_cises = [c.strip() for c in cises if c and c.strip()]
+
         path = "/api/v3/true-api/cises/info"
-        res = await self._request("POST", path, json_body=cises, sign_request=False)
+        res = await self._request("POST", path, json_body=cleaned_cises, sign_request=False)
         if isinstance(res, list):
             return res
         elif isinstance(res, dict) and "cises" in res:
@@ -708,8 +738,16 @@ class CZClient:
         """
         if not cises:
             return []
+        cleaned_cises = []
+        for c in cises:
+            cl = self._clean_cis_for_true_api(c)
+            if cl and cl not in cleaned_cises:
+                cleaned_cises.append(cl)
+        if not cleaned_cises:
+            cleaned_cises = [c.strip() for c in cises if c and c.strip()]
+
         path = "/api/v3/true-api/cises/short/list"
-        res = await self._request("POST", path, json_body=cises, sign_request=False)
+        res = await self._request("POST", path, json_body=cleaned_cises, sign_request=False)
         if isinstance(res, list):
             return res
         elif isinstance(res, dict) and "cises" in res:

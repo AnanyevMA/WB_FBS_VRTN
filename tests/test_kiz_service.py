@@ -41,13 +41,14 @@ async def test_kiz_product_info_model_and_validation():
     await init_db()
     async with AsyncSessionLocal() as session:
         seller_id = str(uuid.uuid4())
+        from app.services.encryption import encrypt
         seller = Seller(
             id=seller_id,
             name="Test Seller KIZ",
             wb_supplier_id=f"WB-{seller_id[:6]}",
             cz_inn="7700123456",
-            wb_api_token_encrypted="enc_test",
-            cz_token_encrypted="enc_test",
+            wb_api_token_encrypted=encrypt("wb_test"),
+            cz_token_encrypted=encrypt("cz_test"),
             is_active=True
         )
         session.add(seller)
@@ -69,13 +70,16 @@ async def test_kiz_product_info_model_and_validation():
         await session.commit()
 
         kiz_code = f"0104630199251332215{uuid.uuid4().hex[:10]}"
-        kiz_info = await resolve_kiz_product_info(
-            kiz_code=kiz_code,
-            seller=seller,
-            order=order,
-            db=session,
-            force_refresh=True
-        )
+        from unittest.mock import patch, AsyncMock
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_cz:
+            mock_cz.return_value = [{"cisInfo": {"status": "INTRODUCED", "ownerInn": "7700123456"}}]
+            kiz_info = await resolve_kiz_product_info(
+                kiz_code=kiz_code,
+                seller=seller,
+                order=order,
+                db=session,
+                force_refresh=True
+            )
 
         assert kiz_info.gtin == "04630199251332"
         assert kiz_info.article == "hood.brown.100"
@@ -231,7 +235,11 @@ async def test_attach_kiz_endpoint_syncs_kiz_cz_status():
         kiz_code = f"0104630199251332215{uuid.uuid4().hex[:10]}"
         req = KIZAttachRequest(kiz_code=kiz_code)
 
-        res = await attach_kiz(seller_id=seller_id, order_id=order_id, req=req, db=session)
+        from unittest.mock import patch, AsyncMock
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_cz:
+            mock_cz.return_value = [{"cisInfo": {"status": "INTRODUCED", "ownerInn": "7700123456"}}]
+            res = await attach_kiz(seller_id=seller_id, order_id=order_id, req=req, db=session)
+
         assert res["success"] is True
         assert res["kiz_status"] == "ATTACHED"
         assert res["product_info"]["cz_status"] == "INTRODUCED"
@@ -341,4 +349,130 @@ async def test_check_order_kiz_status_handles_cz_exceptions_without_500():
             assert "kiz_status" in res
             assert "kiz_cz_status" in res
             assert "clean_cis" in res
+
+
+def test_is_kiz_withdrawn_comprehensive_matrix():
+    """Verify all True API v719.0 withdrawal statuses and edge cases."""
+    from app.services.kiz_service import is_kiz_withdrawn
+
+    # 1. Main withdrawal statuses
+    for st in ["RETIRED", "WITHDRAWN", "WRITTEN_OFF", "DISAGGREGATION", "DISAGGREGATED", "KILLED", "APPLIED_NOT_PAID"]:
+        withdrawn, reason = is_kiz_withdrawn(status=st)
+        assert withdrawn is True, f"Expected {st} to be identified as withdrawn"
+        assert len(reason) > 0
+
+    # 2. statusEx special states
+    for sex in ["LOAN_RETIRED", "REMARK_RETIRED", "WAIT_REMARK", "RETIRED_CANCELLATION", "LOST_INVENTORY", "EAS_RESPOND_NOT_OK"]:
+        withdrawn, reason = is_kiz_withdrawn(status="INTRODUCED", status_ex=sex)
+        assert withdrawn is True, f"Expected statusEx={sex} to be identified as withdrawn"
+        assert sex in reason
+
+    # 3. markWithdraw flag (cash register withdrawal by non-owner)
+    withdrawn, reason = is_kiz_withdrawn(status="INTRODUCED", raw_payload={"markWithdraw": True})
+    assert withdrawn is True
+    assert "markWithdraw" in reason
+
+    # 4. withdrawReason in payload
+    withdrawn, reason = is_kiz_withdrawn(status="INTRODUCED", raw_payload={"withdrawReason": "KM_SPOILED"})
+    assert withdrawn is True
+    assert "KM_SPOILED" in reason
+
+    # 5. Normal introduced status
+    withdrawn, reason = is_kiz_withdrawn(status="INTRODUCED", status_ex="EMPTY", raw_payload={"markWithdraw": False})
+    assert withdrawn is False
+    assert reason == ""
+
+
+def test_extract_cz_item_info_handles_mixed_and_error_responses():
+    """Verify that extract_cz_item_info skips 404 error items and extracts valid payload."""
+    from app.services.kiz_service import extract_cz_item_info
+
+    # Case A: First item is 404 error, second item has valid status
+    cises_response = [
+        {"cisInfo": {"requestedCis": "0104630199251318215QTSRh"}, "errorMessage": "КИ не найден", "errorCode": "404"},
+        {"cisInfo": {"requestedCis": "0104630199251318215VALID", "status": "RETIRED", "ownerInn": "7700123456"}},
+    ]
+    info = extract_cz_item_info(cises_response)
+    assert info is not None
+    assert info.get("status") == "RETIRED"
+    assert info.get("ownerInn") == "7700123456"
+
+    # Case B: Response with "result" key (/cises/short/list)
+    short_list_response = [
+        {"result": {"cis": "0104630199251318215SHORT", "status": "WITHDRAWN", "statusEx": "LOAN_RETIRED"}}
+    ]
+    info_b = extract_cz_item_info(short_list_response)
+    assert info_b is not None
+    assert info_b.get("status") == "WITHDRAWN"
+    assert info_b.get("statusEx") == "LOAN_RETIRED"
+
+
+@pytest.mark.asyncio
+async def test_check_order_kiz_status_detects_withdrawn_and_mark_withdraw():
+    """Verify that check_order_kiz_status catches WITHDRAWN and markWithdraw flags."""
+    from app.api.orders import check_order_kiz_status
+    from app.services.encryption import encrypt
+    from unittest.mock import patch, AsyncMock
+
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Withdrawn",
+            cz_inn="7700123456",
+            wb_api_token_encrypted=encrypt("wb_test"),
+            cz_token_encrypted=encrypt("cz_test"),
+            is_active=True
+        )
+        session.add(seller)
+
+        # 1. Order with WITHDRAWN status
+        order_id_1 = random.randint(600000000, 699999999)
+        order_1 = Order(
+            id=order_id_1,
+            seller_id=seller.id,
+            status=OrderStatus.ASSEMBLING,
+            wb_created_at=datetime.now(timezone.utc),
+            article="hood.brown.100",
+            tech_size="ONE SIZE",
+            name="Капор утепленный",
+            kiz_required=True,
+            kiz_code="0104630199251332215WITHDRAWN1",
+            kiz_status=KizStatus.ATTACHED,
+        )
+        session.add(order_1)
+
+        # 2. Order with markWithdraw=True in INTRODUCED status
+        order_id_2 = random.randint(700000000, 799999999)
+        order_2 = Order(
+            id=order_id_2,
+            seller_id=seller.id,
+            status=OrderStatus.ASSEMBLING,
+            wb_created_at=datetime.now(timezone.utc),
+            article="hood.brown.100",
+            tech_size="ONE SIZE",
+            name="Капор утепленный",
+            kiz_required=True,
+            kiz_code="0104630199251332215MARKWITHDR",
+            kiz_status=KizStatus.ATTACHED,
+        )
+        session.add(order_2)
+        await session.commit()
+
+        # Mock WITHDRAWN for order 1
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_info:
+            mock_info.return_value = [{"cisInfo": {"status": "WITHDRAWN", "ownerInn": "7700123456"}}]
+            res1 = await check_order_kiz_status(seller_id=seller_id, order_id=order_id_1, db=session)
+            assert res1["kiz_cz_status"] == "WITHDRAWN"
+            assert res1["kiz_status"] == "ERROR"
+
+        # Mock markWithdraw=True for order 2
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_info2:
+            mock_info2.return_value = [{"cisInfo": {"status": "INTRODUCED", "markWithdraw": True, "ownerInn": "7700123456"}}]
+            res2 = await check_order_kiz_status(seller_id=seller_id, order_id=order_id_2, db=session)
+            assert res2["kiz_status"] == "ERROR"
+            assert res2["product_info"]["is_valid"] is False
+            assert "markWithdraw" in res2["product_info"]["validation_message"]
+
 

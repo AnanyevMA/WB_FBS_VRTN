@@ -16,6 +16,7 @@ from sqlalchemy import select
 
 from app.models.order import Order, KizStatus, OrderStatus
 from app.models.seller import Seller
+from app.services.kiz_service import CZ_WITHDRAWAL_STATUSES
 
 logger = logging.getLogger(__name__)
 
@@ -194,11 +195,14 @@ async def analyze_archive_data(
         is_sale = "продаж" in op_type or "продано" in task_status.lower() or "sold" in task_status.lower() or bool(receipt_num)
         is_return = "возврат" in op_type or "отказ" in task_status.lower() or "отмен" in task_status.lower()
 
+        is_already_withdrawn = (
+            db_kiz_status == KizStatus.WITHDRAWN.value
+            or (db_cz_status and str(db_cz_status).upper().strip() in CZ_WITHDRAWAL_STATUSES)
+        )
+
         if is_sale:
             # Check if needs withdrawal: not yet WITHDRAWN / RETIRED
-            needs_withdrawal = True
-            if db_kiz_status == KizStatus.WITHDRAWN.value or db_cz_status == "RETIRED":
-                needs_withdrawal = False
+            needs_withdrawal = not is_already_withdrawn
 
             withdrawals.append({
                 "order_id": order_id,
@@ -219,9 +223,7 @@ async def analyze_archive_data(
             })
         elif is_return:
             # For returns: needs CZ return only if it was previously withdrawn
-            needs_cz_return = False
-            if db_kiz_status == KizStatus.WITHDRAWN.value or db_cz_status == "RETIRED":
-                needs_cz_return = True
+            needs_cz_return = is_already_withdrawn
 
             returns.append({
                 "order_id": order_id,

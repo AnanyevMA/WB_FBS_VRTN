@@ -51,13 +51,21 @@ const STATUS_MAP_CZ = {
     'INTRODUCED': 'В обороте',
     'IN_CIRCULATION': 'В обороте',
     'RETIRED': 'Выведен',
+    'WITHDRAWN': 'Выведен',
     'OUT_OF_CIRCULATION': 'Выведен',
     'EMITTED': 'Эмитирован',
     'EMISSION': 'Эмитирован',
     'APPLIED': 'Нанесен',
+    'APPLIED_NOT_PAID': 'Не оплачен',
     'DISAGGREGATED': 'Списан',
+    'DISAGGREGATION': 'Списан',
     'WRITTEN_OFF': 'Списан',
-    'KILLED': 'Списан'
+    'KILLED': 'Списан / Аннулирован',
+    'LOAN_RETIRED': 'Выведен (рассрочка)',
+    'REMARK_RETIRED': 'Перемаркирован',
+    'WAIT_REMARK': 'Ожидает перемаркировку',
+    'RETIRED_CANCELLATION': 'Аннулирован',
+    'LOST_INVENTORY': 'Утрачен'
 };
 
 const STATUS_MAP_WB = {

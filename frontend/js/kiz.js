@@ -467,7 +467,10 @@ async function submitKizViaServerFallback() {
 
 let currentArchiveData = null;
 
-function openArchiveFileInput() {
+function openArchiveFileInput(event) {
+    if (event) {
+        event.stopPropagation();
+    }
     const input = document.getElementById('archiveFileInput');
     if (input) {
         input.value = '';
@@ -484,6 +487,7 @@ function handleArchiveFileSelect(event) {
 
 function handleArchiveDrop(event) {
     event.preventDefault();
+    event.stopPropagation();
     const dropZone = document.getElementById('archiveDropZone');
     if (dropZone) {
         dropZone.style.borderColor = 'rgba(124,58,237,0.4)';
@@ -496,10 +500,13 @@ function handleArchiveDrop(event) {
 }
 
 async function uploadAndPreviewArchive(file) {
-    if (!currentSellerId) {
-        return showToast('Ошибка', 'Сначала выберите активный магазин', 'error');
+    if (!currentSellerId && currentSellersList && currentSellersList.length > 0) {
+        currentSellerId = currentSellersList[0].id;
     }
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    if (!currentSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активный магазин в верхнем меню', 'error');
+    }
+    if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
         return showToast('Ошибка', 'Пожалуйста, загрузите файл формата Excel (.xlsx или .xls)', 'error');
     }
 
@@ -508,6 +515,7 @@ async function uploadAndPreviewArchive(file) {
 
     showToast('Обработка файла', `Чтение архива ${file.name}...`, 'info');
 
+    try {
         const token = authToken || localStorage.getItem('wbfbs_auth_token') || localStorage.getItem('token');
         const res = await fetch(`${API_BASE}/sellers/${currentSellerId}/archive/preview`, {
             method: 'POST',

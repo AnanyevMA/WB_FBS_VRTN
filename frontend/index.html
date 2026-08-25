@@ -238,7 +238,7 @@
                         </div>
                     </div>
                     
-                    <div id="archiveDropZone" class="dropzone" onclick="openArchiveFileInput()"
+                    <div id="archiveDropZone" class="dropzone" onclick="openArchiveFileInput(event)"
                         style="border: 2px dashed rgba(124,58,237,0.4); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; background: rgba(124,58,237,0.03); transition: all 0.2s ease;"
                         ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'; this.style.background='rgba(124,58,237,0.08)';"
                         ondragleave="event.preventDefault(); this.style.borderColor='rgba(124,58,237,0.4)'; this.style.background='rgba(124,58,237,0.03)';"
@@ -246,7 +246,7 @@
                         <div style="font-size: 28px; margin-bottom: 8px;">📑</div>
                         <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">Перетащите файл <code>archive.xlsx</code> сюда или нажмите для выбора</div>
                         <div style="font-size: 12px; color: var(--text-muted);">Листы «КИЗ» и «Сборочные задания» с чеками продажи и возвратами</div>
-                        <input type="file" id="archiveFileInput" accept=".xlsx,.xls" style="display: none;" onchange="handleArchiveFileSelect(event)">
+                        <input type="file" id="archiveFileInput" accept=".xlsx,.xls" style="display: none;" onclick="event.stopPropagation()" onchange="handleArchiveFileSelect(event)">
                     </div>
                 </div>
 

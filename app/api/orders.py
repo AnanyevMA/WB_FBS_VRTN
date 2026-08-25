@@ -227,6 +227,7 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
     token = decrypt(seller.cz_token_encrypted) if seller.cz_token_encrypted else None
     thumbprint = seller.cryptopro_cert_thumbprint or seller.cz_cert_path
 
+    cz_error_detail = None
     if seller.cz_inn:
         try:
             async with CZClient(inn=seller.cz_inn, token=token, cert_thumbprint=thumbprint) as cz:
@@ -237,11 +238,16 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
                         await cz.authenticate()
                         cises_info = await cz.get_cises_info([clean_cis])
                     except (CryptoSignatureError, CZAPIError, Exception) as auth_err:
+                        cz_error_detail = f"Ошибка авторизации в ГИС МТ: {auth_err}"
                         logger.warning(f"CZ live auth failed for seller {seller_id}: {auth_err}")
                 except Exception as cz_err:
+                    cz_error_detail = f"Ошибка запроса в ГИС МТ: {cz_err}"
                     logger.warning(f"CZ get_cises_info error: {cz_err}")
         except Exception as exc:
+            cz_error_detail = f"Не удалось инициализировать клиент ГИС МТ: {exc}"
             logger.warning(f"Error opening CZ client for seller {seller_id}: {exc}")
+    else:
+        cz_error_detail = "У продавца не указан ИНН для Честного Знака"
 
     cis_data = extract_cz_item_info(cises_info) or {}
     cz_status = cis_data.get("status") or cis_data.get("cisStatus")
@@ -286,8 +292,11 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
         elif cz_status in CZ_NOT_INTRODUCED_STATUSES:
             order.kiz_status = KizStatus.ERROR
         elif cz_status in ["INTRODUCED", "IN_CIRCULATION"]:
-            if order.kiz_status in [KizStatus.ATTACHED, KizStatus.PENDING]:
-                order.kiz_status = KizStatus.VALIDATED
+            if order.kiz_status in [KizStatus.ATTACHED, KizStatus.PENDING, KizStatus.ERROR]:
+                if kiz_info and kiz_info.is_valid:
+                    order.kiz_status = KizStatus.VALIDATED
+                elif not kiz_info:
+                    order.kiz_status = KizStatus.VALIDATED
         elif kiz_info and not kiz_info.is_valid:
             order.kiz_status = KizStatus.ERROR
 
@@ -301,12 +310,18 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
             order.kiz_status = KizStatus.ERROR
         await db.commit()
 
+    val_msg = kiz_info.validation_message if kiz_info else ("Проверка выполнена" if cz_status else (cz_error_detail or "Статус в ГИС МТ не получен"))
+    if not cz_status and cz_error_detail:
+        val_msg = f"Статус в ГИС МТ не получен: {cz_error_detail}"
+
     return {
         "order_id": order.id,
         "kiz_code": order.kiz_code,
         "clean_cis": clean_cis,
         "kiz_status": order.kiz_status.value,
         "kiz_cz_status": cz_status,
+        "cz_connected": cz_status is not None,
+        "cz_error": cz_error_detail if not cz_status else None,
         "cis_info": cis_data,
         "product_info": {
             "gtin": kiz_info.gtin if kiz_info else parsed.get("gtin"),
@@ -315,10 +330,11 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
             "tech_size": kiz_info.tech_size if kiz_info else order.tech_size,
             "wb_size": kiz_info.wb_size if kiz_info else order.wb_size,
             "cz_status": cz_status,
+            "cz_status_ex": (kiz_info.cz_status_ex if kiz_info else None) or cis_data.get("statusEx"),
             "ogvs": cis_data.get("ogvs") or [],
             "blocked_by_ogv": len(cis_data.get("ogvs") or []) > 0,
             "is_valid": kiz_info.is_valid if kiz_info else (order.kiz_status != KizStatus.ERROR),
-            "validation_message": kiz_info.validation_message if kiz_info else "Проверка выполнена",
+            "validation_message": val_msg,
         }
     }
 

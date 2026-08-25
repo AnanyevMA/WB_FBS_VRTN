@@ -347,49 +347,60 @@ async def resolve_kiz_product_info(
         except Exception:
             cz_token = None
 
-        if cz_token:
-            cz_client = CZClient(inn=seller.cz_inn, token=cz_token)
+        thumbprint = seller.cryptopro_cert_thumbprint or seller.cz_cert_path
+
+        if cz_token or thumbprint:
+            from app.services.cz_client import CZClient, CZUnauthorizedError
             try:
-                # В True API отправляем строго чистый clean_cis
-                lookup_cises = [clean_cis] if clean_cis else ([kiz_code.strip()] if kiz_code else [])
-                cises_info = await cz_client.get_cises_info(lookup_cises)
-                
-                info = extract_cz_item_info(cises_info)
-                if info and isinstance(info, dict):
-                    cz_st = info.get("status") or info.get("cisStatus")
-                    if cz_st:
-                        kiz_info_obj.cz_status = str(cz_st).upper().strip()
-                    
-                    st_ex = info.get("statusEx")
-                    if st_ex:
-                        kiz_info_obj.cz_status_ex = str(st_ex).strip()
-                    elif kiz_info_obj.cz_status:
-                        kiz_info_obj.cz_status_ex = CZ_STATUS_DESCRIPTIONS.get(kiz_info_obj.cz_status, kiz_info_obj.cz_status)
-
-                    kiz_info_obj.cz_owner_inn = info.get("ownerInn") or seller.cz_inn
-                    kiz_info_obj.cz_owner_name = info.get("ownerName")
-                    kiz_info_obj.cz_producer_inn = info.get("producerInn")
-                    kiz_info_obj.cz_producer_name = info.get("producerName")
-                    kiz_info_obj.product_group = info.get("productGroup") or "lp"
-                    kiz_info_obj.raw_cz_payload = info
-
-                    if info.get("productName"):
-                        kiz_info_obj.product_name = info.get("productName")
-                    if info.get("brand"):
-                        kiz_info_obj.brand = info.get("brand")
-                    if info.get("tnVed") or info.get("tnVed10"):
-                        kiz_info_obj.tnved = info.get("tnVed") or info.get("tnVed10")
-
-                    em_str = info.get("emissionDate")
-                    if em_str:
+                async with CZClient(inn=seller.cz_inn, token=cz_token, cert_thumbprint=thumbprint) as cz_client:
+                    # В True API отправляем строго чистый clean_cis
+                    lookup_cises = [clean_cis] if clean_cis else ([kiz_code.strip()] if kiz_code else [])
+                    cises_info = []
+                    try:
+                        cises_info = await cz_client.get_cises_info(lookup_cises)
+                    except CZUnauthorizedError:
                         try:
-                            kiz_info_obj.cz_emission_date = datetime.fromisoformat(em_str.replace("Z", "+00:00"))
-                        except Exception:
-                            pass
+                            await cz_client.authenticate()
+                            cises_info = await cz_client.get_cises_info(lookup_cises)
+                        except Exception as auth_err:
+                            logger.warning(f"CZ live auth failed for seller {seller.id}: {auth_err}")
+                    except Exception as cz_err:
+                        logger.warning(f"CZ get_cises_info failed for seller {seller.id}: {cz_err}")
+
+                    info = extract_cz_item_info(cises_info)
+                    if info and isinstance(info, dict):
+                        cz_st = info.get("status") or info.get("cisStatus")
+                        if cz_st:
+                            kiz_info_obj.cz_status = str(cz_st).upper().strip()
+                        
+                        st_ex = info.get("statusEx")
+                        if st_ex:
+                            kiz_info_obj.cz_status_ex = str(st_ex).strip()
+                        elif kiz_info_obj.cz_status:
+                            kiz_info_obj.cz_status_ex = CZ_STATUS_DESCRIPTIONS.get(kiz_info_obj.cz_status, kiz_info_obj.cz_status)
+
+                        kiz_info_obj.cz_owner_inn = info.get("ownerInn") or seller.cz_inn
+                        kiz_info_obj.cz_owner_name = info.get("ownerName")
+                        kiz_info_obj.cz_producer_inn = info.get("producerInn")
+                        kiz_info_obj.cz_producer_name = info.get("producerName")
+                        kiz_info_obj.product_group = info.get("productGroup") or "lp"
+                        kiz_info_obj.raw_cz_payload = info
+
+                        if info.get("productName"):
+                            kiz_info_obj.product_name = info.get("productName")
+                        if info.get("brand"):
+                            kiz_info_obj.brand = info.get("brand")
+                        if info.get("tnVed") or info.get("tnVed10"):
+                            kiz_info_obj.tnved = info.get("tnVed") or info.get("tnVed10")
+
+                        em_str = info.get("emissionDate")
+                        if em_str:
+                            try:
+                                kiz_info_obj.cz_emission_date = datetime.fromisoformat(em_str.replace("Z", "+00:00"))
+                            except Exception:
+                                pass
             except Exception as e:
                 logger.debug(f"True API info lookup note: {e}")
-            finally:
-                await cz_client.__aexit__()
 
     # 3. Fallback defaults from order if still missing
     if order:

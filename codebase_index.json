@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-25T14:27:14.548966+00:00",
+  "updated_at": "2026-08-25T14:40:31.944961+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 75,
   "files": [
@@ -1793,7 +1793,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "fb879adf26b9",
+      "hash": "941e8209f71a",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3593,7 +3593,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "d1cea8e88472",
+      "hash": "f0482f9eb8f8",
       "docstring": "",
       "classes": [],
       "functions": [

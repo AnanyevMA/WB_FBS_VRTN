@@ -82,16 +82,26 @@ async function checkKizLiveStatus(orderId) {
     try {
         showToast('Честный Знак', 'Запрос статуса КИЗ в ГИС МТ...', 'info');
         const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/kiz-check`, { method: 'POST' });
-        const czStatus = res.kiz_cz_status || 'INTRODUCED';
-        const czName = STATUS_MAP_CZ[czStatus] || czStatus;
-        const statusName = `${czName} (${czStatus})`;
-        if (res.kiz_status === 'ERROR' || (res.product_info && res.product_info.is_valid === false)) {
-            const msg = res.product_info?.validation_message || `Статус в ЧЗ: ${statusName}. Обнаружено несоответствие!`;
-            showToast('Внимание! Ошибка КИЗ', msg, 'error');
+        
+        const czStatus = res.kiz_cz_status;
+        if (!czStatus) {
+            const err = res.cz_error || 'Не удалось получить статус в ГИС МТ (проверьте токен/УКЭП в настройках продавца)';
+            showToast('Статус ЧЗ не получен', err, 'warning');
         } else {
-            showToast('Статус КИЗ в ГИС МТ', `Статус: ${statusName}`, 'success');
+            const czName = STATUS_MAP_CZ[czStatus] || czStatus;
+            const statusName = `${czName} (${czStatus})`;
+            if (res.kiz_status === 'ERROR' || (res.product_info && res.product_info.is_valid === false)) {
+                const msg = res.product_info?.validation_message || `Статус в ЧЗ: ${statusName}. Обнаружено несоответствие!`;
+                showToast('Внимание! Ошибка КИЗ', msg, 'error');
+            } else {
+                showToast('Статус КИЗ в ГИС МТ', `Статус: ${statusName}`, 'success');
+            }
         }
         await loadOrders(true);
+        const modal = document.getElementById('orderDetailModal');
+        if (modal && modal.style.display !== 'none') {
+            await viewOrderDetail(orderId);
+        }
     } catch (e) {
         showToast('Ошибка проверки КИЗ', e.message, 'error');
     }
@@ -147,7 +157,7 @@ async function viewOrderDetail(orderId) {
             <div style="margin-bottom: 20px; padding: 14px; background: rgba(15,23,42,0.6); border: 1px solid var(--border-color); border-radius: 8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="color: var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Маркировка Честный Знак (КИЗ)</span>
-                    ${order.kiz_code ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="checkKizLiveStatus('${order.id}'); viewOrderDetail('${order.id}');">🔍 Проверить в ЧЗ</button>` : ''}
+                    ${order.kiz_code ? `<button class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="checkKizLiveStatus('${order.id}')">🔍 Проверить в ЧЗ</button>` : ''}
                 </div>
                 <div style="font-family:monospace; font-size:13px; word-break:break-all; background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; margin-bottom:10px;">
                     ${order.kiz_code || 'Код КИЗ не прикреплен'}

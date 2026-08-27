@@ -706,6 +706,105 @@ tbody tr:hover {
     flex-wrap: wrap;
 }
 
+/* Order View Tabs (Active / Archive / All) */
+.order-view-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.tab-btn:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-main);
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+.tab-btn.active {
+    background: rgba(124, 58, 237, 0.2);
+    color: #c4b5fd;
+    border-color: rgba(124, 58, 237, 0.5);
+    font-weight: 600;
+}
+
+.tab-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 999px;
+    transition: var(--transition);
+}
+
+.tab-btn.active .tab-badge {
+    background: rgba(124, 58, 237, 0.4);
+    color: #ede9fe;
+}
+
+/* Sortable Table Headers */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: var(--transition);
+}
+
+th.sortable:hover {
+    background: rgba(124, 58, 237, 0.15);
+    color: var(--text-main);
+}
+
+.th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sort-icon {
+    font-size: 11px;
+    opacity: 0.5;
+    transition: var(--transition);
+}
+
+th.sortable:hover .sort-icon {
+    opacity: 1;
+    color: var(--primary-hover);
+}
+
+th.sort-active {
+    color: #c4b5fd;
+    background: rgba(124, 58, 237, 0.15);
+}
+
+th.sort-active .sort-icon {
+    opacity: 1;
+    color: #a78bfa;
+    font-weight: bold;
+}
+
+/* Archive Badge */
+.badge.bg-archived {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
 /* Sticker Preview */
 .sticker-preview {
     background: white;

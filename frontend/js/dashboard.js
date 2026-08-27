@@ -25,7 +25,7 @@ async function loadDashboard() {
     }
 
     try {
-        const data = await apiFetch(`/sellers/${currentSellerId}/orders?page_size=5`);
+        const data = await apiFetch(`/sellers/${currentSellerId}/orders?page_size=5&sort_by=wb_created_at&sort_dir=desc&view=all`);
         const orders = data.items || [];
         const tbody = document.getElementById('dashboard-recent-table');
         
@@ -36,9 +36,15 @@ async function loadDashboard() {
 
         tbody.innerHTML = orders.map(o => {
             const sizeBadge = o.tech_size ? `<span style="background: rgba(99,102,241,0.18); color: #a5b4fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3);">Размер: ${o.tech_size}${o.wb_size && o.wb_size !== o.tech_size ? ` (RU: ${o.wb_size})` : ''}</span>` : '';
+            const archiveBadge = o.is_archived ? `<span class="badge bg-archived" style="font-size: 10px; padding: 1px 6px;" title="Завершен (в архиве)">📁</span>` : '';
             return `
-            <tr>
-                <td style="font-weight: 600;">#${o.id}</td>
+            <tr style="${o.is_archived ? 'opacity: 0.82;' : ''}">
+                <td style="font-weight: 600;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span>#${o.id}</span>
+                        ${archiveBadge}
+                    </div>
+                </td>
                 <td>
                     <div style="font-weight:500; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
                         <span>${o.name || o.subject}</span>
@@ -46,9 +52,19 @@ async function loadDashboard() {
                     </div>
                     <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Арт: ${o.article}</div>
                 </td>
-                <td>${getStatusBadge(o.status, 'order')}</td>
-                <td>${getStatusBadge(o.kiz_status, 'kiz')}</td>
-                <td style="color: var(--text-muted); font-size:13px;">${o.created_at ? new Date(o.created_at).toLocaleString('ru-RU') : '-'}</td>
+                <td>
+                    <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                        <div>${getStatusBadge(o.status, 'order')}</div>
+                        ${getWbStatusBadge(o.wb_status, o.supplier_status)}
+                    </div>
+                </td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        ${getStatusBadge(o.kiz_status, 'kiz')}
+                        ${getCzStatusBadge(o.kiz_cz_status, o.kiz_status, !!o.kiz_code)}
+                    </div>
+                </td>
+                <td style="color: var(--text-muted); font-size:13px;" title="Дата и время заказа">${(o.wb_created_at || o.created_at) ? new Date(o.wb_created_at || o.created_at).toLocaleString('ru-RU') : '-'}</td>
             </tr>
         `}).join('');
     } catch (e) {

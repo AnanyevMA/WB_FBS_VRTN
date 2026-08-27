@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-27T14:12:09.299616+00:00",
+  "updated_at": "2026-08-27T14:30:07.426239+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 75,
+  "total_files": 76,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1812,10 +1812,26 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "941e8209f71a",
+      "hash": "7691f526d693",
       "docstring": "",
       "classes": [],
       "functions": [
+        {
+          "name": "get_archived_filter",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "SQLAlchemy boolean expression that matches completed (archived) orders:"
+        },
+        {
+          "name": "check_is_archived",
+          "is_async": false,
+          "args": [
+            "order"
+          ],
+          "decorators": [],
+          "docstring": "Evaluates whether an order instance is completed/archived."
+        },
         {
           "name": "get_dashboard_stats",
           "is_async": true,
@@ -1835,6 +1851,9 @@
             "seller_id",
             "status",
             "kiz_status",
+            "view",
+            "sort_by",
+            "sort_dir",
             "q",
             "date_from",
             "date_to",
@@ -4889,6 +4908,73 @@
       ]
     },
     {
+      "file": "tests/test_orders_sorting_and_archive.py",
+      "layer": "tests",
+      "hash": "446b9e2e3ada",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_seller",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest_asyncio.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_orders_default_sorting_by_date_desc",
+          "is_async": true,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that by default orders are sorted by creation date descending (newest on top)."
+        },
+        {
+          "name": "test_orders_sorting_by_columns_asc_desc",
+          "is_async": true,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify sorting by price, ID, article, and status in both ASC and DESC directions."
+        },
+        {
+          "name": "test_order_archive_conditions_and_view_filtering",
+          "is_async": true,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify archiving rules:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.orders",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "datetime",
+        "decimal",
+        "pytest",
+        "pytest_asyncio",
+        "random",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_polling_and_digest_schema.py",
       "layer": "tests",
       "hash": "c03ad11ea6e1",
@@ -5096,7 +5182,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "302bad5c736f",
+      "hash": "b2bbd76d9d47",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

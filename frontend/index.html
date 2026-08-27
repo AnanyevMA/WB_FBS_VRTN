@@ -170,6 +170,19 @@
                     </div>
                 </div>
 
+                <!-- Order View Tabs (Active / Archive / All) -->
+                <div class="order-view-tabs">
+                    <button class="tab-btn active" id="tabBtnActive" onclick="setOrderView('active')" title="Заказы в работе (требующие сборки, отправки, вывода или возврата КИЗ)">
+                        <span>📦</span> Активные <span class="tab-badge" id="tabCountActive">0</span>
+                    </button>
+                    <button class="tab-btn" id="tabBtnArchive" onclick="setOrderView('archive')" title="Завершенные заказы (выкуплен + КИЗ выведен, либо отменен + КИЗ возвращен в оборот)">
+                        <span>📁</span> Архив <span class="tab-badge" id="tabCountArchive">0</span>
+                    </button>
+                    <button class="tab-btn" id="tabBtnAll" onclick="setOrderView('all')" title="Все заказы продавца">
+                        <span>🌐</span> Все заказы <span class="tab-badge" id="tabCountAll">0</span>
+                    </button>
+                </div>
+
                 <div class="filter-bar">
                     <select class="form-control" style="width: 180px;" id="orderStatusFilter">
                         <option value="ALL">Все статусы WB</option>
@@ -184,6 +197,7 @@
                         <option value="PENDING">Ожидает КИЗ</option>
                         <option value="ATTACHED">КИЗ Прикреплен</option>
                         <option value="WITHDRAWN">Выведен из оборота</option>
+                        <option value="RETURNED">Возвращен в оборот</option>
                         <option value="ERROR">Ошибка КИЗ</option>
                     </select>
                     <input type="text" class="form-control" style="width: 320px;" placeholder="Поиск по ID заказа, артикулу или КИЗ..." id="orderSearchInput">
@@ -193,12 +207,24 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>ID Заказа</th>
-                                <th>Товар / Артикул</th>
-                                <th>Цена</th>
-                                <th>Статус WB</th>
-                                <th>Статус КИЗ</th>
-                                <th>Дата создания</th>
+                                <th class="sortable" data-sort="id" onclick="handleOrderSort('id')" title="Сортировать по номеру заказа">
+                                    <span class="th-content">ID Заказа <span class="sort-icon" id="sort-icon-id">↕</span></span>
+                                </th>
+                                <th class="sortable" data-sort="name" onclick="handleOrderSort('name')" title="Сортировать по наименованию / артикулу">
+                                    <span class="th-content">Товар / Артикул <span class="sort-icon" id="sort-icon-name">↕</span></span>
+                                </th>
+                                <th class="sortable" data-sort="price" onclick="handleOrderSort('price')" title="Сортировать по цене">
+                                    <span class="th-content">Цена <span class="sort-icon" id="sort-icon-price">↕</span></span>
+                                </th>
+                                <th class="sortable" data-sort="status" onclick="handleOrderSort('status')" title="Сортировать по статусу WB">
+                                    <span class="th-content">Статус WB <span class="sort-icon" id="sort-icon-status">↕</span></span>
+                                </th>
+                                <th class="sortable" data-sort="kiz_status" onclick="handleOrderSort('kiz_status')" title="Сортировать по статусу КИЗ">
+                                    <span class="th-content">Статус КИЗ <span class="sort-icon" id="sort-icon-kiz_status">↕</span></span>
+                                </th>
+                                <th class="sortable sort-active sort-desc" data-sort="wb_created_at" onclick="handleOrderSort('wb_created_at')" title="Сортировать по дате создания (по умолчанию самый свежий сверху)">
+                                    <span class="th-content">Дата создания <span class="sort-icon" id="sort-icon-wb_created_at">▼</span></span>
+                                </th>
                                 <th>Действия</th>
                             </tr>
                         </thead>

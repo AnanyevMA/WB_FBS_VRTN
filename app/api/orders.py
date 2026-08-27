@@ -21,6 +21,82 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sellers/{seller_id}/orders", tags=["orders"])
 
 
+# Helper functions for archive status logic
+def get_archived_filter():
+    """
+    SQLAlchemy boolean expression that matches completed (archived) orders:
+    1. Sold/Delivered + KIZ withdrawn (or KIZ not required)
+    2. Cancelled/Declined + KIZ returned / back in circulation (or KIZ not required)
+    """
+    is_sold_or_delivered = or_(
+        Order.wb_status == "sold",
+        Order.status == OrderStatus.DELIVERED,
+    )
+    is_kiz_withdrawn = or_(
+        Order.kiz_status == KizStatus.WITHDRAWN,
+        Order.kiz_cz_status.in_(["RETIRED", "WITHDRAWN", "WRITTEN_OFF", "LOAN_RETIRED", "DISAGGREGATION", "DISAGGREGATED", "KILLED"]),
+        Order.kiz_required == False,
+        Order.kiz_status == KizStatus.NOT_REQUIRED,
+    )
+    case_withdrawn = and_(is_sold_or_delivered, is_kiz_withdrawn)
+
+    is_cancelled = or_(
+        Order.wb_status.in_(["canceled", "canceled_by_client", "declined_by_client", "defect"]),
+        Order.status == OrderStatus.CANCELLED,
+    )
+    is_kiz_returned_or_intro = or_(
+        Order.kiz_status.in_([KizStatus.RETURNED, KizStatus.NOT_REQUIRED]),
+        Order.kiz_cz_status.in_(["INTRODUCED", "IN_CIRCULATION"]),
+        Order.kiz_required == False,
+    )
+    case_returned = and_(is_cancelled, is_kiz_returned_or_intro)
+
+    return or_(case_withdrawn, case_returned)
+
+
+def check_is_archived(order: Order) -> tuple[bool, Optional[str]]:
+    """
+    Evaluates whether an order instance is completed/archived.
+    Returns (is_archived: bool, reason: Optional[str]).
+    """
+    is_sold = (order.wb_status == "sold") or (order.status == OrderStatus.DELIVERED)
+    kiz_withdrawn = (
+        order.kiz_status == KizStatus.WITHDRAWN
+        or (order.kiz_cz_status and order.kiz_cz_status.upper() in ["RETIRED", "WITHDRAWN", "WRITTEN_OFF", "LOAN_RETIRED", "DISAGGREGATION", "DISAGGREGATED", "KILLED"])
+        or (not order.kiz_required)
+        or (order.kiz_status == KizStatus.NOT_REQUIRED)
+    )
+    if is_sold and kiz_withdrawn:
+        return True, "sold_and_withdrawn"
+
+    is_cancelled = (
+        (order.wb_status and order.wb_status.lower() in ["canceled", "canceled_by_client", "declined_by_client", "defect"])
+        or (order.status == OrderStatus.CANCELLED)
+    )
+    kiz_returned = (
+        order.kiz_status in [KizStatus.RETURNED, KizStatus.NOT_REQUIRED]
+        or (order.kiz_cz_status and order.kiz_cz_status.upper() in ["INTRODUCED", "IN_CIRCULATION"])
+        or (not order.kiz_required)
+    )
+    if is_cancelled and kiz_returned:
+        return True, "cancelled_and_returned"
+
+    return False, None
+
+
+SORT_COLUMN_MAP = {
+    "id": Order.id,
+    "created_at": func.coalesce(Order.wb_created_at, Order.created_at),
+    "wb_created_at": func.coalesce(Order.wb_created_at, Order.created_at),
+    "date": func.coalesce(Order.wb_created_at, Order.created_at),
+    "price": Order.price,
+    "article": Order.article,
+    "name": func.coalesce(Order.name, Order.subject),
+    "status": Order.status,
+    "kiz_status": Order.kiz_status,
+}
+
+
 @router.get("/stats")
 async def get_dashboard_stats(seller_id: str, db: AsyncSession = Depends(get_db)):
     seller = await db.get(Seller, seller_id)
@@ -71,9 +147,20 @@ async def get_dashboard_stats(seller_id: str, db: AsyncSession = Depends(get_db)
         )
     ) or 0
 
+    # Archived and Active counts
+    archived_cond = get_archived_filter()
+    archived_count = await db.scalar(
+        select(func.count(Order.id)).where(
+            and_(Order.seller_id == seller_id, archived_cond)
+        )
+    ) or 0
+    active_count = max(0, total_orders - archived_count)
+
     return {
         "orders_today": orders_today if orders_today > 0 else total_orders,
         "total_orders": total_orders,
+        "active_orders": active_count,
+        "archived_orders": archived_count,
         "pending_assembly": pending_count,
         "withdrawals_success": withdrawals_count,
         "kiz_issues": issues_count
@@ -85,6 +172,9 @@ async def list_orders(
     seller_id: str,
     status: Optional[str] = None,
     kiz_status: Optional[str] = None,
+    view: str = Query("active", description="View mode: 'active' (default), 'archive', or 'all'"),
+    sort_by: str = Query("wb_created_at", description="Field to sort by: 'wb_created_at', 'created_at', 'id', 'price', 'status', 'kiz_status', 'name', 'article'"),
+    sort_dir: str = Query("desc", description="Sort direction: 'asc' or 'desc'"),
     q: Optional[str] = Query(None, description="Search term for order ID, article, name or KIZ"),
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
@@ -95,8 +185,40 @@ async def list_orders(
     seller = await db.get(Seller, seller_id)
     if not seller:
         raise HTTPException(status_code=404, detail="Seller not found")
+
+    if hasattr(view, "default"):
+        view = view.default
+    if hasattr(sort_by, "default"):
+        sort_by = sort_by.default
+    if hasattr(sort_dir, "default"):
+        sort_dir = sort_dir.default
+    if hasattr(q, "default"):
+        q = q.default
+    if hasattr(page, "default"):
+        page = page.default
+    if hasattr(page_size, "default"):
+        page_size = page_size.default
+
+    archived_cond = get_archived_filter()
+
+    # Counts for tabs
+    active_count = await db.scalar(
+        select(func.count(Order.id)).where(and_(Order.seller_id == seller_id, ~archived_cond))
+    ) or 0
+    archived_count = await db.scalar(
+        select(func.count(Order.id)).where(and_(Order.seller_id == seller_id, archived_cond))
+    ) or 0
+    total_orders_count = active_count + archived_count
         
     query = select(Order).where(Order.seller_id == seller_id)
+
+    # Filter by view mode (active by default, archive, all)
+    view_clean = (view or "active").lower().strip()
+    if view_clean == "active":
+        query = query.where(~archived_cond)
+    elif view_clean == "archive":
+        query = query.where(archived_cond)
+
     if status and status != "ALL":
         try:
             query = query.where(Order.status == OrderStatus[status.upper()])
@@ -127,12 +249,23 @@ async def list_orders(
         
     total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
     
-    query = query.offset((page - 1) * page_size).limit(page_size).order_by(Order.created_at.desc())
+    # Sorting: default to newest order on top (wb_created_at / created_at DESC)
+    sort_key = (sort_by or "wb_created_at").lower().strip()
+    sort_col = SORT_COLUMN_MAP.get(sort_key, func.coalesce(Order.wb_created_at, Order.created_at))
+    is_asc = (sort_dir or "desc").lower().strip() == "asc"
+
+    if is_asc:
+        query = query.order_by(sort_col.asc(), Order.id.asc())
+    else:
+        query = query.order_by(sort_col.desc(), Order.id.desc())
+
+    query = query.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
     orders = result.scalars().all()
 
     items = []
     for o in orders:
+        is_arch, arch_reason = check_is_archived(o)
         items.append({
             "id": o.id,
             "seller_id": str(o.seller_id),
@@ -155,13 +288,21 @@ async def list_orders(
             "kiz_cz_status_updated_at": o.kiz_cz_status_updated_at.isoformat() if o.kiz_cz_status_updated_at else None,
             "kiz_attached_at": o.kiz_attached_at.isoformat() if o.kiz_attached_at else None,
             "created_at": o.created_at.isoformat() if o.created_at else None,
+            "is_archived": is_arch,
+            "archive_reason": arch_reason,
         })
     
     return {
         "items": items,
         "total": total,
         "page": page,
-        "page_size": page_size
+        "page_size": page_size,
+        "active_count": active_count,
+        "archived_count": archived_count,
+        "total_orders_count": total_orders_count,
+        "view": view_clean,
+        "sort_by": sort_key,
+        "sort_dir": "asc" if is_asc else "desc",
     }
 
 
@@ -171,6 +312,8 @@ async def get_order(seller_id: str, order_id: int, db: AsyncSession = Depends(ge
     if not order or str(order.seller_id) != str(seller_id):
         raise HTTPException(status_code=404, detail="Order not found")
         
+    is_arch, arch_reason = check_is_archived(order)
+
     return {
         "id": order.id,
         "seller_id": str(order.seller_id),
@@ -194,6 +337,8 @@ async def get_order(seller_id: str, order_id: int, db: AsyncSession = Depends(ge
         "kiz_cz_status_updated_at": order.kiz_cz_status_updated_at.isoformat() if order.kiz_cz_status_updated_at else None,
         "kiz_attached_at": order.kiz_attached_at.isoformat() if order.kiz_attached_at else None,
         "created_at": order.created_at.isoformat() if order.created_at else None,
+        "is_archived": is_arch,
+        "archive_reason": arch_reason,
     }
 
 

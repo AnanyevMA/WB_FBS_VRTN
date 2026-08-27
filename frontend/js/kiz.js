@@ -658,7 +658,19 @@ function renderArchivePreview(data) {
 }
 
 async function syncArchiveCzLive() {
-    if (!currentArchiveData || !currentSellerId) return;
+    const activeSellerId = currentSellerId 
+        || (typeof selectedSellerId !== 'undefined' ? selectedSellerId : null) 
+        || (document.getElementById('seller-select') ? document.getElementById('seller-select').value : null) 
+        || localStorage.getItem('currentSellerId') 
+        || localStorage.getItem('wbfbs_current_seller_id');
+
+    if (!activeSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активный магазин в верхнем меню', 'error');
+    }
+
+    if (!currentArchiveData) {
+        return showToast('Внимание', 'Сначала загрузите файл архива WB (.xlsx)', 'warning');
+    }
 
     const allCodes = [];
     (currentArchiveData.withdrawals || []).forEach(w => { if (w.kiz_code) allCodes.push(w.kiz_code); });
@@ -678,7 +690,7 @@ async function syncArchiveCzLive() {
     showToast('Честный Знак', `Сверка ${allCodes.length} кодов маркировки с True API...`, 'info');
 
     try {
-        const res = await apiFetch(`/sellers/${currentSellerId}/archive/sync-cz`, {
+        const res = await apiFetch(`/sellers/${activeSellerId}/archive/sync-cz`, {
             method: 'POST',
             body: JSON.stringify({ kiz_codes: allCodes })
         });
@@ -849,4 +861,19 @@ async function submitArchiveProcessing() {
         btn.disabled = false;
     }
 }
+
+// Global window bindings for inline HTML onclick handlers
+window.syncArchiveCzLive = syncArchiveCzLive;
+window.switchArchiveTab = switchArchiveTab;
+window.toggleAllArchiveCheckboxes = toggleAllArchiveCheckboxes;
+window.submitArchiveProcessing = submitArchiveProcessing;
+window.renderArchivePreview = renderArchivePreview;
+window.handleArchiveFileSelect = handleArchiveFileSelect;
+window.openArchiveModal = openArchiveModal;
+window.scanKizModal = scanKizModal;
+window.openKizWithdrawModal = openKizWithdrawModal;
+window.openKizReturnModal = openKizReturnModal;
+window.signDataWithCryptoPro = signDataWithCryptoPro;
+window.signBase64WithCades = signDataWithCryptoPro;
+
 

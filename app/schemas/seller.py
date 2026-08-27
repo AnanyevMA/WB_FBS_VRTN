@@ -120,6 +120,10 @@ class SellerResponse(SellerBase):
     digest_timezone: str = "Europe/Moscow"
     last_polled_at: Optional[datetime] = None
     created_at: datetime
+    has_wb_token: bool = False
+    has_cz_token: bool = False
+    has_telegram_token: bool = False
+    cz_token_preview: Optional[str] = None
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 
     @classmethod
@@ -127,6 +131,26 @@ class SellerResponse(SellerBase):
         instance = super().model_validate(obj, **kwargs)
         # Compute human-friendly minutes from stored seconds
         instance.polling_interval_minutes = max(1, instance.polling_interval_seconds // 60)
+        
+        wb_enc = getattr(obj, "wb_api_token_encrypted", None)
+        cz_enc = getattr(obj, "cz_token_encrypted", None)
+        tg_enc = getattr(obj, "telegram_bot_token_encrypted", None)
+        
+        instance.has_wb_token = bool(wb_enc)
+        instance.has_cz_token = bool(cz_enc)
+        instance.has_telegram_token = bool(tg_enc)
+        
+        if cz_enc:
+            try:
+                from app.services.encryption import decrypt
+                dec = decrypt(cz_enc)
+                if dec and len(dec) > 14:
+                    instance.cz_token_preview = f"{dec[:8]}...{dec[-6:]}"
+                elif dec:
+                    instance.cz_token_preview = "активен"
+            except Exception:
+                instance.cz_token_preview = "сохранен"
+
         return instance
 
 

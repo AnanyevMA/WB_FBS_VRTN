@@ -53,10 +53,39 @@ async function editSeller(sellerId) {
         const tzOption = Array.from(tzSelect.options).find(o => o.value === tzVal);
         tzSelect.value = tzOption ? tzVal : 'Europe/Moscow';
         
-        // Clear sensitive token inputs (so user only enters if changing them)
-        document.getElementById('seller_wb_token').value = '';
-        document.getElementById('seller_cz_token').value = '';
-        document.getElementById('seller_tg_token').value = '';
+        // Token inputs & persistent status indicators
+        const wbInput = document.getElementById('seller_wb_token');
+        const czInput = document.getElementById('seller_cz_token');
+        const tgInput = document.getElementById('seller_tg_token');
+        const czStatusEl = document.getElementById('seller_cz_token_status');
+
+        wbInput.value = '';
+        czInput.value = '';
+        tgInput.value = '';
+
+        if (seller.has_wb_token) {
+            wbInput.placeholder = '●●●●●●●● (токен сохранен в БД)';
+        } else {
+            wbInput.placeholder = 'Введите API токен Wildberries';
+        }
+
+        if (seller.has_cz_token) {
+            czInput.placeholder = '●●●●●●●● (токен Честного Знака сохранен в БД)';
+            if (czStatusEl) {
+                czStatusEl.innerHTML = `<span style="color:var(--status-delivered); font-weight:600;">✅ Токен активен в БД (${seller.cz_token_preview || 'сохранен'})</span>`;
+            }
+        } else {
+            czInput.placeholder = 'Оставьте пустым или получите через ЭЦП';
+            if (czStatusEl) {
+                czStatusEl.innerHTML = `<span style="color:var(--text-muted);">Токен не установлен. Нажмите «Получить через ЭЦП» или введите вручную.</span>`;
+            }
+        }
+
+        if (seller.has_telegram_token) {
+            tgInput.placeholder = '●●●●●●●● (токен бота сохранен в БД)';
+        } else {
+            tgInput.placeholder = '123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ';
+        }
         
         // Sync certificate select if matches known thumbprint
         await populateCertificatesDropdown();

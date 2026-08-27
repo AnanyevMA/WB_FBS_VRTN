@@ -116,19 +116,19 @@ async def update_seller(seller_id: str, seller_in: SellerUpdate, db: AsyncSessio
 
     data = seller_in.model_dump(exclude_unset=True)
 
-    # Handle encrypted fields
+    # Handle encrypted fields (never overwrite with empty or whitespace-only values)
     if "wb_api_token" in data:
         tok = data.pop("wb_api_token")
-        if tok:
-            seller.wb_api_token_encrypted = encrypt(tok)
+        if tok and str(tok).strip():
+            seller.wb_api_token_encrypted = encrypt(str(tok).strip())
     if "cz_token" in data:
         tok = data.pop("cz_token")
-        if tok:
-            seller.cz_token_encrypted = encrypt(tok)
+        if tok and str(tok).strip():
+            seller.cz_token_encrypted = encrypt(str(tok).strip())
     if "telegram_bot_token" in data:
         tok = data.pop("telegram_bot_token")
-        if tok:
-            seller.telegram_bot_token_encrypted = encrypt(tok)
+        if tok and str(tok).strip():
+            seller.telegram_bot_token_encrypted = encrypt(str(tok).strip())
 
     # Convert polling minutes → seconds
     _apply_polling_interval(seller, data)

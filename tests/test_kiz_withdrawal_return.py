@@ -37,7 +37,7 @@ async def test_kiz_structure_validation():
 
 @pytest.mark.asyncio
 async def test_withdrawal_document_building_with_fias():
-    """Verify LK_RECEIPT document structure containing FIAS ID and OTHER primary doc."""
+    """Verify LK_RECEIPT document structure containing FIAS ID and per-product primary doc."""
     client = CZClient(inn=TEST_INN, token="mock-cz-token", cert_thumbprint="mock_thumbprint")
 
     doc = client._build_withdrawal_document(
@@ -46,6 +46,7 @@ async def test_withdrawal_document_building_with_fias():
         mod_fias=TEST_FIAS_ID,
         mod_kpp="770101001",
         primary_document_number=str(TEST_ORDER_ID),
+        document_type="OTHER",
     )
 
     assert doc["documentFormat"] == "MANUAL"
@@ -53,15 +54,74 @@ async def test_withdrawal_document_building_with_fias():
 
     payload = json.loads(doc["productDocument"])
     assert payload["inn"] == TEST_INN
-    assert payload["document_type"] == "OTHER"
-    assert payload["primary_document_custom_name"] == "Продажа через Wildberries FBS"
-    assert payload["document_number"] == str(TEST_ORDER_ID)
+    assert payload["action"] == "DISTANCE"
     assert payload["fias_id"] == TEST_FIAS_ID
     assert payload["kpp"] == "770101001"
 
     assert len(payload["products"]) == 1
     assert payload["products"][0]["cis"] == TEST_KIZ
     assert payload["products"][0]["product_cost"] == TEST_PRICE_KOP
+    assert payload["products"][0]["primary_document_type"] == "OTHER"
+    assert payload["products"][0]["primary_document_number"] == str(TEST_ORDER_ID)
+    assert payload["products"][0]["primary_document_custom_name"] == "Продажа через Wildberries FBS"
+
+
+@pytest.mark.asyncio
+async def test_golden_schema_withdrawal_and_return_with_receipts():
+    """Verify exact match with real Честный Знак exported JSON."""
+    client = CZClient(inn="190207495060", token="mock-token")
+
+    # 1. Golden Withdrawal
+    w_doc = client._build_withdrawal_document(
+        kiz_codes=["0104630199251318215QTSRh>4sVc+."],
+        price_kopecks=308200,
+        mod_fias="1f06b72d-5b8d-4f0c-a3ee-e0479498b901",
+        document_date="2026-08-26",
+        primary_document_number="131749",
+        document_type="RECEIPT",
+    )
+    w_payload = json.loads(w_doc["productDocument"])
+    assert w_payload["inn"] == "190207495060"
+    assert w_payload["action"] == "DISTANCE"
+    assert w_payload["action_date"] == "2026-08-26"
+    assert w_payload["fias_id"] == "1f06b72d-5b8d-4f0c-a3ee-e0479498b901"
+    assert "document_type" not in w_payload
+    assert w_payload["products"] == [
+        {
+            "cis": "0104630199251318215QTSRh>4sVc+.",
+            "product_cost": 308200,
+            "primary_document_type": "RECEIPT",
+            "primary_document_number": "131749",
+            "primary_document_date": "2026-08-26",
+        }
+    ]
+
+    # 2. Golden Return
+    r_doc = client._build_return_document(
+        kiz_codes=["0104630199251332215ZEdKVTnFahrt"],
+        document_date="27.08.2026",
+        primary_document_number="217837",
+        primary_document_type="RECEIPT",
+        certificate_type="CONFORMITY_DECLARATION",
+        certificate_number="ЕАЭС N RU Д-RU.РА05.В.88154/22",
+        certificate_date="29.08.2022",
+    )
+    r_payload = json.loads(r_doc["productDocument"])
+    assert r_payload["trade_participant_inn"] == "190207495060"
+    assert r_payload["return_type"] == "REMOTE_SALE_RETURN"
+    assert r_payload["paid"] is True
+    assert "primary_document_type" not in r_payload
+    assert r_payload["products_list"] == [
+        {
+            "ki": "0104630199251332215ZEdKVTnFahrt",
+            "primary_document_type": "RECEIPT",
+            "primary_document_number": "217837",
+            "primary_document_date": "27.08.2026",
+            "certificate_type": "CONFORMITY_DECLARATION",
+            "certificate_number": "ЕАЭС N RU Д-RU.РА05.В.88154/22",
+            "certificate_date": "29.08.2022",
+        }
+    ]
 
 
 @pytest.mark.asyncio
@@ -327,11 +387,10 @@ async def test_full_lifecycle_return_then_withdrawal_distance_sale():
     with_payload = json.loads(withdraw_doc["productDocument"])
     assert with_payload["inn"] == TEST_INN
     assert with_payload["action"] == "DISTANCE"  # Дистанционная продажа
-    assert with_payload["document_number"] == str(new_sale_order_id)
-    assert with_payload["primary_document_custom_name"] == "Продажа через Wildberries FBS"
     assert with_payload["fias_id"] == TEST_FIAS_ID
     assert with_payload["products"][0]["cis"] == TEST_KIZ
     assert with_payload["products"][0]["product_cost"] == TEST_PRICE_KOP
+    assert with_payload["products"][0]["primary_document_number"] == str(new_sale_order_id)
 
     with Session(sync_engine) as db:
         db_sale_order = db.query(Order).filter(Order.id == new_sale_order_id).first()

@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-27 13:15:01 UTC | **Файлов проиндексировано**: 75  
+> **Дата актуализации**: 2026-08-27 13:49:07 UTC | **Файлов проиндексировано**: 75  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -108,7 +108,7 @@
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |
 | [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_kiz_product_info_model_and_validation`, +еще 8 | Модуль кодовой базы |
 | [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
-| [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_return_document_building`, `test_cz_client_withdraw_and_return_execution`, +еще 2 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
+| [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_golden_schema_withdrawal_and_return_with_receipts`, `test_return_document_building`, +еще 3 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
 | [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest`, `TestMorningDigestFailureHandling` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
 | [`tests/test_polling_and_digest_schema.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_polling_and_digest_schema.py) | `TestDigestSettings`, `TestSellerCreatePollingInterval`, `TestSellerUpdateDigest`, `TestSellerResponseComputedInterval` | — | Tests: polling interval + digest settings — seller schema validation. |
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |

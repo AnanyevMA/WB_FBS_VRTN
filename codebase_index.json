@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-27T13:15:01.271372+00:00",
+  "updated_at": "2026-08-27T13:49:07.581599+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 75,
   "files": [
@@ -3438,7 +3438,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "a3af01f08d76",
+      "hash": "611c736da28a",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -4699,7 +4699,7 @@
     {
       "file": "tests/test_kiz_withdrawal_return.py",
       "layer": "tests",
-      "hash": "ef99e647e85f",
+      "hash": "fa3462f688f3",
       "docstring": "Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS)",
       "classes": [],
       "functions": [
@@ -4719,7 +4719,16 @@
           "decorators": [
             "pytest.mark.asyncio"
           ],
-          "docstring": "Verify LK_RECEIPT document structure containing FIAS ID and OTHER primary doc."
+          "docstring": "Verify LK_RECEIPT document structure containing FIAS ID and per-product primary doc."
+        },
+        {
+          "name": "test_golden_schema_withdrawal_and_return_with_receipts",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify exact match with real Честный Знак exported JSON."
         },
         {
           "name": "test_return_document_building",

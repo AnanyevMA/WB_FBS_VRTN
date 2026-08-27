@@ -380,8 +380,28 @@ class CZClient:
         primary_document_number: str = "",
         document_type: Optional[str] = None,
         action: str = "DISTANCE",
+        items: Optional[list[dict]] = None,
     ) -> dict:
-        """Build LK_RECEIPT document for ГИС МТ / ISMP (Вывод из оборота: Дистанционная продажа)."""
+        """
+        Build LK_RECEIPT document for ГИС МТ / ISMP (Вывод из оборота: Дистанционная продажа).
+        
+        Эталонный формат ГИС МТ True API (дистанционная продажа с чеком):
+        {
+            "inn": "190207495060",
+            "action_date": "2026-08-26",
+            "action": "DISTANCE",
+            "fias_id": "1f06b72d-5b8d-4f0c-a3ee-e0479498b901",
+            "products": [
+                {
+                    "cis": "0104630199251318215QTSRh>4sVc+.",
+                    "product_cost": 308200,
+                    "primary_document_type": "RECEIPT",
+                    "primary_document_number": "131749",
+                    "primary_document_date": "2026-08-26"
+                }
+            ]
+        }
+        """
         if document_date is None:
             doc_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         elif isinstance(document_date, datetime):
@@ -389,23 +409,50 @@ class CZClient:
         else:
             doc_date_str = str(document_date).strip()
 
-        resolved_doc_type = document_type or "OTHER"
+        products_list = []
+        if items:
+            for it in items:
+                raw_kiz = it.get("cis") or it.get("kiz_code") or ""
+                clean_cis = self._clean_cis_for_true_api(raw_kiz) or raw_kiz
+                cost = int(it.get("product_cost") or it.get("price_kopecks") or price_kopecks)
+                doc_num = str(it.get("primary_document_number") or it.get("receipt_number") or primary_document_number or "").strip()
+                doc_dt = str(it.get("primary_document_date") or it.get("receipt_date") or doc_date_str).strip()
+                doc_tp = it.get("primary_document_type") or it.get("document_type") or (
+                    "RECEIPT" if (it.get("receipt_number") or it.get("primary_document_number")) else (document_type or "OTHER")
+                )
+
+                prod_obj = {
+                    "cis": clean_cis,
+                    "product_cost": cost,
+                }
+                if doc_num:
+                    prod_obj["primary_document_type"] = doc_tp
+                    prod_obj["primary_document_number"] = doc_num
+                    prod_obj["primary_document_date"] = doc_dt
+                    if doc_tp == "OTHER":
+                        prod_obj["primary_document_custom_name"] = it.get("primary_document_custom_name", "Продажа через Wildberries FBS")
+                products_list.append(prod_obj)
+        else:
+            resolved_doc_type = document_type or ("RECEIPT" if primary_document_number else "OTHER")
+            for kiz_code in kiz_codes:
+                clean_cis = self._clean_cis_for_true_api(kiz_code) or kiz_code
+                prod_obj = {
+                    "cis": clean_cis,
+                    "product_cost": int(price_kopecks),
+                }
+                if primary_document_number:
+                    prod_obj["primary_document_type"] = resolved_doc_type
+                    prod_obj["primary_document_number"] = str(primary_document_number).strip()
+                    prod_obj["primary_document_date"] = doc_date_str
+                    if resolved_doc_type == "OTHER":
+                        prod_obj["primary_document_custom_name"] = "Продажа через Wildberries FBS"
+                products_list.append(prod_obj)
 
         doc_body = {
             "inn": self.inn,
             "action": action,
             "action_date": doc_date_str,
-            "document_type": resolved_doc_type,
-            "document_number": primary_document_number or str(uuid.uuid4())[:8].upper(),
-            "document_date": doc_date_str,
-            "primary_document_custom_name": "Продажа через Wildberries FBS",
-            "products": [
-                {
-                    "cis": kiz_code,
-                    "product_cost": int(price_kopecks),
-                }
-                for kiz_code in kiz_codes
-            ],
+            "products": products_list,
         }
         if mod_fias:
             doc_body["fias_id"] = mod_fias
@@ -424,30 +471,97 @@ class CZClient:
     def _build_return_document(
         self,
         kiz_codes: list[str],
-        document_date: Optional[datetime] = None,
+        document_date: Optional[Union[datetime, str]] = None,
         primary_document_number: str = "",
+        primary_document_type: Optional[str] = None,
         return_type: str = "REMOTE_SALE_RETURN",
+        paid: bool = True,
+        certificate_type: Optional[str] = None,
+        certificate_number: Optional[str] = None,
+        certificate_date: Optional[str] = None,
+        items: Optional[list[dict]] = None,
     ) -> dict:
-        """Build LP_RETURN document for ГИС МТ (Возврат в оборот при дистанционной продаже)."""
+        """
+        Build LP_RETURN document for ГИС МТ (Возврат в оборот при дистанционной продаже).
+        
+        Эталонный формат ГИС МТ True API (возврат в оборот при дистанционной продаже):
+        {
+            "trade_participant_inn": "190207495060",
+            "return_type": "REMOTE_SALE_RETURN",
+            "paid": true,
+            "products_list": [
+                {
+                    "ki": "0104630199251332215ZEdKVTnFahrt",
+                    "primary_document_type": "RECEIPT",
+                    "primary_document_number": "217837",
+                    "primary_document_date": "27.08.2026",
+                    "certificate_type": "CONFORMITY_DECLARATION",
+                    "certificate_number": "ЕАЭС N RU Д-RU.РА05.В.88154/22",
+                    "certificate_date": "29.08.2022"
+                }
+            ]
+        }
+        """
         if document_date is None:
-            document_date = datetime.now(timezone.utc)
+            doc_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        elif isinstance(document_date, datetime):
+            doc_date_str = document_date.strftime("%Y-%m-%d")
+        else:
+            doc_date_str = str(document_date).strip()
 
-        doc_date_str = document_date.strftime("%Y-%m-%d")
+        resolved_doc_type = primary_document_type or ("RECEIPT" if primary_document_number else "OTHER")
+
+        products_list = []
+        if items:
+            for it in items:
+                raw_ki = it.get("ki") or it.get("kiz_code") or ""
+                clean_ki = self._clean_cis_for_true_api(raw_ki) or raw_ki
+                doc_num = str(it.get("primary_document_number") or it.get("receipt_number") or primary_document_number or "").strip()
+                doc_dt = str(it.get("primary_document_date") or it.get("receipt_date") or doc_date_str).strip()
+                doc_tp = it.get("primary_document_type") or it.get("document_type") or (
+                    "RECEIPT" if (it.get("receipt_number") or it.get("primary_document_number")) else resolved_doc_type
+                )
+                prod_obj = {
+                    "ki": clean_ki,
+                }
+                if doc_num:
+                    prod_obj["primary_document_type"] = doc_tp
+                    prod_obj["primary_document_number"] = doc_num
+                    prod_obj["primary_document_date"] = doc_dt
+                    if doc_tp == "OTHER":
+                        prod_obj["primary_document_custom_name"] = it.get("primary_document_custom_name", "Возврат от покупателя Wildberries FBS")
+
+                cert_tp = it.get("certificate_type") or certificate_type
+                cert_num = it.get("certificate_number") or certificate_number
+                cert_dt = it.get("certificate_date") or certificate_date
+                if cert_tp and cert_num and cert_dt:
+                    prod_obj["certificate_type"] = cert_tp
+                    prod_obj["certificate_number"] = cert_num
+                    prod_obj["certificate_date"] = cert_dt
+                products_list.append(prod_obj)
+        else:
+            for kiz_code in kiz_codes:
+                clean_ki = self._clean_cis_for_true_api(kiz_code) or kiz_code
+                prod_obj = {
+                    "ki": clean_ki,
+                }
+                if primary_document_number:
+                    prod_obj["primary_document_type"] = resolved_doc_type
+                    prod_obj["primary_document_number"] = str(primary_document_number).strip()
+                    prod_obj["primary_document_date"] = doc_date_str
+                    if resolved_doc_type == "OTHER":
+                        prod_obj["primary_document_custom_name"] = "Возврат от покупателя Wildberries FBS"
+                if certificate_type and certificate_number and certificate_date:
+                    prod_obj["certificate_type"] = certificate_type
+                    prod_obj["certificate_number"] = certificate_number
+                    prod_obj["certificate_date"] = certificate_date
+                products_list.append(prod_obj)
 
         doc_body = {
             "trade_participant_inn": self.inn,
             "return_type": return_type,
-            "paid": True,
-            "primary_document_type": "OTHER",
-            "primary_document_number": primary_document_number or str(uuid.uuid4())[:8].upper(),
-            "primary_document_date": doc_date_str,
-            "primary_document_custom_name": "Возврат от покупателя Wildberries FBS",
-            "products_list": [
-                {
-                    "ki": kiz_code,
-                }
-                for kiz_code in kiz_codes
-            ],
+            "paid": paid,
+            "products_list": products_list,
         }
         inner_json = json.dumps(doc_body, ensure_ascii=False)
 
@@ -616,11 +730,25 @@ class CZClient:
         self,
         kiz_codes: list[str],
         wb_order_id: Optional[int] = None,
+        receipt_number: Optional[str] = None,
+        receipt_date: Optional[Union[datetime, str]] = None,
+        primary_document_type: Optional[str] = None,
+        certificate_type: Optional[str] = None,
+        certificate_number: Optional[str] = None,
+        certificate_date: Optional[str] = None,
+        items: Optional[list[dict]] = None,
     ) -> dict:
         """Построение структуры и Base64-данных документа возврата для клиентского подписания."""
+        doc_num = receipt_number or (str(wb_order_id) if wb_order_id else "")
         doc = self._build_return_document(
             kiz_codes=kiz_codes,
-            primary_document_number=str(wb_order_id) if wb_order_id else "",
+            document_date=receipt_date,
+            primary_document_number=doc_num,
+            primary_document_type=primary_document_type or ("RECEIPT" if receipt_number else "OTHER"),
+            certificate_type=certificate_type,
+            certificate_number=certificate_number,
+            certificate_date=certificate_date,
+            items=items,
         )
         inner_json = doc.get("product_document", "")
         b64_doc = base64.b64encode(inner_json.encode('utf-8')).decode('ascii')
@@ -676,13 +804,30 @@ class CZClient:
         self,
         kiz_codes: list[str],
         wb_order_id: Optional[int] = None,
+        receipt_number: Optional[str] = None,
+        receipt_date: Optional[Union[datetime, str]] = None,
+        primary_document_type: Optional[str] = None,
+        certificate_type: Optional[str] = None,
+        certificate_number: Optional[str] = None,
+        certificate_date: Optional[str] = None,
+        items: Optional[list[dict]] = None,
         wait_for_result: bool = False,
     ) -> str:
         """Возврат КИЗ в оборот при возврате покупателя."""
-        if not kiz_codes:
+        if not kiz_codes and not items:
             raise ValueError("kiz_codes cannot be empty")
 
-        document = self._build_return_document(kiz_codes=kiz_codes)
+        doc_num = receipt_number or (str(wb_order_id) if wb_order_id else "")
+        document = self._build_return_document(
+            kiz_codes=kiz_codes,
+            document_date=receipt_date,
+            primary_document_number=doc_num,
+            primary_document_type=primary_document_type or ("RECEIPT" if receipt_number else "OTHER"),
+            certificate_type=certificate_type,
+            certificate_number=certificate_number,
+            certificate_date=certificate_date,
+            items=items,
+        )
         doc_id = await self._create_document(document, sign=True)
         if wait_for_result:
             await self.wait_for_document(doc_id)

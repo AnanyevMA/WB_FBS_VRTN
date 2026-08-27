@@ -36,26 +36,36 @@
   "trade_participant_inn": "190207495060",
   "return_type": "REMOTE_SALE_RETURN",
   "paid": true,
-  "primary_document_type": "OTHER",
-  "primary_document_number": "5389201923",
-  "primary_document_date": "2026-08-18",
-  "primary_document_custom_name": "Возврат от покупателя Wildberries FBS",
   "products_list": [
     {
-      "ki": "0104630199254371215LgcIxnWSgssC"
+      "ki": "0104630199251332215ZEdKVTnFahrt",
+      "primary_document_type": "RECEIPT",
+      "primary_document_number": "217837",
+      "primary_document_date": "27.08.2026",
+      "certificate_type": "CONFORMITY_DECLARATION",
+      "certificate_number": "ЕАЭС N RU Д-RU.РА05.В.88154/22",
+      "certificate_date": "29.08.2022"
     }
   ]
 }
 ```
 
-> **Поля документа:**
+> **Поля документа (Эталон True API / ISMP):**
 > - `trade_participant_inn`: ИНН продавца.
 > - `return_type`: `"REMOTE_SALE_RETURN"` (Возврат при дистанционной продаже).
 > - `paid`: `true` (признак оплаты/возврата).
-> - `primary_document_type`: `"OTHER"` (Вид первичного документа).
-> - `primary_document_custom_name`: `"Возврат от покупателя Wildberries FBS"`.
-> - `primary_document_date`: Дата первичного документа (`YYYY-MM-DD`).
-> - `products_list`: Массив объектов товаров с полем `ki` (Код идентификации).
+> - `products_list[i].ki`: Чистый код маркировки товара (`ki` / `cis`).
+> - `products_list[i].primary_document_type`: `"RECEIPT"` (при наличии чека возврата) или `"OTHER"`.
+> - `products_list[i].primary_document_number`: Номер чека возврата или номер сборочного задания.
+> - `products_list[i].primary_document_date`: Дата первичного документа / чека (`YYYY-MM-DD` или `dd.MM.yyyy`).
+> - `products_list[i].certificate_type`: Тип разрешительного документа (например, `"CONFORMITY_DECLARATION"`).
+> - `products_list[i].certificate_number`: Номер декларации/сертификата соответствия.
+> - `products_list[i].certificate_date`: Дата регистрации декларации.
+>
+> **Правило обработки возвратов при сверке архива WB (`archive.xlsx`):**
+> - Если в отчете WB в колонке «Тип операции» указан «Возврат» (или заказ отменен покупателем), система проверяет реальный статус КИЗ в ГИС МТ.
+> - **Случай 1 (КИЗ в статусе `RETIRED` / `WITHDRAWN`)**: Товар был списан, но еще не введен обратно. Требуется подача документа `LP_RETURN`.
+> - **Случай 2 (КИЗ уже в статусе `INTRODUCED` / «В обороте»)**: Продавец уже вернул товар в оборот. Повторный ввод в ГИС МТ **не требуется**; КИЗ освобождается и становится доступен для привязки к новым заказам.
 
 ---
 

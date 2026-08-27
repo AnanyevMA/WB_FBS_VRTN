@@ -33,31 +33,33 @@
 ```json
 {
   "inn": "190207495060",
+  "action_date": "2026-08-26",
   "action": "DISTANCE",
-  "action_date": "2026-08-18",
-  "document_type": "OTHER",
-  "document_number": "5389201923",
-  "document_date": "2026-08-18",
-  "primary_document_custom_name": "Продажа через Wildberries FBS",
   "fias_id": "1f06b72d-5b8d-4f0c-a3ee-e0479498b901",
   "products": [
     {
-      "cis": "0104630199254371215LgcIxnWSgssC",
-      "product_cost": 247500
+      "cis": "0104630199251318215QTSRh>4sVc+.",
+      "product_cost": 308200,
+      "primary_document_type": "RECEIPT",
+      "primary_document_number": "131749",
+      "primary_document_date": "2026-08-26"
     }
   ]
 }
 ```
 
-> **Важные поля тела документа:**
+> **Важные поля тела документа (Эталон True API / ISMP):**
 > - `inn`: ИНН продавца.
 > - `action`: `"DISTANCE"` (Дистанционная продажа).
 > - `action_date`: Дата выбытия (`YYYY-MM-DD`).
-> - `cis`: Код идентификации товара.
-> - `product_cost`: Цена за единицу товара в **копейках** (целое число).
-> - `primary_document_custom_name`: Наименование первичного документа («Продажа через Wildberries FBS»).
-> - `document_number`: Номер сборочного задания WB.
-> - `fias_id`: Идентификатор ФИАС места осуществления деятельности (МОД).
+> - `fias_id`: Идентификатор ФИАС места осуществления деятельности (МОД/склада продавца).
+> - `kpp`: КПП организации (опционально, для юридических лиц).
+> - `products[i].cis`: Чистый код маркировки товара (SGTIN без скобок и криптохвостов).
+> - `products[i].product_cost`: Цена за единицу товара в **копейках** (целое число, `3082.00 руб.` -> `308200`).
+> - `products[i].primary_document_type`: `"RECEIPT"` (при наличии кассового чека) или `"OTHER"`.
+> - `products[i].primary_document_number`: Номер кассового чека из отчета маркетплейса (или номер заказа).
+> - `products[i].primary_document_date`: Дата кассового чека (`YYYY-MM-DD`).
+> - `products[i].primary_document_custom_name`: Передается только при типе документа `"OTHER"` («Продажа через Wildberries FBS»). При типе `"RECEIPT"` не передается.
 
 ---
 

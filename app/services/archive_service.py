@@ -243,9 +243,22 @@ async def analyze_archive_data(
         effective_status_ex = kinfo_record.cz_status_ex if kinfo_record else None
         raw_payload = kinfo_record.raw_cz_payload if kinfo_record else {}
 
-        # Operation type classification
-        is_sale = "продаж" in op_type or "продано" in task_status.lower() or "sold" in task_status.lower() or bool(receipt_num)
-        is_return = "возврат" in op_type or "отказ" in task_status.lower() or "отмен" in task_status.lower()
+        # Operation type classification:
+        # Приоритет отдается возврату: колонка "Тип операции" == "Возврат", статус задания "отказ"/"отмена"
+        # или статус заказа в БД CANCELLED. У возвратов тоже может быть номер чека (чек возврата),
+        # поэтому наличие чека не должно автоматически классифицировать строку как продажу.
+        is_return = (
+            "возврат" in op_type
+            or "отказ" in task_status.lower()
+            or "отмен" in task_status.lower()
+            or (db_order and db_order.status == OrderStatus.CANCELLED)
+        )
+        is_sale = not is_return and (
+            "продаж" in op_type
+            or "продано" in task_status.lower()
+            or "sold" in task_status.lower()
+            or bool(receipt_num)
+        )
 
         # Check withdrawal status from True API specification
         withdrawn_flag, withdraw_reason = is_kiz_withdrawn(
@@ -285,24 +298,29 @@ async def analyze_archive_data(
                 "selected": needs_withdrawal and bool(kiz_code),
             })
         elif is_return:
-            # For returns: needs CZ return only if it was previously withdrawn
+            # For returns: needs CZ return only if it was previously withdrawn and not yet returned
             needs_cz_return = is_already_withdrawn
 
             returns.append({
                 "order_id": order_id,
                 "sticker_id": sticker,
                 "kiz_code": kiz_code,
+                "receipt_number": receipt_num,
+                "fn_number": fn_num,
+                "receipt_date": date_formatted,
                 "price": price,
+                "price_kopecks": int(round(price * 100)),
                 "article": article,
                 "name": name,
-                "task_status": task_status or "Отказ покупателем",
+                "task_status": task_status or "Возврат / отказ покупателя",
                 "db_status": db_order.status.value if db_order else "Не найден в БД",
                 "db_kiz_status": db_kiz_status or "Не привязан",
+                "cz_status": effective_cz_status,
                 "db_cz_status": effective_cz_status,
                 "cz_status_desc": cz_status_desc,
                 "needs_cz_return": needs_cz_return,
-                "action_recommended": "Возврат в оборот (Честный Знак)" if needs_cz_return else "Освободить КИЗ (уже в обороте)",
-                "selected": bool(kiz_code),
+                "action_recommended": "⚠️ Требует возврата в оборот" if needs_cz_return else "✅ Уже в обороте (готов к привязке)",
+                "selected": needs_cz_return and bool(kiz_code),
             })
 
     return {

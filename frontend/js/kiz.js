@@ -639,8 +639,9 @@ function renderArchivePreview(data) {
                 <td>
                     <div style="font-weight: 500;">${r.name || 'Товар'}</div>
                     <div style="font-size: 11px; color: var(--text-muted);">${r.article || ''}</div>
+                    ${r.receipt_number ? `<span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; font-size: 11px; font-weight: 600; margin-top: 2px;">🧾 Чек: ${r.receipt_number}</span>` : ''}
                 </td>
-                <td><span class="badge ${r.needs_cz_return ? 'badge-warning' : 'badge-neutral'}">${r.action_recommended}</span></td>
+                <td><span class="badge ${r.needs_cz_return ? 'badge-warning' : 'badge-delivered'}">${r.action_recommended}</span></td>
                 <td><span class="badge ${r.db_status === 'CANCELLED' ? 'badge-cancelled' : 'badge-neutral'}">${r.db_status}</span></td>
                 <td>
                     <div style="display:flex; flex-direction:column; gap:2px;">
@@ -721,14 +722,21 @@ async function syncArchiveCzLive() {
                     r.db_cz_status = info.cz_status;
                     r.cz_status_desc = info.cz_status_desc;
                     r.needs_cz_return = info.is_withdrawn;
-                    r.action_recommended = info.is_withdrawn ? "Возврат в оборот (Честный Знак)" : "Освободить КИЗ (уже в обороте)";
+                    r.action_recommended = info.is_withdrawn ? "⚠️ Требует возврата в оборот" : "✅ Уже в обороте (готов к привязке)";
+                    r.selected = info.is_withdrawn && Boolean(r.kiz_code);
+                    updatedCount++;
                 }
             });
         }
 
         // Recalculate summary
-        if (currentArchiveData.summary && currentArchiveData.withdrawals) {
-            currentArchiveData.summary.sales_needing_withdrawal = currentArchiveData.withdrawals.filter(w => w.needs_withdrawal).length;
+        if (currentArchiveData.summary) {
+            if (currentArchiveData.withdrawals) {
+                currentArchiveData.summary.sales_needing_withdrawal = currentArchiveData.withdrawals.filter(w => w.needs_withdrawal).length;
+            }
+            if (currentArchiveData.returns) {
+                currentArchiveData.summary.returns_needing_cz_return = currentArchiveData.returns.filter(r => r.needs_cz_return).length;
+            }
         }
 
         renderArchivePreview(currentArchiveData);

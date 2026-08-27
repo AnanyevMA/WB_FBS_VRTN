@@ -561,4 +561,94 @@ async def test_sync_kiz_status_record_and_archive_single_source_of_truth():
         assert w["selected"] is False
 
 
+@pytest.mark.asyncio
+async def test_archive_analysis_returns_with_receipt_and_introduced_kiz():
+    """
+    Проверка сценария: в archive.xlsx строка с "Тип операции": "Возврат" и номером чека "217837".
+    КИЗ уже был возвращен в оборот в Честном Знаке (статус INTRODUCED / В обороте).
+    Система должна классифицировать строку в returns (не в withdrawals),
+    не требовать выбытия и не требовать повторного возврата.
+    """
+    from app.services.archive_service import analyze_archive_data
+    from app.services.kiz_service import sync_kiz_status_record
+    from app.services.encryption import encrypt
+
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Return Archive",
+            wb_supplier_id=f"WB-{seller_id[:6]}",
+            cz_inn="190207495060",
+            wb_api_token_encrypted=encrypt("wb_test"),
+            cz_token_encrypted=encrypt("cz_test"),
+            is_active=True
+        )
+        session.add(seller)
+
+        kiz_code = f"0104630199251332215ZEdKVT_{uuid.uuid4().hex[:6]}"
+        order_id = random.randint(900000000, 999999999)
+        order = Order(
+            id=order_id,
+            seller_id=seller.id,
+            status=OrderStatus.CANCELLED,
+            wb_created_at=datetime.now(timezone.utc),
+            article="hood.brown.100",
+            tech_size="ONE SIZE",
+            name="Капор",
+            kiz_required=True,
+            kiz_code=kiz_code,
+            kiz_status=KizStatus.RETURNED,
+            kiz_cz_status="INTRODUCED",
+        )
+        session.add(order)
+        await session.commit()
+
+        # КИЗ числится в обороте
+        await sync_kiz_status_record(
+            db=session,
+            kiz_code=kiz_code,
+            cz_status="INTRODUCED",
+            seller_id=seller_id,
+        )
+        await session.commit()
+
+        archive_payload = {
+            "kiz_rows": [
+                {
+                    "№ задания": order_id,
+                    "КИЗ": kiz_code,
+                    "Номер чека": "217837",
+                    "Номер фискального накопителя": "7380440903830437",
+                    "Дата": "01:00:00 27.08.2026",
+                    "Тип операции": "Возврат",
+                    "Стоимость": 3403,
+                }
+            ],
+            "tasks_rows": [
+                {
+                    "№ задания": order_id,
+                    "Артикул продавца": "hood.brown.100",
+                    "Наименование": "Капор",
+                    "Статус задания": "Отказ покупателем",
+                }
+            ]
+        }
+
+        analysis = await analyze_archive_data(seller=seller, archive_data=archive_payload, db=session)
+        assert len(analysis["withdrawals"]) == 0
+        assert len(analysis["returns"]) == 1
+
+        ret = analysis["returns"][0]
+        assert ret["order_id"] == order_id
+        assert ret["kiz_code"] == kiz_code
+        assert ret["receipt_number"] == "217837"
+        assert ret["cz_status"] == "INTRODUCED"
+        assert ret["needs_cz_return"] is False
+        assert ret["selected"] is False
+        assert "Уже в обороте" in ret["action_recommended"]
+
+
+
 

@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-27 13:49:07 UTC | **Файлов проиндексировано**: 75  
+> **Дата актуализации**: 2026-08-27 14:12:09 UTC | **Файлов проиндексировано**: 75  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -106,7 +106,7 @@
 | [`tests/test_codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_codebase_indexer.py) | — | `test_codebase_indexer_scan_and_save`, `test_codebase_indexer_fast_symbol_query`, `test_lookup_code_symbol_helper`, `test_codebase_indexing_rule_in_manifest`, +еще 2 | Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule. |
 | [`tests/test_cz_client_and_queues.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_and_queues.py) | — | `test_encryption_service_compatibility`, `test_cz_client_authenticate_flow`, `test_cz_client_suz_endpoints_and_cises_info`, `test_agent_task_queue_decorators_match_manifest`, +еще 3 | Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService. |
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |
-| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_kiz_product_info_model_and_validation`, +еще 8 | Модуль кодовой базы |
+| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_kiz_product_info_model_and_validation`, +еще 9 | Модуль кодовой базы |
 | [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
 | [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_golden_schema_withdrawal_and_return_with_receipts`, `test_return_document_building`, +еще 3 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
 | [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest`, `TestMorningDigestFailureHandling` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |

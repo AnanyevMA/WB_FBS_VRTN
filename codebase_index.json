@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-27T13:49:07.581599+00:00",
+  "updated_at": "2026-08-27T14:12:09.299616+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 75,
   "files": [
@@ -3162,7 +3162,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "47bc88dc62b2",
+      "hash": "0f4efda9e604",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -4537,7 +4537,7 @@
     {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
-      "hash": "213ef2d89ad3",
+      "hash": "86c7b99e9373",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4638,6 +4638,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Тест единого источника истины для статусов КИЗ и синхронизации с архивом WB."
+        },
+        {
+          "name": "test_archive_analysis_returns_with_receipt_and_introduced_kiz",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверка сценария: в archive.xlsx строка с \"Тип операции\": \"Возврат\" и номером чека \"217837\"."
         }
       ],
       "endpoints": [],

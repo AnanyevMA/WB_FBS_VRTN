@@ -40,6 +40,12 @@ class Seller(Base):
 
     last_polled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Archive reminder settings
+    archive_reminder_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    archive_reminder_days: Mapped[int] = mapped_column(Integer, default=2, server_default="2")
+    last_archive_uploaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_archive_reminder_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -47,4 +53,5 @@ class Seller(Base):
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="seller", cascade="all, delete-orphan")
     supplies: Mapped[list["Supply"]] = relationship("Supply", back_populates="seller", cascade="all, delete-orphan")
     kiz_operations: Mapped[list["KizOperation"]] = relationship("KizOperation", back_populates="seller", cascade="all, delete-orphan")
+    signature_batches: Mapped[list["KizSignatureBatch"]] = relationship("KizSignatureBatch", back_populates="seller", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="seller", cascade="all, delete-orphan")

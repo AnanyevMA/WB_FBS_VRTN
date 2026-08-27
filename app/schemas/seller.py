@@ -78,6 +78,9 @@ class SellerUpdate(BaseModel):
         None, ge=1, le=60,
         description="Интервал опроса WB API в минутах (1–60)",
     )
+    # Archive reminder settings
+    archive_reminder_enabled: Optional[bool] = None
+    archive_reminder_days: Optional[int] = Field(None, ge=1, le=30, description="Интервал напоминания о загрузке архива в днях")
     # Digest settings (flat for simple PATCH, or nested via digest object)
     digest_enabled: Optional[bool] = None
     digest_hour: Optional[int] = Field(None, ge=0, le=23)
@@ -119,6 +122,9 @@ class SellerResponse(SellerBase):
     digest_minute: int = 0
     digest_timezone: str = "Europe/Moscow"
     last_polled_at: Optional[datetime] = None
+    archive_reminder_enabled: Optional[bool] = True
+    archive_reminder_days: Optional[int] = 2
+    last_archive_uploaded_at: Optional[datetime] = None
     created_at: datetime
     has_wb_token: bool = False
     has_cz_token: bool = False
@@ -164,6 +170,9 @@ class SellerListItem(BaseModel):
     digest_hour: int = 8
     digest_timezone: str = "Europe/Moscow"
     last_polled_at: Optional[datetime] = None
+    archive_reminder_enabled: Optional[bool] = True
+    archive_reminder_days: Optional[int] = 2
+    last_archive_uploaded_at: Optional[datetime] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 

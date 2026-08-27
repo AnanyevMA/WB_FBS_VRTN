@@ -356,6 +356,28 @@ class TelegramService:
         )
         return await self._broadcast(chat_ids, text, keyboard)
 
+    async def send_archive_reminder(
+        self,
+        chat_ids: list[str | int],
+        seller_name: str,
+        days_since_last: Optional[int] = None,
+    ) -> bool:
+        """
+        Отправляет напоминание менеджеру о необходимости выгрузки архива WB.
+        """
+        since_text = f" (прошло {days_since_last} дн. с последней загрузки)" if days_since_last is not None else ""
+        text = (
+            f"🔔 <b>НАПОМИНАНИЕ: ВЫГРУЗКА АРХИВА ЧЕКОВ WB</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏪 <b>Продавец:</b> {seller_name}{since_text}\n\n"
+            f"📋 <b>Инструкция для менеджера:</b>\n"
+            f"1. Зайдите в ЛК WB: <i>Маркетплейс → Сборочные задания → Архив</i>\n"
+            f"2. Выгрузите отчёт в Excel (детализация с КИЗ)\n"
+            f"3. <b>Отправьте полученный .xlsx файл прямо в этот чат</b> 📎\n\n"
+            f"⚡ <i>Бот автоматически извлечёт номера чеков и подготовит список на ввод/вывод КИЗ для владельца ЭЦП в дашборде.</i>"
+        )
+        return await self._broadcast(chat_ids, text)
+
     async def send_text(
         self,
         chat_ids: list[str | int],

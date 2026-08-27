@@ -218,3 +218,78 @@ def sync_order_statuses(seller_id: str):
 
         db.commit()
         logger.info(f"[Sync] Updated {updated} order statuses for seller {seller_id}")
+
+
+@celery_app.task(
+    name="app.agents.archive_processor.check_archive_reminders",
+    queue="notifications",
+    bind=True,
+    max_retries=1,
+)
+def check_archive_reminders(self):
+    """
+    Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней, по умолчанию 2).
+    Запускается по расписанию Celery Beat.
+    """
+    import asyncio
+    from app.services.telegram_service import TelegramService
+
+    now = datetime.now(timezone.utc)
+    with Session(sync_engine) as db:
+        sellers = db.execute(
+            select(Seller).where(
+                Seller.is_active == True,
+                Seller.archive_reminder_enabled == True,
+                Seller.telegram_bot_token_encrypted.isnot(None),
+            )
+        ).scalars().all()
+
+        reminders_sent = 0
+        for seller in sellers:
+            if not seller.telegram_chat_ids:
+                continue
+
+            interval_days = seller.archive_reminder_days or 2
+            last_upload = seller.last_archive_uploaded_at
+            last_sent = seller.last_archive_reminder_sent_at
+
+            if last_upload and last_upload.tzinfo is None:
+                last_upload = last_upload.replace(tzinfo=timezone.utc)
+            if last_sent and last_sent.tzinfo is None:
+                last_sent = last_sent.replace(tzinfo=timezone.utc)
+
+            # Don't send more than once in 20 hours to prevent duplicate spam
+            if last_sent and (now - last_sent).total_seconds() < 20 * 3600:
+                continue
+
+            should_send = False
+            days_since = None
+            if last_upload is None:
+                # Never uploaded
+                should_send = True
+            else:
+                diff = now - last_upload
+                days_since = int(diff.total_seconds() // 86400)
+                if diff.total_seconds() >= interval_days * 86400:
+                    should_send = True
+
+            if should_send:
+                bot_token = decrypt(seller.telegram_bot_token_encrypted)
+                tg = TelegramService(bot_token)
+                try:
+                    asyncio.run(
+                        tg.send_archive_reminder(
+                            chat_ids=seller.telegram_chat_ids,
+                            seller_name=seller.name,
+                            days_since_last=days_since,
+                        )
+                    )
+                    seller.last_archive_reminder_sent_at = now
+                    reminders_sent += 1
+                    logger.info(f"[Archive Reminder] Sent reminder for seller {seller.name} (ID: {seller.id})")
+                except Exception as e:
+                    logger.error(f"[Archive Reminder] Error sending reminder for {seller.id}: {e}")
+
+        if reminders_sent > 0:
+            db.commit()
+            logger.info(f"[Archive Reminder] Total reminders sent: {reminders_sent}")

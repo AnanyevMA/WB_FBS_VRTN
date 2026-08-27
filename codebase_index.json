@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-27T14:30:07.426239+00:00",
+  "updated_at": "2026-08-27T15:20:35.251980+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 76,
+  "total_files": 91,
   "files": [
     {
       "file": "alembic/env.py",
@@ -190,6 +190,37 @@
       ]
     },
     {
+      "file": "alembic/versions/a1b2c3d4e5f6_add_kiz_signature_batches_and_reminders.py",
+      "layer": "migrations",
+      "hash": "4f15479a292a",
+      "docstring": "add_kiz_signature_batches_and_reminders",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
       "file": "app/__init__.py",
       "layer": "core",
       "hash": "d38e4370fce2",
@@ -303,7 +334,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "6eeaf128883f",
+      "hash": "99a9274e6245",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -340,6 +371,17 @@
             "celery_app.task()"
           ],
           "docstring": "Синхронизация статусов заказов с WB API через POST /api/v3/orders/status."
+        },
+        {
+          "name": "check_archive_reminders",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней, по умолчанию 2)."
         }
       ],
       "endpoints": [],
@@ -358,6 +400,11 @@
           "name": "app.agents.archive_processor.sync_order_statuses",
           "function": "sync_order_statuses",
           "docstring": "Синхронизация статусов заказов с WB API через POST /api/v3/orders/status."
+        },
+        {
+          "name": "app.agents.archive_processor.check_archive_reminders",
+          "function": "check_archive_reminders",
+          "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней, по умолчанию 2)."
         }
       ],
       "db_tables": [],
@@ -369,6 +416,7 @@
         "app.models.order",
         "app.models.seller",
         "app.services.encryption",
+        "app.services.telegram_service",
         "app.services.wb_client",
         "asyncio",
         "datetime",
@@ -1539,10 +1587,115 @@
       ]
     },
     {
-      "file": "app/api/kiz.py",
+      "file": "app/api/kiz/__init__.py",
       "layer": "api",
-      "hash": "754b9fa6d7da",
-      "docstring": "",
+      "hash": "f4db28986024",
+      "docstring": "FastAPI KIZ Router Package — WB FBS Manager",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz.archive",
+        "app.api.kiz.attach",
+        "app.api.kiz.documents",
+        "app.api.kiz.signature_batches",
+        "fastapi"
+      ]
+    },
+    {
+      "file": "app/api/kiz/archive.py",
+      "layer": "api",
+      "hash": "40200cb0d663",
+      "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "preview_wb_archive",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "file",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/preview')"
+          ],
+          "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
+        },
+        {
+          "name": "sync_archive_kiz_with_cz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/sync-cz')"
+          ],
+          "docstring": "Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака."
+        },
+        {
+          "name": "process_wb_archive",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/process')"
+          ],
+          "docstring": "Обработка выбранных позиций из архива WB:"
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/archive/preview",
+          "handler": "preview_wb_archive",
+          "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
+        },
+        {
+          "method": "POST",
+          "path": "/archive/sync-cz",
+          "handler": "sync_archive_kiz_with_cz",
+          "docstring": "Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака."
+        },
+        {
+          "method": "POST",
+          "path": "/archive/process",
+          "handler": "process_wb_archive",
+          "docstring": "Обработка выбранных позиций из архива WB:"
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.database",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.archive_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "fastapi",
+        "logging",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/kiz/attach.py",
+      "layer": "api",
+      "hash": "1ef4c671f33e",
+      "docstring": "FastAPI KIZ Attach, Lookup & Validation Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
         {
@@ -1600,6 +1753,81 @@
           "docstring": ""
         },
         {
+          "name": "list_kiz_operations",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/kiz/operations')"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/orders/{order_id}/kiz",
+          "handler": "attach_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/attach",
+          "handler": "attach_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/lookup",
+          "handler": "lookup_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "DELETE",
+          "path": "/orders/{order_id}/kiz",
+          "handler": "detach_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/orders/{order_id}/kiz/validate",
+          "handler": "validate_kiz",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/kiz/operations",
+          "handler": "list_kiz_operations",
+          "docstring": ""
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.schemas.order",
+        "app.services.kiz_service",
+        "datetime",
+        "fastapi",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/kiz/documents.py",
+      "layer": "api",
+      "hash": "bf96684cb77f",
+      "docstring": "FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
           "name": "withdraw_kiz",
           "is_async": true,
           "args": [
@@ -1651,90 +1879,9 @@
             "router.post('/kiz/submit-signed-document')"
           ],
           "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
-        },
-        {
-          "name": "list_kiz_operations",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "db"
-          ],
-          "decorators": [
-            "router.get('/kiz/operations')"
-          ],
-          "docstring": ""
-        },
-        {
-          "name": "preview_wb_archive",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "file",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/archive/preview')"
-          ],
-          "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
-        },
-        {
-          "name": "sync_archive_kiz_with_cz",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "payload",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/archive/sync-cz')"
-          ],
-          "docstring": "Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака."
-        },
-        {
-          "name": "process_wb_archive",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "payload",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/archive/process')"
-          ],
-          "docstring": "Обработка выбранных позиций из архива WB:"
         }
       ],
       "endpoints": [
-        {
-          "method": "POST",
-          "path": "/orders/{order_id}/kiz",
-          "handler": "attach_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "POST",
-          "path": "/kiz/attach",
-          "handler": "attach_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "POST",
-          "path": "/kiz/lookup",
-          "handler": "lookup_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "DELETE",
-          "path": "/orders/{order_id}/kiz",
-          "handler": "detach_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "GET",
-          "path": "/orders/{order_id}/kiz/validate",
-          "handler": "validate_kiz",
-          "docstring": ""
-        },
         {
           "method": "POST",
           "path": "/kiz/withdraw",
@@ -1758,30 +1905,6 @@
           "path": "/kiz/submit-signed-document",
           "handler": "submit_signed_kiz_document",
           "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
-        },
-        {
-          "method": "GET",
-          "path": "/kiz/operations",
-          "handler": "list_kiz_operations",
-          "docstring": ""
-        },
-        {
-          "method": "POST",
-          "path": "/archive/preview",
-          "handler": "preview_wb_archive",
-          "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
-        },
-        {
-          "method": "POST",
-          "path": "/archive/sync-cz",
-          "handler": "sync_archive_kiz_with_cz",
-          "docstring": "Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака."
-        },
-        {
-          "method": "POST",
-          "path": "/archive/process",
-          "handler": "process_wb_archive",
-          "docstring": "Обработка выбранных позиций из архива WB:"
         }
       ],
       "celery_tasks": [],
@@ -1795,8 +1918,6 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
-        "app.schemas.order",
-        "app.services.archive_service",
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
@@ -1805,8 +1926,134 @@
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
-        "typing",
-        "uuid"
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/kiz/signature_batches.py",
+      "layer": "api",
+      "hash": "9bd54d311939",
+      "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "list_signature_batches",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "status",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/kiz/signature-batches')"
+          ],
+          "docstring": "Возвращает список пакетов операций с маркировкой (загруженных через Telegram или Web)."
+        },
+        {
+          "name": "get_signature_batch",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "batch_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/kiz/signature-batches/{batch_id}')"
+          ],
+          "docstring": "Возвращает подробные данные пакета (списки продаж с чеками и возвратов)."
+        },
+        {
+          "name": "prepare_batch_documents_for_signing",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "batch_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/signature-batches/{batch_id}/prepare-documents')"
+          ],
+          "docstring": "Формирует неподписанные канонические документы (LK_RECEIPT и LP_RETURN)"
+        },
+        {
+          "name": "submit_signed_batch",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "batch_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/signature-batches/{batch_id}/submit-signed')"
+          ],
+          "docstring": "Принимает подписанные браузерным плагином документы или запускает серверную обработку пакета."
+        },
+        {
+          "name": "cancel_signature_batch",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "batch_id",
+            "db"
+          ],
+          "decorators": [
+            "router.delete('/kiz/signature-batches/{batch_id}')"
+          ],
+          "docstring": "Отменяет пакет из очереди на подписание."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/kiz/signature-batches",
+          "handler": "list_signature_batches",
+          "docstring": "Возвращает список пакетов операций с маркировкой (загруженных через Telegram или Web)."
+        },
+        {
+          "method": "GET",
+          "path": "/kiz/signature-batches/{batch_id}",
+          "handler": "get_signature_batch",
+          "docstring": "Возвращает подробные данные пакета (списки продаж с чеками и возвратов)."
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/signature-batches/{batch_id}/prepare-documents",
+          "handler": "prepare_batch_documents_for_signing",
+          "docstring": "Формирует неподписанные канонические документы (LK_RECEIPT и LP_RETURN)"
+        },
+        {
+          "method": "POST",
+          "path": "/kiz/signature-batches/{batch_id}/submit-signed",
+          "handler": "submit_signed_batch",
+          "docstring": "Принимает подписанные браузерным плагином документы или запускает серверную обработку пакета."
+        },
+        {
+          "method": "DELETE",
+          "path": "/kiz/signature-batches/{batch_id}",
+          "handler": "cancel_signature_batch",
+          "docstring": "Отменяет пакет из очереди на подписание."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "asyncio",
+        "datetime",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
       ]
     },
     {
@@ -2460,35 +2707,18 @@
       ]
     },
     {
-      "file": "app/bot.py",
+      "file": "app/bot/__init__.py",
       "layer": "core",
-      "hash": "6c5d7509b314",
-      "docstring": "Telegram Bot Handler & Dispatcher — WB FBS Manager",
+      "hash": "e18d609c5fad",
+      "docstring": "Telegram Bot Package — WB FBS Manager",
       "classes": [],
       "functions": [
-        {
-          "name": "_get_active_seller",
-          "is_async": false,
-          "args": [
-            "db",
-            "chat_id"
-          ],
-          "decorators": [],
-          "docstring": "Find active seller in DB, optionally matching chat_id."
-        },
-        {
-          "name": "get_main_reply_keyboard",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": "Main menu reply keyboard (for private chats only)."
-        },
         {
           "name": "create_bot_router",
           "is_async": false,
           "args": [],
           "decorators": [],
-          "docstring": "Creates aiogram router with all command and callback handlers."
+          "docstring": "Creates aiogram router with all command, document, callback, and message handlers."
         }
       ],
       "endpoints": [],
@@ -2496,11 +2726,253 @@
       "db_tables": [],
       "imports": [
         "aiogram",
-        "aiogram.client.default",
-        "aiogram.enums",
+        "app.bot.handlers",
+        "app.bot.helpers",
+        "app.bot.keyboards"
+      ]
+    },
+    {
+      "file": "app/bot/handlers/__init__.py",
+      "layer": "core",
+      "hash": "4265837f0887",
+      "docstring": "Telegram Bot Handlers Package — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "register_all_handlers",
+          "is_async": false,
+          "args": [
+            "router"
+          ],
+          "decorators": [],
+          "docstring": "Registers all bot handlers in the correct sequence on the provided router."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "app.bot.handlers.callbacks",
+        "app.bot.handlers.commands",
+        "app.bot.handlers.documents",
+        "app.bot.handlers.messages"
+      ]
+    },
+    {
+      "file": "app/bot/handlers/callbacks.py",
+      "layer": "core",
+      "hash": "8d21abc945a8",
+      "docstring": "Telegram Bot Inline Callback Query Handlers — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "cb_order_detail",
+          "is_async": true,
+          "args": [
+            "callback"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "cb_order_assemble",
+          "is_async": true,
+          "args": [
+            "callback"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "cb_order_cancel",
+          "is_async": true,
+          "args": [
+            "callback"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "cb_kiz_scan",
+          "is_async": true,
+          "args": [
+            "callback"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "cb_orders_pending",
+          "is_async": true,
+          "args": [
+            "callback"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "cb_supply_create_all",
+          "is_async": true,
+          "args": [
+            "callback"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "register_callback_handlers",
+          "is_async": false,
+          "args": [
+            "router"
+          ],
+          "decorators": [],
+          "docstring": "Registers all callback query handlers on the provided router."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "aiogram.types",
+        "app.bot.helpers",
+        "app.bot.keyboards",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.supply",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/bot/handlers/commands.py",
+      "layer": "core",
+      "hash": "f88dd0ef7aea",
+      "docstring": "Telegram Bot Command Handlers — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "handle_start",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_help",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_chat_id",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_bind_group",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_unbind_group",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_status",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_orders_list",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_supplies_list",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_digest",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_test_order",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "handle_kiz_command",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": "Ручная привязка КИЗ через команду: /kiz <order_id> <kiz_code>"
+        },
+        {
+          "name": "register_command_handlers",
+          "is_async": false,
+          "args": [
+            "router"
+          ],
+          "decorators": [],
+          "docstring": "Registers all command handlers on the provided router."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
         "aiogram.filters",
         "aiogram.types",
-        "app.config",
+        "app.bot.helpers",
+        "app.bot.keyboards",
         "app.models.audit",
         "app.models.kiz",
         "app.models.order",
@@ -2514,15 +2986,174 @@
         "logging",
         "random",
         "sqlalchemy",
+        "sqlalchemy.orm"
+      ]
+    },
+    {
+      "file": "app/bot/handlers/documents.py",
+      "layer": "core",
+      "hash": "a0d85c1cce45",
+      "docstring": "Telegram Bot Document Handlers — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "handle_document",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": "Обработка загрузки файла отчёта архива WB (.xlsx / .xls)."
+        },
+        {
+          "name": "register_document_handlers",
+          "is_async": false,
+          "args": [
+            "router"
+          ],
+          "decorators": [],
+          "docstring": "Registers all document handlers on the provided router."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "aiogram.types",
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.services.archive_service",
+        "datetime",
+        "io",
+        "json",
+        "logging",
+        "sqlalchemy"
+      ]
+    },
+    {
+      "file": "app/bot/handlers/messages.py",
+      "layer": "core",
+      "hash": "fcabcf44bb68",
+      "docstring": "Telegram Bot Text Message Handlers — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "handle_text_message",
+          "is_async": true,
+          "args": [
+            "message"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "register_message_handlers",
+          "is_async": false,
+          "args": [
+            "router"
+          ],
+          "decorators": [],
+          "docstring": "Registers all text message handlers on the provided router."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "aiogram.types",
+        "app.bot.helpers",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm"
+      ]
+    },
+    {
+      "file": "app/bot/helpers.py",
+      "layer": "core",
+      "hash": "250da7a2ba3e",
+      "docstring": "Telegram Bot Helpers & Shared State — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_get_active_seller",
+          "is_async": false,
+          "args": [
+            "db",
+            "chat_id"
+          ],
+          "decorators": [],
+          "docstring": "Find active seller in DB, optionally matching chat_id."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.models.seller",
+        "logging",
+        "sqlalchemy",
         "sqlalchemy.orm",
-        "typing",
-        "uuid"
+        "typing"
+      ]
+    },
+    {
+      "file": "app/bot/keyboards.py",
+      "layer": "core",
+      "hash": "44014c66edc5",
+      "docstring": "Telegram Bot Keyboards — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_main_reply_keyboard",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Main menu reply keyboard (for private chats only)."
+        },
+        {
+          "name": "get_orders_list_keyboard",
+          "is_async": false,
+          "args": [
+            "orders",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": "Inline keyboard for list of orders."
+        },
+        {
+          "name": "get_order_detail_keyboard",
+          "is_async": false,
+          "args": [
+            "order_id",
+            "seller_id",
+            "is_active"
+          ],
+          "decorators": [],
+          "docstring": "Inline keyboard for single order detail view."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram.types",
+        "app.models.order",
+        "typing"
       ]
     },
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "2bad616889a7",
+      "hash": "495e1a5ebe9e",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -2688,7 +3319,7 @@
     {
       "file": "app/models/__init__.py",
       "layer": "models",
-      "hash": "cf2147479c0c",
+      "hash": "eb90de3158cc",
       "docstring": "",
       "classes": [],
       "functions": [],
@@ -2738,7 +3369,7 @@
     {
       "file": "app/models/kiz.py",
       "layer": "models",
-      "hash": "3db9ce5d3bf5",
+      "hash": "b9f114e817dc",
       "docstring": "",
       "classes": [
         {
@@ -2764,6 +3395,22 @@
           ],
           "docstring": "Информация о товаре, полученная по коду маркировки (КИЗ / SGTIN / DataMatrix).",
           "methods": []
+        },
+        {
+          "name": "BatchStatus",
+          "bases": [
+            "enum.Enum"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "KizSignatureBatch",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "Пакет операций с маркировкой (КИЗ) из отчёта WB, ожидающий подписания ЭЦП и отправки в ГИС МТ.",
+          "methods": []
         }
       ],
       "functions": [],
@@ -2771,7 +3418,8 @@
       "celery_tasks": [],
       "db_tables": [
         "kiz_operations",
-        "kiz_product_info"
+        "kiz_product_info",
+        "kiz_signature_batches"
       ],
       "imports": [
         "app.database",
@@ -2837,7 +3485,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "c5ce0e67bb96",
+      "hash": "1e4744bb200c",
       "docstring": "",
       "classes": [
         {
@@ -3094,7 +3742,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "af5878cf157f",
+      "hash": "f31a288026a6",
       "docstring": "",
       "classes": [
         {
@@ -3731,7 +4379,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "972fe939e6b6",
+      "hash": "03b4246755a5",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -3749,6 +4397,7 @@
             "send_error_alert",
             "send_batch_orders_notification",
             "send_morning_digest",
+            "send_archive_reminder",
             "send_text",
             "_broadcast"
           ]
@@ -4234,6 +4883,78 @@
       ]
     },
     {
+      "file": "tests/test_archive_reminder.py",
+      "layer": "tests",
+      "hash": "b708105ce0d0",
+      "docstring": "Unit & Integration Tests for Archive Upload Reminders Agent (Every 2 days)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_db",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_archive_reminder_never_uploaded",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "If seller has never uploaded an archive, a reminder should be sent."
+        },
+        {
+          "name": "test_archive_reminder_uploaded_recently_skipped",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "If archive was uploaded 1 day ago (less than 2 days), reminder must NOT be sent."
+        },
+        {
+          "name": "test_archive_reminder_uploaded_3_days_ago_triggers",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "If archive was uploaded 3 days ago (>= 2 days), reminder MUST be sent."
+        },
+        {
+          "name": "test_archive_reminder_disabled_skipped",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "If archive_reminder_enabled is False, reminder must NOT be sent."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.archive_processor",
+        "app.database",
+        "app.models.seller",
+        "app.services.encryption",
+        "datetime",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "unittest.mock"
+      ]
+    },
+    {
       "file": "tests/test_auth.py",
       "layer": "tests",
       "hash": "5c39ed06939b",
@@ -4336,6 +5057,52 @@
         "pytest",
         "scripts.set_admin_password",
         "sqlalchemy",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_bot_archive_upload.py",
+      "layer": "tests",
+      "hash": "6943bb675e4b",
+      "docstring": "Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_create_mock_wb_archive_bytes",
+          "is_async": false,
+          "args": [
+            "order1_id",
+            "order2_id"
+          ],
+          "decorators": [],
+          "docstring": "Creates a minimal mock WB archive Excel workbook in memory."
+        },
+        {
+          "name": "test_bot_archive_excel_parsing_and_batch_creation",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.bot",
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "datetime",
+        "io",
+        "openpyxl",
+        "pytest",
+        "sqlalchemy",
+        "unittest.mock",
         "uuid"
       ]
     },
@@ -4686,6 +5453,41 @@
         "datetime",
         "pytest",
         "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_signature_batches.py",
+      "layer": "tests",
+      "hash": "95de8ab8dfbd",
+      "docstring": "Integration & Unit Tests for KIZ Signature Batches and Dashboard Signing Queue",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_signature_batches_api_flow",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "datetime",
+        "httpx",
+        "pytest",
         "unittest.mock",
         "uuid"
       ]
@@ -5182,7 +5984,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "b2bbd76d9d47",
+      "hash": "e2e7862c6d2a",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],
@@ -5195,6 +5997,7 @@
         "/kiz",
         "/orders",
         "/sellers",
+        "/signature-queue",
         "/supplies"
       ],
       "modals": [

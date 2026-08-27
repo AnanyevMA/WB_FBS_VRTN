@@ -20,6 +20,8 @@ function navigateTo(route) {
         loadDashboard();
     } else if (route === '/orders') {
         loadOrders();
+    } else if (route === '/signature-queue') {
+        if (typeof loadSignatureBatches === 'function') loadSignatureBatches();
     } else if (route === '/supplies') {
         loadSupplies();
     } else if (route === '/sellers') {
@@ -176,6 +178,7 @@ async function initAppPostLogin() {
     const route = window.location.hash.replace('#', '') || '/';
     await loadSellersForDropdown();
     navigateTo(route);
+    if (typeof updateSignatureBadge === 'function') updateSignatureBadge();
 
     if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(() => {
@@ -183,6 +186,7 @@ async function initAppPostLogin() {
         if (ordersPage && ordersPage.classList.contains('active')) {
             loadOrders(true);
         }
+        if (typeof updateSignatureBadge === 'function') updateSignatureBadge();
     }, 30000);
 }
 

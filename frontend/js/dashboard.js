@@ -105,6 +105,7 @@ async function loadSellersForDropdown() {
     select.onchange = (e) => {
         currentSellerId = e.target.value;
         showToast('Переключение', `Выбран магазин`, 'info');
+        if (typeof updateSignatureBadge === 'function') updateSignatureBadge();
         const activeNav = document.querySelector('.nav-item.active');
         const currentRoute = activeNav ? activeNav.dataset.route : '/';
         navigateTo(currentRoute);

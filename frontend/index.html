@@ -32,6 +32,9 @@
             <div class="nav-item" data-route="/kiz">
                 <span>🔍</span> Сканер КИЗ
             </div>
+            <div class="nav-item" data-route="/signature-queue">
+                <span>🔏</span> Очередь ЭЦП <span class="tab-badge" id="navSignatureBadge" style="display:none; margin-left: auto; background: #7c3aed; color: white;">0</span>
+            </div>
             <div class="nav-item" data-route="/supplies">
                 <span>🚚</span> Поставки
             </div>
@@ -304,6 +307,57 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signature Queue Page (Очередь ЭЦП) -->
+            <div id="page-/signature-queue" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">🔏 Очередь на подписание ЭЦП</h1>
+                        <p class="page-subtitle">Пакеты операций из отчётов WB (с номерами чеков) для вывода и возврата маркировки в Честном Знаке.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="loadSignatureBatches()">
+                            <span>🔄</span> Обновить очередь
+                        </button>
+                        <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                            <span>📁</span> Загрузить отчёт (.xlsx)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Pending Batch Section -->
+                <div id="signatureActiveBatchContainer">
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        Загрузка очереди на подписание...
+                    </div>
+                </div>
+
+                <!-- History of Signature Batches -->
+                <div class="glass-card" style="margin-top: 24px;">
+                    <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <span>📁</span> История обработанных пакетов
+                    </h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID пакета</th>
+                                    <th>Файл / Источник</th>
+                                    <th>Продажи (с чеками)</th>
+                                    <th>Возвраты</th>
+                                    <th>Статус</th>
+                                    <th>Подписано кем</th>
+                                    <th>Дата создания</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="signature-batches-history-body">
+                                <tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">История пока пуста</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -942,7 +996,9 @@
 <script src="js/auth.js?v=1.0.3"></script>
 <script src="js/dashboard.js?v=1.0.3"></script>
 <script src="js/orders.js?v=1.0.3"></script>
+<script src="js/cryptopro.js?v=1.0.3"></script>
 <script src="js/kiz.js?v=1.0.3"></script>
+<script src="js/signature_queue.js?v=1.0.3"></script>
 <script src="js/supplies.js?v=1.0.3"></script>
 <script src="js/sellers.js?v=1.0.3"></script>
 <script src="js/audit.js?v=1.0.3"></script>

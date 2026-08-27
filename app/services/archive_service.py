@@ -16,7 +16,14 @@ from sqlalchemy import select
 
 from app.models.order import Order, KizStatus, OrderStatus
 from app.models.seller import Seller
-from app.services.kiz_service import CZ_WITHDRAWAL_STATUSES
+from app.models.kiz import KizProductInfo
+from app.services.kiz_service import (
+    CZ_WITHDRAWAL_STATUSES,
+    CZ_STATUS_DESCRIPTIONS,
+    is_kiz_withdrawn,
+    parse_kiz_code,
+    batch_verify_and_sync_cises,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,8 +145,9 @@ async def analyze_archive_data(
         if sticker:
             tasks_by_sticker[str(sticker).strip()] = t
 
-    # Extract all order IDs from kiz_rows
+    # Extract all order IDs and KIZ codes from kiz_rows
     order_ids = []
+    all_kiz_codes = []
     for k in kiz_rows:
         oid = k.get("№ задания") or k.get("Номер задания")
         if oid:
@@ -147,8 +155,11 @@ async def analyze_archive_data(
                 order_ids.append(int(oid))
             except (ValueError, TypeError):
                 pass
+        kiz = str(k.get("КИЗ") or "").strip()
+        if kiz:
+            all_kiz_codes.append(kiz)
 
-    # Query existing orders in DB
+    # 1. Query existing orders in DB
     existing_orders_map: Dict[int, Order] = {}
     if order_ids:
         stmt = select(Order).where(
@@ -158,6 +169,36 @@ async def analyze_archive_data(
         res = await db.execute(stmt)
         for ord_obj in res.scalars().all():
             existing_orders_map[ord_obj.id] = ord_obj
+
+    # 2. Query existing KizProductInfo in DB (Single Source of Truth)
+    kiz_info_map: Dict[str, KizProductInfo] = {}
+    if all_kiz_codes:
+        unique_kiz = list(set(all_kiz_codes))
+        kiz_stmt = select(KizProductInfo).where(
+            (KizProductInfo.seller_id == seller.id) | (KizProductInfo.seller_id.is_(None)),
+            KizProductInfo.kiz_code.in_(unique_kiz)
+        )
+        kiz_res = await db.execute(kiz_stmt)
+        for kinfo in kiz_res.scalars().all():
+            kiz_info_map[kinfo.kiz_code] = kinfo
+            if kinfo.clean_cis:
+                kiz_info_map[kinfo.clean_cis] = kinfo
+
+        # 3. Optional batch live verification with True API for missing or unchecked KIZ
+        try:
+            verified_map = await batch_verify_and_sync_cises(
+                seller=seller,
+                kiz_codes=unique_kiz,
+                db=db,
+                force_refresh=False
+            )
+            for k_code, k_obj in verified_map.items():
+                if k_obj:
+                    kiz_info_map[k_code] = k_obj
+                    if k_obj.clean_cis:
+                        kiz_info_map[k_obj.clean_cis] = k_obj
+        except Exception as batch_err:
+            logger.debug(f"Archive analysis batch verify note: {batch_err}")
 
     withdrawals = []
     returns = []
@@ -171,6 +212,9 @@ async def analyze_archive_data(
 
         sticker = str(k.get("Стикер") or "").strip()
         kiz_code = str(k.get("КИЗ") or "").strip()
+        parsed_kiz = parse_kiz_code(kiz_code)
+        clean_cis = parsed_kiz.get("clean_cis") or kiz_code
+
         receipt_num = str(k.get("Номер чека") or "").strip()
         fn_num = str(k.get("Номер фискального накопителя") or "").strip()
         date_raw = k.get("Дата")
@@ -189,15 +233,31 @@ async def analyze_archive_data(
 
         db_order = existing_orders_map.get(order_id) if order_id else None
         db_kiz_status = db_order.kiz_status.value if db_order and db_order.kiz_status else None
-        db_cz_status = db_order.kiz_cz_status if db_order else None
+        
+        # Look up canonical KizProductInfo
+        kinfo_record = kiz_info_map.get(kiz_code) or kiz_info_map.get(clean_cis)
+        effective_cz_status = (
+            (kinfo_record.cz_status if kinfo_record and kinfo_record.cz_status else None)
+            or (db_order.kiz_cz_status if db_order else None)
+        )
+        effective_status_ex = kinfo_record.cz_status_ex if kinfo_record else None
+        raw_payload = kinfo_record.raw_cz_payload if kinfo_record else {}
 
         # Operation type classification
         is_sale = "продаж" in op_type or "продано" in task_status.lower() or "sold" in task_status.lower() or bool(receipt_num)
         is_return = "возврат" in op_type or "отказ" in task_status.lower() or "отмен" in task_status.lower()
 
-        is_already_withdrawn = (
-            db_kiz_status == KizStatus.WITHDRAWN.value
-            or (db_cz_status and str(db_cz_status).upper().strip() in CZ_WITHDRAWAL_STATUSES)
+        # Check withdrawal status from True API specification
+        withdrawn_flag, withdraw_reason = is_kiz_withdrawn(
+            status=effective_cz_status,
+            status_ex=effective_status_ex,
+            raw_payload=raw_payload
+        )
+        is_already_withdrawn = withdrawn_flag or (db_kiz_status == KizStatus.WITHDRAWN.value)
+
+        cz_status_desc = CZ_STATUS_DESCRIPTIONS.get(
+            effective_cz_status or "", 
+            effective_cz_status or ("Выбыл" if is_already_withdrawn else "Не проверен")
         )
 
         if is_sale:
@@ -218,6 +278,9 @@ async def analyze_archive_data(
                 "task_status": task_status or "Продано",
                 "db_status": db_order.status.value if db_order else "Не найден в БД",
                 "db_kiz_status": db_kiz_status or "Не привязан",
+                "cz_status": effective_cz_status,
+                "cz_status_desc": cz_status_desc,
+                "is_already_withdrawn": is_already_withdrawn,
                 "needs_withdrawal": needs_withdrawal,
                 "selected": needs_withdrawal and bool(kiz_code),
             })
@@ -235,7 +298,8 @@ async def analyze_archive_data(
                 "task_status": task_status or "Отказ покупателем",
                 "db_status": db_order.status.value if db_order else "Не найден в БД",
                 "db_kiz_status": db_kiz_status or "Не привязан",
-                "db_cz_status": db_cz_status,
+                "db_cz_status": effective_cz_status,
+                "cz_status_desc": cz_status_desc,
                 "needs_cz_return": needs_cz_return,
                 "action_recommended": "Возврат в оборот (Честный Знак)" if needs_cz_return else "Освободить КИЗ (уже в обороте)",
                 "selected": bool(kiz_code),

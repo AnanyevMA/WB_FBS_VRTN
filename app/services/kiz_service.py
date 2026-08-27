@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models.seller import Seller
-from app.models.order import Order
+from app.models.order import Order, KizStatus, OrderStatus
 from app.models.kiz import KizProductInfo
 from app.services.encryption import decrypt
 from app.services.wb_client import WBClient
@@ -467,5 +467,214 @@ async def resolve_kiz_product_info(
 
     if db:
         await db.flush()
+        # Synchronize all linked orders with this updated KIZ status
+        await sync_kiz_status_record(
+            db=db,
+            kiz_code=kiz_code,
+            cz_status=kiz_info_obj.cz_status,
+            cz_status_ex=kiz_info_obj.cz_status_ex,
+            raw_payload=kiz_info_obj.raw_cz_payload,
+            seller_id=str(seller.id) if seller else None,
+            is_valid=kiz_info_obj.is_valid,
+            validation_message=kiz_info_obj.validation_message,
+        )
 
     return kiz_info_obj
+
+
+async def sync_kiz_status_record(
+    db: AsyncSession,
+    kiz_code: str,
+    cz_status: Optional[str],
+    cz_status_ex: Optional[str] = None,
+    raw_payload: Optional[dict] = None,
+    seller_id: Optional[str] = None,
+    doc_id: Optional[str] = None,
+    is_valid: Optional[bool] = None,
+    validation_message: Optional[str] = None,
+) -> Optional[KizProductInfo]:
+    """
+    Единый канонический метод синхронизации статуса КИЗ в БД (Single Source of Truth).
+    1. Обновляет запись в таблице kiz_product_info.
+    2. Атомарно синхронизирует статус во всех связанных заказах (таблица orders).
+    """
+    if not kiz_code:
+        return None
+
+    now = datetime.now(timezone.utc)
+    parsed = parse_kiz_code(kiz_code)
+    clean_cis = parsed.get("clean_cis") or kiz_code.strip()
+
+    # 1. Поиск или создание записи в kiz_product_info
+    stmt = select(KizProductInfo).where(
+        (KizProductInfo.kiz_code == kiz_code) | (KizProductInfo.clean_cis == clean_cis)
+    )
+    res = await db.execute(stmt)
+    kiz_info = res.scalars().first()
+
+    normalized_cz_status = str(cz_status).upper().strip() if cz_status else (kiz_info.cz_status if kiz_info else None)
+    
+    withdrawn, w_reason = is_kiz_withdrawn(
+        status=normalized_cz_status,
+        status_ex=cz_status_ex or (kiz_info.cz_status_ex if kiz_info else None),
+        raw_payload=raw_payload or (kiz_info.raw_cz_payload if kiz_info else {})
+    )
+
+    if not kiz_info:
+        kiz_info = KizProductInfo(
+            id=str(uuid.uuid4()),
+            kiz_code=kiz_code,
+            gtin=parsed.get("gtin") or "",
+            serial_number=parsed.get("serial_number"),
+            clean_cis=clean_cis,
+            seller_id=seller_id,
+            cz_status=normalized_cz_status,
+            cz_status_ex=cz_status_ex,
+            raw_cz_payload=raw_payload,
+            checked_at=now,
+            is_valid=is_valid if is_valid is not None else (not withdrawn),
+            validation_message=validation_message or (w_reason if withdrawn else "Синхронизировано"),
+        )
+        db.add(kiz_info)
+    else:
+        if cz_status is not None:
+            kiz_info.cz_status = normalized_cz_status
+        if cz_status_ex is not None:
+            kiz_info.cz_status_ex = cz_status_ex
+        if raw_payload is not None:
+            kiz_info.raw_cz_payload = raw_payload
+        if is_valid is not None:
+            kiz_info.is_valid = is_valid
+        elif withdrawn:
+            kiz_info.is_valid = False
+            kiz_info.validation_message = w_reason
+        if validation_message is not None:
+            kiz_info.validation_message = validation_message
+        if seller_id and not kiz_info.seller_id:
+            kiz_info.seller_id = seller_id
+        kiz_info.checked_at = now
+
+    # 2. Синхронизация всех связанных заказов в таблице orders
+    order_stmt = select(Order).where(
+        (Order.kiz_code == kiz_code) | (Order.kiz_code == clean_cis)
+    )
+    if seller_id:
+        order_stmt = order_stmt.where(Order.seller_id == seller_id)
+
+    order_res = await db.execute(order_stmt)
+    orders = order_res.scalars().all()
+
+    for o in orders:
+        if normalized_cz_status:
+            o.kiz_cz_status = normalized_cz_status
+            o.kiz_cz_status_updated_at = now
+
+        if doc_id:
+            o.cz_withdrawal_doc_id = doc_id
+
+        # Обновление локального жизненного цикла КИЗ в заказе
+        if withdrawn:
+            if o.status == OrderStatus.DELIVERED or o.kiz_status == KizStatus.WITHDRAWN or doc_id:
+                o.kiz_status = KizStatus.WITHDRAWN
+            else:
+                o.kiz_status = KizStatus.ERROR
+        elif normalized_cz_status in ("INTRODUCED", "IN_CIRCULATION"):
+            if o.kiz_status in (KizStatus.ATTACHED, KizStatus.PENDING, KizStatus.ERROR):
+                o.kiz_status = KizStatus.VALIDATED
+        elif normalized_cz_status in CZ_NOT_INTRODUCED_STATUSES:
+            o.kiz_status = KizStatus.ERROR
+
+        o.updated_at = now
+
+    await db.flush()
+    return kiz_info
+
+
+async def batch_verify_and_sync_cises(
+    seller: Seller,
+    kiz_codes: List[str],
+    db: AsyncSession,
+    force_refresh: bool = False,
+) -> Dict[str, Optional[KizProductInfo]]:
+    """
+    Пакетная проверка и синхронизация кодов маркировки через True API ГИС МТ.
+    Отправляет пачку КИЗ в True API (/cises/info) и сохраняет единые результаты в БД.
+    """
+    if not kiz_codes or not seller:
+        return {}
+
+    unique_codes = list(set(kiz_codes))
+    results: Dict[str, Optional[KizProductInfo]] = {}
+
+    # Сначала проверяем локальный кэш, если force_refresh=False
+    if not force_refresh:
+        stmt = select(KizProductInfo).where(
+            KizProductInfo.kiz_code.in_(unique_codes)
+        )
+        res = await db.execute(stmt)
+        for row in res.scalars().all():
+            results[row.kiz_code] = row
+
+    missing_codes = [c for c in unique_codes if c not in results]
+    if not missing_codes or not seller.cz_inn:
+        return results
+
+    # Подготавливаем clean_cis для True API
+    cis_to_original = {}
+    lookup_cises = []
+    for c in missing_codes:
+        parsed = parse_kiz_code(c)
+        clean = parsed.get("clean_cis") or c.strip()
+        cis_to_original[clean] = c
+        lookup_cises.append(clean)
+
+    cz_token = decrypt(seller.cz_token_encrypted) if seller.cz_token_encrypted else None
+    thumbprint = seller.cryptopro_cert_thumbprint or seller.cz_cert_path
+
+    if not cz_token and not thumbprint:
+        logger.debug(f"Seller {seller.id} has no CZ token or cert thumbprint for batch verify")
+        return results
+
+    try:
+        from app.services.cz_client import CZClient, CZUnauthorizedError
+        async with CZClient(inn=seller.cz_inn, token=cz_token, cert_thumbprint=thumbprint) as cz:
+            cises_info = []
+            try:
+                cises_info = await cz.get_cises_info(lookup_cises)
+            except CZUnauthorizedError:
+                try:
+                    await cz.authenticate()
+                    cises_info = await cz.get_cises_info(lookup_cises)
+                except Exception as auth_err:
+                    logger.warning(f"Batch CZ auth error for seller {seller.id}: {auth_err}")
+            except Exception as cz_err:
+                logger.warning(f"Batch CZ get_cises_info error: {cz_err}")
+
+            if cises_info and isinstance(cises_info, list):
+                for item in cises_info:
+                    info = item.get("cisInfo") or item.get("result") or item
+                    if not isinstance(info, dict):
+                        continue
+
+                    req_cis = item.get("requestedCis") or info.get("requestedCis") or info.get("cis")
+                    orig_code = cis_to_original.get(req_cis) or req_cis
+
+                    st = info.get("status") or info.get("cisStatus")
+                    st_ex = info.get("statusEx")
+                    if st:
+                        st = str(st).upper().strip()
+
+                    k_info = await sync_kiz_status_record(
+                        db=db,
+                        kiz_code=orig_code,
+                        cz_status=st,
+                        cz_status_ex=st_ex,
+                        raw_payload=info,
+                        seller_id=str(seller.id),
+                    )
+                    results[orig_code] = k_info
+
+    except Exception as e:
+        logger.warning(f"Error during batch_verify_and_sync_cises for seller {seller.id}: {e}")
+
+    return results

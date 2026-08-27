@@ -829,6 +829,7 @@
                         Будет сформирован документ вывода из оборота ГИС МТ (<code>LK_RECEIPT</code>) по причине «Дистанционная продажа».
                     </div>
                     <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 4px;" onclick="syncArchiveCzLive()" id="btnSyncArchiveCz" title="Запросить свежие статусы всех КИЗ в ГИС МТ True API"><span>🔄</span> Сверить с ЧЗ</button>
                         <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllArchiveCheckboxes('withdrawals', true)">Выбрать все</button>
                         <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllArchiveCheckboxes('withdrawals', false)">Снять выбор</button>
                     </div>

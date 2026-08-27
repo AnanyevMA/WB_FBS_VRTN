@@ -476,3 +476,89 @@ async def test_check_order_kiz_status_detects_withdrawn_and_mark_withdraw():
             assert "markWithdraw" in res2["product_info"]["validation_message"]
 
 
+@pytest.mark.asyncio
+async def test_sync_kiz_status_record_and_archive_single_source_of_truth():
+    """Тест единого источника истины для статусов КИЗ и синхронизации с архивом WB."""
+    await init_db()
+    from app.services.kiz_service import sync_kiz_status_record
+    from app.services.archive_service import analyze_archive_data
+    from app.services.encryption import encrypt
+
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller SSoT",
+            wb_supplier_id=f"WB-{seller_id[:6]}",
+            cz_inn="7711223344",
+            wb_api_token_encrypted=encrypt("wb_test"),
+            cz_token_encrypted=encrypt("cz_test"),
+            is_active=True
+        )
+        session.add(seller)
+
+        kiz_code = "0104630199251332215SSOT_TEST1"
+        order_id = random.randint(500000000, 599999999)
+        order = Order(
+            id=order_id,
+            seller_id=seller.id,
+            status=OrderStatus.DELIVERED,
+            wb_created_at=datetime.now(timezone.utc),
+            article="vrtn156",
+            tech_size="ONE SIZE",
+            name="Капор утепленный",
+            kiz_required=True,
+            kiz_code=kiz_code,
+            kiz_status=KizStatus.ATTACHED,
+        )
+        session.add(order)
+        await session.commit()
+
+        # 1. Синхронизируем статус КИЗ как RETIRED (выбыл)
+        kiz_info = await sync_kiz_status_record(
+            db=session,
+            kiz_code=kiz_code,
+            cz_status="RETIRED",
+            seller_id=seller_id,
+        )
+        await session.commit()
+
+        assert kiz_info.cz_status == "RETIRED"
+        
+        # Проверяем, что в заказе статус автоматически стал WITHDRAWN и kiz_cz_status == RETIRED
+        refreshed_order = await session.get(Order, order_id)
+        assert refreshed_order.kiz_cz_status == "RETIRED"
+        assert refreshed_order.kiz_status == KizStatus.WITHDRAWN
+
+        # 2. Проверяем анализ архива WB — КИЗ должен сразу распознаваться как уже выведенный
+        archive_payload = {
+            "kiz_rows": [
+                {
+                    "№ задания": order_id,
+                    "КИЗ": kiz_code,
+                    "Номер чека": "123456",
+                    "Дата": "2026-08-27",
+                    "Тип операции": "Продажа",
+                    "Стоимость": 3000,
+                }
+            ],
+            "tasks_rows": [
+                {
+                    "№ задания": order_id,
+                    "Артикул продавца": "vrtn156",
+                    "Наименование": "Капор",
+                    "Статус задания": "Доставлен",
+                }
+            ]
+        }
+
+        analysis = await analyze_archive_data(seller=seller, archive_data=archive_payload, db=session)
+        assert len(analysis["withdrawals"]) == 1
+        w = analysis["withdrawals"][0]
+        assert w["cz_status"] == "RETIRED"
+        assert w["is_already_withdrawn"] is True
+        assert w["needs_withdrawal"] is False
+        assert w["selected"] is False
+
+
+

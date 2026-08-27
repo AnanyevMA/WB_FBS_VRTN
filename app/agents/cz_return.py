@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.celery_app import celery_app
 from app.config import settings
 from app.models.order import Order, KizStatus
-from app.models.kiz import KizOperation, KizOperationType
+from app.models.kiz import KizOperation, KizOperationType, KizProductInfo
 from app.models.seller import Seller
 from app.models.audit import AuditLog
 from app.services.encryption import decrypt
@@ -108,9 +108,19 @@ def return_order_kiz(
             order.cz_return_doc_id = doc_id
             order.updated_at = datetime.now(timezone.utc)
 
+            # Update KIZ operation
             kiz_op.status = "SUCCESS"
             kiz_op.cz_doc_id = doc_id
             kiz_op.updated_at = datetime.now(timezone.utc)
+
+            # Sync KizProductInfo (Single Source of Truth)
+            if kiz_code:
+                kiz_info_row = db.query(KizProductInfo).filter(
+                    (KizProductInfo.kiz_code == kiz_code) | (KizProductInfo.clean_cis == kiz_code)
+                ).first()
+                if kiz_info_row:
+                    kiz_info_row.cz_status = "INTRODUCED"
+                    kiz_info_row.checked_at = datetime.now(timezone.utc)
 
             _log_audit(db, seller_id, "cz_return", "SUCCESS", "order", str(order_id),
                        payload={"doc_id": doc_id})

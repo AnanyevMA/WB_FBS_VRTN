@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-25T23:01:24.603182+00:00",
+  "updated_at": "2026-08-27T13:03:25.764271+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 75,
   "files": [
@@ -424,7 +424,7 @@
     {
       "file": "app/agents/cz_return.py",
       "layer": "agents",
-      "hash": "44b66da34209",
+      "hash": "c1fd478dd6a2",
       "docstring": "CZ Return Agent — Возврат КИЗ в оборот при возврате товара",
       "classes": [],
       "functions": [
@@ -575,7 +575,7 @@
     {
       "file": "app/agents/cz_withdrawal.py",
       "layer": "agents",
-      "hash": "9aa5b6268119",
+      "hash": "86a31b85ae1d",
       "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -1541,7 +1541,7 @@
     {
       "file": "app/api/kiz.py",
       "layer": "api",
-      "hash": "5f3a7814ff4a",
+      "hash": "754b9fa6d7da",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -1678,6 +1678,19 @@
           "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
         },
         {
+          "name": "sync_archive_kiz_with_cz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/sync-cz')"
+          ],
+          "docstring": "Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака."
+        },
+        {
           "name": "process_wb_archive",
           "is_async": true,
           "args": [
@@ -1757,6 +1770,12 @@
           "path": "/archive/preview",
           "handler": "preview_wb_archive",
           "docstring": "Загрузка и предпросмотр архива WB (archive.xlsx)."
+        },
+        {
+          "method": "POST",
+          "path": "/archive/sync-cz",
+          "handler": "sync_archive_kiz_with_cz",
+          "docstring": "Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака."
         },
         {
           "method": "POST",
@@ -3142,7 +3161,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "d3e043501d5c",
+      "hash": "47bc88dc62b2",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -3180,6 +3199,7 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "app.models.kiz",
         "app.models.order",
         "app.models.seller",
         "app.services.kiz_service",
@@ -3593,7 +3613,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "f0482f9eb8f8",
+      "hash": "4e928ff7ac85",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3638,6 +3658,35 @@
           ],
           "decorators": [],
           "docstring": "Получает и сохраняет полную информацию о товаре по коду КИЗ (SGTIN)."
+        },
+        {
+          "name": "sync_kiz_status_record",
+          "is_async": true,
+          "args": [
+            "db",
+            "kiz_code",
+            "cz_status",
+            "cz_status_ex",
+            "raw_payload",
+            "seller_id",
+            "doc_id",
+            "is_valid",
+            "validation_message"
+          ],
+          "decorators": [],
+          "docstring": "Единый канонический метод синхронизации статуса КИЗ в БД (Single Source of Truth)."
+        },
+        {
+          "name": "batch_verify_and_sync_cises",
+          "is_async": true,
+          "args": [
+            "seller",
+            "kiz_codes",
+            "db",
+            "force_refresh"
+          ],
+          "decorators": [],
+          "docstring": "Пакетная проверка и синхронизация кодов маркировки через True API ГИС МТ."
         }
       ],
       "endpoints": [],
@@ -4487,7 +4536,7 @@
     {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
-      "hash": "9ba58ca537af",
+      "hash": "213ef2d89ad3",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4579,6 +4628,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify that check_order_kiz_status catches WITHDRAWN and markWithdraw flags."
+        },
+        {
+          "name": "test_sync_kiz_status_record_and_archive_single_source_of_truth",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Тест единого источника истины для статусов КИЗ и синхронизации с архивом WB."
         }
       ],
       "endpoints": [],
@@ -4592,6 +4650,7 @@
         "app.models.order",
         "app.models.seller",
         "app.schemas.order",
+        "app.services.archive_service",
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
@@ -5018,7 +5077,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "d25a16a5809d",
+      "hash": "0b5fd668455f",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

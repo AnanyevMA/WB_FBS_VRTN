@@ -11,6 +11,13 @@ from app.models.order import Order, KizStatus, OrderStatus
 from app.models.kiz import KizOperation, KizOperationType, KizProductInfo
 from app.models.audit import AuditLog
 from app.schemas.order import KIZAttachRequest, KIZValidationResponse
+from app.services.kiz_service import (
+    sync_kiz_status_record,
+    batch_verify_and_sync_cises,
+    resolve_kiz_product_info,
+    is_kiz_withdrawn,
+    CZ_STATUS_DESCRIPTIONS,
+)
 
 router = APIRouter(prefix="/sellers/{seller_id}", tags=["kiz"])
 
@@ -441,6 +448,8 @@ async def submit_signed_kiz_document(
         raise HTTPException(status_code=500, detail=f"Ошибка отправки в ГИС МТ: {e}")
 
     now = datetime.now(timezone.utc)
+    target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
+
     for oid in order_ids:
         o = await db.get(Order, oid)
         if o and str(o.seller_id) == str(seller_id):
@@ -465,15 +474,13 @@ async def submit_signed_kiz_document(
             db.add(kiz_op)
 
             if o.kiz_code:
-                stmt_kiz = select(KizProductInfo).where(
-                    KizProductInfo.seller_id == seller.id,
-                    KizProductInfo.kiz_code == o.kiz_code
+                await sync_kiz_status_record(
+                    db=db,
+                    kiz_code=o.kiz_code,
+                    cz_status=target_cz_status,
+                    seller_id=str(seller.id),
+                    doc_id=doc_id if action == "WITHDRAWAL" else None,
                 )
-                res_kiz = await db.execute(stmt_kiz)
-                kiz_info_row = res_kiz.scalars().first()
-                if kiz_info_row:
-                    kiz_info_row.cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
-                    kiz_info_row.checked_at = now
 
     audit = AuditLog(
         seller_id=seller_id,
@@ -577,6 +584,56 @@ async def preview_wb_archive(
         "summary": analysis["summary"],
         "withdrawals": analysis["withdrawals"],
         "returns": analysis["returns"],
+    }
+
+
+@router.post("/archive/sync-cz")
+async def sync_archive_kiz_with_cz(
+    seller_id: str,
+    payload: Dict[str, Any] = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Принудительная живая пакетная сверка кодов маркировки архива с True API Честного Знака.
+    Обновляет единые записи в kiz_product_info и синхронизирует все заказы.
+    """
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    kiz_codes = payload.get("kiz_codes", [])
+    if not kiz_codes:
+        raise HTTPException(status_code=400, detail="Список кодов КИЗ пуст")
+
+    synced_map = await batch_verify_and_sync_cises(
+        seller=seller,
+        kiz_codes=kiz_codes,
+        db=db,
+        force_refresh=True
+    )
+    await db.commit()
+
+    response_items = {}
+    for code, info in synced_map.items():
+        if info:
+            withdrawn, w_reason = is_kiz_withdrawn(
+                status=info.cz_status,
+                status_ex=info.cz_status_ex,
+                raw_payload=info.raw_cz_payload or {}
+            )
+            response_items[code] = {
+                "kiz_code": code,
+                "cz_status": info.cz_status,
+                "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(info.cz_status or "", info.cz_status or "Не проверен"),
+                "is_withdrawn": withdrawn,
+                "needs_withdrawal": not withdrawn,
+                "validation_message": info.validation_message,
+            }
+
+    return {
+        "success": True,
+        "count": len(response_items),
+        "items": response_items,
     }
 
 

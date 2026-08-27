@@ -615,8 +615,13 @@ function renderArchivePreview(data) {
                 <td><span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; font-weight: 700;">🧾 ${w.receipt_number || '-'}</span></td>
                 <td style="color: var(--text-muted); font-size: 13px;">${w.receipt_date || '-'}</td>
                 <td style="font-weight: 600;">${w.price ? w.price.toLocaleString('ru-RU') + ' ₽' : '-'}</td>
-                <td><span class="badge ${w.db_status === 'DELIVERED' ? 'badge-delivered' : 'badge-neutral'}">${w.db_status}</span></td>
-                <td><span class="badge ${w.needs_withdrawal ? 'badge-warning' : 'badge-delivered'}">${w.needs_withdrawal ? '⚠️ Требует выбытия' : '✅ Выведен'}</span></td>
+                <td><span class="badge ${w.db_status === 'DELIVERED' ? 'badge-delivered' : (w.db_status === 'CANCELLED' ? 'badge-cancelled' : 'badge-neutral')}">${w.db_status}</span></td>
+                <td>
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <span class="badge ${w.needs_withdrawal ? 'badge-warning' : 'badge-delivered'}">${w.needs_withdrawal ? '⚠️ Требует выбытия' : '✅ Выведен'}</span>
+                        ${w.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${w.cz_status_desc}</span>` : ''}
+                    </div>
+                </td>
             </tr>
         `).join('');
     } else {
@@ -637,7 +642,12 @@ function renderArchivePreview(data) {
                 </td>
                 <td><span class="badge ${r.needs_cz_return ? 'badge-warning' : 'badge-neutral'}">${r.action_recommended}</span></td>
                 <td><span class="badge ${r.db_status === 'CANCELLED' ? 'badge-cancelled' : 'badge-neutral'}">${r.db_status}</span></td>
-                <td>${r.db_cz_status ? `<span class="badge badge-info">${r.db_cz_status}</span>` : '<span style="color:var(--text-muted)">-</span>'}</td>
+                <td>
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        ${r.db_cz_status ? `<span class="badge badge-info">${r.db_cz_status}</span>` : '<span style="color:var(--text-muted)">-</span>'}
+                        ${r.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${r.cz_status_desc}</span>` : ''}
+                    </div>
+                </td>
             </tr>
         `).join('');
     } else {
@@ -645,6 +655,81 @@ function renderArchivePreview(data) {
     }
 
     switchArchiveTab('sales');
+}
+
+async function syncArchiveCzLive() {
+    if (!currentArchiveData || !currentSellerId) return;
+
+    const allCodes = [];
+    (currentArchiveData.withdrawals || []).forEach(w => { if (w.kiz_code) allCodes.push(w.kiz_code); });
+    (currentArchiveData.returns || []).forEach(r => { if (r.kiz_code) allCodes.push(r.kiz_code); });
+
+    if (allCodes.length === 0) {
+        return showToast('Информация', 'В архиве нет кодов маркировки для сверки', 'info');
+    }
+
+    const btn = document.getElementById('btnSyncArchiveCz');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Сверка с ГИС МТ...';
+    }
+
+    showToast('Честный Знак', `Сверка ${allCodes.length} кодов маркировки с True API...`, 'info');
+
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/archive/sync-cz`, {
+            method: 'POST',
+            body: JSON.stringify({ kiz_codes: allCodes })
+        });
+
+        const syncedItems = res.items || {};
+        let updatedCount = 0;
+
+        // Update withdrawals
+        if (currentArchiveData.withdrawals) {
+            currentArchiveData.withdrawals.forEach(w => {
+                const info = syncedItems[w.kiz_code];
+                if (info) {
+                    w.cz_status = info.cz_status;
+                    w.cz_status_desc = info.cz_status_desc;
+                    w.is_already_withdrawn = info.is_withdrawn;
+                    w.needs_withdrawal = info.needs_withdrawal;
+                    w.selected = info.needs_withdrawal && Boolean(w.kiz_code);
+                    updatedCount++;
+                }
+            });
+        }
+
+        // Update returns
+        if (currentArchiveData.returns) {
+            currentArchiveData.returns.forEach(r => {
+                const info = syncedItems[r.kiz_code];
+                if (info) {
+                    r.db_cz_status = info.cz_status;
+                    r.cz_status_desc = info.cz_status_desc;
+                    r.needs_cz_return = info.is_withdrawn;
+                    r.action_recommended = info.is_withdrawn ? "Возврат в оборот (Честный Знак)" : "Освободить КИЗ (уже в обороте)";
+                }
+            });
+        }
+
+        // Recalculate summary
+        if (currentArchiveData.summary && currentArchiveData.withdrawals) {
+            currentArchiveData.summary.sales_needing_withdrawal = currentArchiveData.withdrawals.filter(w => w.needs_withdrawal).length;
+        }
+
+        renderArchivePreview(currentArchiveData);
+        showToast('Честный Знак', `Статусы обновлены из ГИС МТ (${updatedCount} кодов)`, 'success');
+        if (typeof loadOrders === 'function') loadOrders();
+    } catch (e) {
+        showToast('Ошибка сверки с ЧЗ', e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
 }
 
 function switchArchiveTab(tab) {

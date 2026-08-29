@@ -59,16 +59,16 @@ class TelegramService:
         ⏰ Срок: до 13:00 завтра
         💰 Цена: 1 490 ₽
         """
-        kiz_required = order_data.get("kiz_required", False)
+        kiz_required = (order_data or {}).get("kiz_required", False)
         kiz_icon = "⚠️ ТРЕБУЕТСЯ" if kiz_required else "✅ не нужен"
 
-        price = order_data.get("price", 0)
+        price = (order_data or {}).get("price", 0)
         price_str = f"{price / 100:.0f} ₽" if isinstance(price, int) else f"{price} ₽"
 
-        article = order_data.get("article", "—")
-        name = order_data.get("name", "—")
-        subject = order_data.get("subject", "—")
-        brand = order_data.get("brand", "—")
+        article = (order_data or {}).get("article", "—")
+        name = (order_data or {}).get("name", "—")
+        subject = (order_data or {}).get("subject", "—")
+        brand = (order_data or {}).get("brand", "—")
 
         text = (
             f"🆕 <b>НОВЫЙ ЗАКАЗ FBS #{order_id}</b>\n"

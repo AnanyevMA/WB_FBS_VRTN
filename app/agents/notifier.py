@@ -62,6 +62,25 @@ def notify_new_order(seller_id: str, order_id: int, order_data: Optional[dict] =
         if not chat_ids:
             return
 
+        # Если order_data не передан — подгрузить из БД
+        if not order_data:
+            from app.models.order import Order
+            order = db.execute(
+                select(Order).where(Order.id == order_id, Order.seller_id == seller_id)
+            ).scalar_one_or_none()
+            if order:
+                order_data = {
+                    "id": order.id,
+                    "name": order.name or order.subject or "—",
+                    "article": order.article or "—",
+                    "subject": order.subject or "—",
+                    "brand": order.brand or "—",
+                    "price": int((order.price or 0) * 100),  # в копейках для совместимости
+                    "kiz_required": order.kiz_required or False,
+                }
+            else:
+                order_data = {}
+
     from app.services.telegram_service import TelegramService
     async def _send():
         svc = TelegramService(bot_token)

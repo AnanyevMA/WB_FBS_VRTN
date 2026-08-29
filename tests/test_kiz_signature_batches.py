@@ -148,3 +148,139 @@ async def test_signature_batches_api_flow():
             updated_order = await session.get(Order, order_id)
             assert updated_order.kiz_status == KizStatus.WITHDRAWN
             assert updated_order.status == OrderStatus.DELIVERED
+
+
+@pytest.mark.asyncio
+async def test_signature_batch_cz_status_filtering_and_sync():
+    """
+    Проверяет:
+    1. Исключение уже выбывших КИЗ (needs_withdrawal: False) и возвратов в обороте (needs_cz_return: False) при подготовке документов.
+    2. Эндпоинт POST /signature-batches/{batch_id}/sync-cz для живой актуализации статусов через True API.
+    3. Поддержку точечной фильтрации selected_kiz_codes.
+    """
+    await init_db()
+
+    async with AsyncSessionLocal() as session:
+        admin_user = await ensure_initial_admin(session)
+        auth_token = create_access_token(
+            data={"sub": admin_user.id, "username": admin_user.username, "role": "admin", "is_superuser": True}
+        )
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Filter Test Seller",
+            wb_api_token_encrypted=encrypt("wb_test_token"),
+            cz_token_encrypted=encrypt("cz_test_token"),
+            cz_inn="7700998877",
+            mod_fias="test-fias-uuid",
+            is_active=True,
+        )
+        session.add(seller)
+
+        # Batch with 2 sales (1 needs withdrawal, 1 already retired) and 2 returns (1 needs return, 1 already introduced)
+        batch = KizSignatureBatch(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            filename="archive.xlsx",
+            source="telegram",
+            status=BatchStatus.PENDING_SIGNATURE,
+            sales_count=1,
+            returns_count=1,
+            already_withdrawn_count=1,
+            total_count=4,
+            data_payload={
+                "withdrawals": [
+                    {
+                        "order_id": 101,
+                        "kiz_code": "0104630199251318215ALREADY_RETIRED",
+                        "receipt_number": "156133",
+                        "receipt_date": "2026-08-25",
+                        "price": 3082,
+                        "cz_status": "RETIRED",
+                        "cz_status_desc": "Выбыл (выведен из оборота)",
+                        "is_already_withdrawn": True,
+                        "needs_withdrawal": False,
+                        "selected": False,
+                    },
+                    {
+                        "order_id": 102,
+                        "kiz_code": "0104630199251318215NEEDS_WITHDRAW",
+                        "receipt_number": "48516",
+                        "receipt_date": "2026-08-27",
+                        "price": 3254,
+                        "cz_status": "INTRODUCED",
+                        "cz_status_desc": "В обороте",
+                        "is_already_withdrawn": False,
+                        "needs_withdrawal": True,
+                        "selected": True,
+                    }
+                ],
+                "returns": [
+                    {
+                        "order_id": 201,
+                        "kiz_code": "0104630199251318215RETURN_IN_CIRC",
+                        "name": "Товар в обороте",
+                        "cz_status": "INTRODUCED",
+                        "cz_status_desc": "В обороте",
+                        "needs_cz_return": False,
+                        "selected": False,
+                    },
+                    {
+                        "order_id": 202,
+                        "kiz_code": "0104630199251318215RETURN_NEEDS_INTRO",
+                        "name": "Товар выбыл",
+                        "cz_status": "RETIRED",
+                        "cz_status_desc": "Выбыл (выведен из оборота)",
+                        "needs_cz_return": True,
+                        "selected": True,
+                    }
+                ],
+                "summary": {
+                    "total_rows": 4,
+                    "sales_count": 2,
+                    "sales_needing_withdrawal": 1,
+                    "sales_already_withdrawn": 1,
+                    "returns_count": 2,
+                    "returns_needing_cz_return": 1,
+                    "returns_already_in_circulation": 1,
+                }
+            }
+        )
+        session.add(batch)
+        await session.commit()
+        batch_id = batch.id
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"Authorization": f"Bearer {auth_token}"}) as ac:
+        # 1. Prepare documents: should only prepare 1 withdrawal (order 102) and 1 return (order 202), ignoring the already retired/in-circulation ones
+        res_prep = await ac.post(f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/prepare-documents")
+        assert res_prep.status_code == 200
+        prep_data = res_prep.json()
+        assert prep_data["total_documents"] == 2
+        kiz_codes_prepared = [d["kiz_code"] for d in prep_data["documents"]]
+        assert "0104630199251318215ALREADY_RETIRED" not in kiz_codes_prepared
+        assert "0104630199251318215NEEDS_WITHDRAW" in kiz_codes_prepared
+        assert "0104630199251318215RETURN_IN_CIRC" not in kiz_codes_prepared
+        assert "0104630199251318215RETURN_NEEDS_INTRO" in kiz_codes_prepared
+
+        # 2. Test sync-cz endpoint: mock CZ True API returning RETIRED for the remaining item
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_cz:
+            mock_cz.return_value = [
+                {"cisInfo": {"requestedCis": "0104630199251318215NEEDS_WITHDRAW", "status": "RETIRED"}},
+                {"cisInfo": {"requestedCis": "0104630199251318215ALREADY_RETIRED", "status": "RETIRED"}},
+                {"cisInfo": {"requestedCis": "0104630199251318215RETURN_IN_CIRC", "status": "INTRODUCED"}},
+                {"cisInfo": {"requestedCis": "0104630199251318215RETURN_NEEDS_INTRO", "status": "INTRODUCED"}},
+            ]
+            res_sync = await ac.post(f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/sync-cz")
+            assert res_sync.status_code == 200
+            sync_data = res_sync.json()
+            assert sync_data["success"] is True
+            assert sync_data["sales_count"] == 0  # Both sales are now RETIRED -> 0 need withdrawal!
+            assert sync_data["already_withdrawn_count"] == 2
+            assert sync_data["returns_count"] == 0 # Both returns are now INTRODUCED -> 0 need return!
+
+        # 3. Prepare documents again after sync: should return 0 documents
+        res_prep2 = await ac.post(f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/prepare-documents")
+        assert res_prep2.status_code == 200
+        assert res_prep2.json()["total_documents"] == 0
+

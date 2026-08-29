@@ -169,7 +169,12 @@ get_stickers = get_order_sticker
 def _check_kiz_required(order_raw: dict) -> bool:
     """
     Determine if KIZ / SGTIN marking is required for an order.
-    Uses centralized is_kiz_required checking subject, tnved, and requiredMeta.
+
+    По документации WB API единственный достоверный источник —
+    поле requiredMeta из ответа GET /api/v3/orders/new.
+    Делегирует в is_kiz_required (wb_client), который при наличии
+    requiredMeta использует его как определяющий источник,
+    а при отсутствии — применяет эвристики по ТН ВЭД и категориям.
     """
     try:
         from app.services.wb_client import is_kiz_required
@@ -178,16 +183,13 @@ def _check_kiz_required(order_raw: dict) -> bool:
             order_raw=order_raw
         )
     except Exception:
-        cargo_type = order_raw.get("cargoType")
+        # Минимальный fallback: только requiredMeta
         required_meta = order_raw.get("requiredMeta", [])
-        has_sgtin = False
         if isinstance(required_meta, list):
-            has_sgtin = any("sgtin" in str(item).lower() for item in required_meta)
-        elif isinstance(required_meta, dict):
-            has_sgtin = "sgtin" in required_meta or any("sgtin" in str(k).lower() for k in required_meta.keys())
+            return any(str(item).lower() in ("sgtin", "kiz") for item in required_meta)
         elif isinstance(required_meta, str):
-            has_sgtin = "sgtin" in required_meta.lower()
-        return (cargo_type == 2) or has_sgtin
+            return "sgtin" in required_meta.lower()
+        return False
 
 
 def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], list[dict]]:
@@ -463,9 +465,12 @@ def poll_all_sellers(self: Any) -> dict:
 
                 if len(new_ids) == 1:
                     # Single order: classic chain — sticker then notify
+                    # Передаём order_data (payload), чтобы уведомление содержало
+                    # название товара, цену, артикул и флаг КИЗ
+                    order_payload = new_payloads[0] if new_payloads else None
                     chain(
                         get_stickers.si(seller_id_str, new_ids[0]),
-                        _notify_new_order.si(seller_id_str, new_ids[0]),
+                        _notify_new_order.si(seller_id_str, new_ids[0], order_payload),
                     ).apply_async()
                 else:
                     # Multiple orders: parallel sticker downloads, then one batch notification

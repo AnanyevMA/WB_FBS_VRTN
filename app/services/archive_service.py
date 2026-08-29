@@ -184,13 +184,13 @@ async def analyze_archive_data(
             if kinfo.clean_cis:
                 kiz_info_map[kinfo.clean_cis] = kinfo
 
-        # 3. Optional batch live verification with True API for missing or unchecked KIZ
+        # 3. Live batch verification with True API to get real up-to-date statuses
         try:
             verified_map = await batch_verify_and_sync_cises(
                 seller=seller,
                 kiz_codes=unique_kiz,
                 db=db,
-                force_refresh=False
+                force_refresh=True
             )
             for k_code, k_obj in verified_map.items():
                 if k_obj:
@@ -323,14 +323,21 @@ async def analyze_archive_data(
                 "selected": needs_cz_return and bool(kiz_code),
             })
 
+    sales_needing = sum(1 for w in withdrawals if w.get("needs_withdrawal"))
+    sales_withdrawn = sum(1 for w in withdrawals if not w.get("needs_withdrawal"))
+    returns_needing = sum(1 for r in returns if r.get("needs_cz_return"))
+    returns_in_circ = sum(1 for r in returns if not r.get("needs_cz_return"))
+
     return {
         "withdrawals": withdrawals,
         "returns": returns,
         "summary": {
             "total_rows": len(kiz_rows),
             "sales_count": len(withdrawals),
-            "sales_needing_withdrawal": sum(1 for w in withdrawals if w["needs_withdrawal"]),
+            "sales_needing_withdrawal": sales_needing,
+            "sales_already_withdrawn": sales_withdrawn,
             "returns_count": len(returns),
-            "returns_needing_cz_return": sum(1 for r in returns if r["needs_cz_return"]),
+            "returns_needing_cz_return": returns_needing,
+            "returns_already_in_circulation": returns_in_circ,
         }
     }

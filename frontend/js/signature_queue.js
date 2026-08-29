@@ -455,6 +455,14 @@ function renderActiveBatch(batch) {
     const data = batch.data_payload || {};
     const withdrawals = data.withdrawals || [];
     const returns = data.returns || [];
+    const summary = data.summary || {};
+
+    const sales_needing = summary.sales_needing_withdrawal !== undefined ? summary.sales_needing_withdrawal : (batch.sales_count || 0);
+    const returns_needing = summary.returns_needing_cz_return !== undefined ? summary.returns_needing_cz_return : (batch.returns_count || 0);
+    const already_withdrawn = summary.sales_already_withdrawn !== undefined ? summary.sales_already_withdrawn : (batch.already_withdrawn_count || 0);
+    const already_in_circ = summary.returns_already_in_circulation !== undefined ? summary.returns_already_in_circulation : Math.max(0, returns.length - returns_needing);
+
+    const totalToSign = sales_needing + returns_needing;
     const dateStr = batch.created_at ? new Date(batch.created_at).toLocaleString('ru-RU') : '—';
     const sourceIcon = batch.source === 'telegram' ? '📱 Telegram-бот' : '🌐 Веб-загрузка';
 
@@ -474,7 +482,10 @@ function renderActiveBatch(batch) {
                         Файл: <b>${batch.filename}</b> · Источник: ${sourceIcon} · Получен: ${dateStr}
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" id="btnSyncBatchCz" onclick="syncBatchCzLive('${batch.id}')" title="Запросить свежие статусы всех кодов КИЗ напрямую из ГИС МТ True API" style="display: flex; align-items: center; gap: 4px;">
+                        <span>🔄</span> Сверить с ЧЗ
+                    </button>
                     <button class="btn btn-danger btn-sm" onclick="cancelBatchAction('${batch.id}')" title="Отменить этот пакет">
                         ✕ Отклонить
                     </button>
@@ -485,18 +496,23 @@ function renderActiveBatch(batch) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
                 <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); padding: 12px 16px; border-radius: 8px;">
                     <div style="font-size: 11px; color: #4ade80; font-weight: 600;">ВЫВОД ИЗ ОБОРОТА (ЧЕКИ)</div>
-                    <div style="font-size: 22px; font-weight: 700; color: #4ade80; margin-top: 2px;">${withdrawals.length}</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">Дистанционная продажа</div>
+                    <div style="font-size: 22px; font-weight: 700; color: #4ade80; margin-top: 2px;">${sales_needing}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Требуют выбытия</div>
                 </div>
                 <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); padding: 12px 16px; border-radius: 8px;">
                     <div style="font-size: 11px; color: #fbbf24; font-weight: 600;">ВВОД В ОБОРОТ (ВОЗВРАТЫ)</div>
-                    <div style="font-size: 22px; font-weight: 700; color: #fbbf24; margin-top: 2px;">${returns.length}</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">Отказы и отмены</div>
+                    <div style="font-size: 22px; font-weight: 700; color: #fbbf24; margin-top: 2px;">${returns_needing}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Требуют возврата</div>
                 </div>
                 <div style="background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.2); padding: 12px 16px; border-radius: 8px;">
                     <div style="font-size: 11px; color: #cbd5e1; font-weight: 600;">УЖЕ ВЫБЫЛИ РАНЕЕ</div>
-                    <div style="font-size: 22px; font-weight: 700; color: #cbd5e1; margin-top: 2px;">${batch.already_withdrawn_count || 0}</div>
+                    <div style="font-size: 22px; font-weight: 700; color: #cbd5e1; margin-top: 2px;">${already_withdrawn}</div>
                     <div style="font-size: 11px; color: var(--text-muted);">Повторный вывод не нужен</div>
+                </div>
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 12px 16px; border-radius: 8px;">
+                    <div style="font-size: 11px; color: #60a5fa; font-weight: 600;">УЖЕ В ОБОРОТЕ</div>
+                    <div style="font-size: 22px; font-weight: 700; color: #60a5fa; margin-top: 2px;">${already_in_circ}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Готовы к привязке</div>
                 </div>
             </div>
 
@@ -521,7 +537,7 @@ function renderActiveBatch(batch) {
                     </div>
                     <div style="align-self: flex-end;">
                         <button class="btn btn-primary" id="btnSignSubmitBatch" onclick="submitBatchSigningAction('${batch.id}')" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700; padding: 10px 20px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-                            <span class="btn-text">✍️ Подписать и отправить в ГИС МТ (${withdrawals.length + returns.length} шт.)</span>
+                            <span class="btn-text">✍️ Подписать и отправить в ГИС МТ (${totalToSign} шт.)</span>
                             <div class="loader" style="display:none;"></div>
                         </button>
                     </div>
@@ -531,19 +547,29 @@ function renderActiveBatch(batch) {
             <!-- Detail Tabs for Sales with Receipts and Returns -->
             <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                 <button id="batchTabSalesBtn" class="btn" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-bottom: 2px solid #22c55e; border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600;" onclick="switchBatchTab('sales')">
-                    🟢 Продажи с чеками (${withdrawals.length})
+                    🟢 Продажи с чеками (${withdrawals.length}) ${sales_needing > 0 ? `<span style="font-size:11px; opacity:0.85;">(${sales_needing} к выводу)</span>` : ''}
                 </button>
                 <button id="batchTabReturnsBtn" class="btn" style="background: transparent; color: var(--text-muted); border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600;" onclick="switchBatchTab('returns')">
-                    🔄 Возвраты в оборот (${returns.length})
+                    🔄 Возвраты в оборот (${returns.length}) ${returns_needing > 0 ? `<span style="font-size:11px; opacity:0.85;">(${returns_needing} к возврату)</span>` : ''}
                 </button>
             </div>
 
             <!-- Sales Table -->
             <div id="batchTabSalesContent">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="font-size: 13px; color: var(--text-muted);">
+                        Будет сформирован документ вывода из оборота ГИС МТ (<code>LK_RECEIPT</code>) по причине «Дистанционная продажа».
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('withdrawals', true)">Выбрать все</button>
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('withdrawals', false)">Снять выбор</button>
+                    </div>
+                </div>
                 <div class="table-container" style="max-height: 340px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="batchSelectAllWithdrawals" onchange="toggleAllBatchCheckboxes('withdrawals', this.checked)" ${sales_needing > 0 ? 'checked' : ''}></th>
                                 <th>№ задания</th>
                                 <th>Стикер</th>
                                 <th>КИЗ / Код маркировки</th>
@@ -554,18 +580,31 @@ function renderActiveBatch(batch) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${withdrawals.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--text-muted);">Нет продаж для вывода</td></tr>' : 
-                                withdrawals.map(w => `
-                                    <tr>
-                                        <td style="font-weight:600;">#${w.order_id || '—'}</td>
-                                        <td><code>${w.sticker_id || '—'}</code></td>
-                                        <td style="font-family: monospace; font-size: 11px;">${w.kiz_code || '—'}</td>
-                                        <td><span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa;">${w.receipt_number || 'По акту/OTHER'}</span></td>
-                                        <td>${w.receipt_date || '—'}</td>
-                                        <td>${w.price ? w.price + ' ₽' : '—'}</td>
-                                        <td><span style="color:#4ade80;">Готов к выводу</span></td>
-                                    </tr>
-                                `).join('')
+                            ${withdrawals.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding:16px; color:var(--text-muted);">Нет продаж для вывода</td></tr>' : 
+                                withdrawals.map((w, idx) => {
+                                    const needsWithdrawal = Boolean(w.needs_withdrawal);
+                                    const isSelected = w.selected !== false && needsWithdrawal;
+                                    const statusBadge = needsWithdrawal
+                                        ? `<span class="badge badge-warning">⚠️ Требует выбытия</span>`
+                                        : `<span class="badge badge-delivered">✅ Выведен</span>`;
+                                    return `
+                                        <tr>
+                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${w.kiz_code || ''}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
+                                            <td style="font-weight:600;">#${w.order_id || '—'}</td>
+                                            <td><code>${w.sticker_id || '—'}</code></td>
+                                            <td style="font-family: monospace; font-size: 11px;">${w.kiz_code || '—'}</td>
+                                            <td><span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-weight:600;">🧾 ${w.receipt_number || 'По акту/OTHER'}</span></td>
+                                            <td style="color:var(--text-muted); font-size:12px;">${w.receipt_date || '—'}</td>
+                                            <td>${w.price ? w.price.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
+                                            <td>
+                                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                                    ${statusBadge}
+                                                    ${w.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${w.cz_status_desc}</span>` : ''}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')
                             }
                         </tbody>
                     </table>
@@ -574,28 +613,56 @@ function renderActiveBatch(batch) {
 
             <!-- Returns Table -->
             <div id="batchTabReturnsContent" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="font-size: 13px; color: var(--text-muted);">
+                        Товары, от которых покупатель отказался. Если КИЗ был выведен, сформируется документ возврата в оборот (<code>LP_RETURN</code>).
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('returns', true)">Выбрать все</button>
+                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('returns', false)">Снять выбор</button>
+                    </div>
+                </div>
                 <div class="table-container" style="max-height: 340px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="batchSelectAllReturns" onchange="toggleAllBatchCheckboxes('returns', this.checked)" ${returns_needing > 0 ? 'checked' : ''}></th>
                                 <th>№ задания</th>
                                 <th>Стикер</th>
                                 <th>КИЗ / Код маркировки</th>
                                 <th>Товар</th>
+                                <th>Рекомендуемое действие</th>
                                 <th>Статус в ЧЗ</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${returns.length === 0 ? '<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--text-muted);">Нет возвратов для ввода</td></tr>' : 
-                                returns.map(r => `
-                                    <tr>
-                                        <td style="font-weight:600;">#${r.order_id || '—'}</td>
-                                        <td><code>${r.sticker_id || '—'}</code></td>
-                                        <td style="font-family: monospace; font-size: 11px;">${r.kiz_code || '—'}</td>
-                                        <td>${r.name || r.article || '—'}</td>
-                                        <td><span style="color:#fbbf24;">Готов к возврату</span></td>
-                                    </tr>
-                                `).join('')
+                            ${returns.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--text-muted);">Нет возвратов для ввода</td></tr>' : 
+                                returns.map((r, idx) => {
+                                    const needsReturn = Boolean(r.needs_cz_return);
+                                    const isSelected = r.selected !== false && needsReturn;
+                                    const statusBadge = needsReturn
+                                        ? `<span class="badge badge-warning">⚠️ Требует возврата в оборот</span>`
+                                        : `<span class="badge badge-delivered">✅ Уже в обороте</span>`;
+                                    return `
+                                        <tr>
+                                            <td><input type="checkbox" class="batch-item-return" data-idx="${idx}" data-kiz="${r.kiz_code || ''}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
+                                            <td style="font-weight:600;">#${r.order_id || '—'}</td>
+                                            <td><code>${r.sticker_id || '—'}</code></td>
+                                            <td style="font-family: monospace; font-size: 11px;">${r.kiz_code || '—'}</td>
+                                            <td>
+                                                <div style="font-weight:500;">${r.name || 'Товар'}</div>
+                                                <div style="font-size:11px; color:var(--text-muted);">${r.article || ''}</div>
+                                            </td>
+                                            <td><span class="badge ${needsReturn ? 'badge-warning' : 'badge-delivered'}">${r.action_recommended || (needsReturn ? '⚠️ Требует возврата' : '✅ В обороте')}</span></td>
+                                            <td>
+                                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                                    ${statusBadge}
+                                                    ${r.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${r.cz_status_desc}</span>` : ''}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')
                             }
                         </tbody>
                     </table>
@@ -607,6 +674,79 @@ function renderActiveBatch(batch) {
     // Populate certificates dropdown
     if (typeof populateCertificatesDropdown === 'function') {
         populateCertificatesDropdown('batchCertSelect');
+    }
+
+    updateBatchSelectedCount();
+}
+
+function updateBatchSelectedCount() {
+    const selectedWithdrawals = document.querySelectorAll('.batch-item-withdrawal:checked');
+    const selectedReturns = document.querySelectorAll('.batch-item-return:checked');
+    const count = selectedWithdrawals.length + selectedReturns.length;
+
+    const btn = document.getElementById('btnSignSubmitBatch');
+    if (!btn) return;
+    const btnText = btn.querySelector('.btn-text');
+
+    if (count > 0) {
+        if (btnText) btnText.textContent = `✍️ Подписать и отправить в ГИС МТ (${count} шт.)`;
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    } else {
+        if (btnText) btnText.textContent = `✅ Все КИЗ уже в актуальном статусе (0 шт.)`;
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.style.cursor = 'not-allowed';
+        btn.style.background = 'rgba(148, 163, 184, 0.2)';
+    }
+}
+
+function toggleAllBatchCheckboxes(type, checked) {
+    const selector = type === 'withdrawals' ? '.batch-item-withdrawal' : '.batch-item-return';
+    document.querySelectorAll(selector).forEach(cb => {
+        cb.checked = checked;
+    });
+    updateBatchSelectedCount();
+}
+
+async function syncBatchCzLive(batchId) {
+    if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
+
+    const btn = document.getElementById('btnSyncBatchCz');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Сверка с ГИС МТ...';
+    }
+
+    showToast('Честный Знак', 'Сверка кодов маркировки пакета с True API...', 'info');
+
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches/${batchId}/sync-cz`, {
+            method: 'POST'
+        });
+
+        if (activeBatchDetails && activeBatchDetails.id === batchId) {
+            activeBatchDetails.sales_count = res.sales_count;
+            activeBatchDetails.returns_count = res.returns_count;
+            activeBatchDetails.already_withdrawn_count = res.already_withdrawn_count;
+            activeBatchDetails.data_payload = res.data_payload;
+            renderActiveBatch(activeBatchDetails);
+        } else {
+            await loadSignatureBatches();
+        }
+
+        showToast('Честный Знак', `Статусы пакета обновлены! К выводу: ${res.sales_count}, К возврату: ${res.returns_count}`, 'success');
+        if (typeof loadOrders === 'function') loadOrders();
+    } catch (e) {
+        showToast('Ошибка сверки с ЧЗ', e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
     }
 }
 
@@ -691,6 +831,12 @@ function renderBatchesHistory(batches) {
 async function submitBatchSigningAction(batchId) {
     if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
 
+    const selectedCodes = [];
+    document.querySelectorAll('.batch-item-withdrawal:checked, .batch-item-return:checked').forEach(cb => {
+        const code = cb.getAttribute('data-kiz');
+        if (code) selectedCodes.push(code);
+    });
+
     const btn = document.getElementById('btnSignSubmitBatch');
     const loader = btn?.querySelector('.loader');
     const btnText = btn?.querySelector('.btn-text');
@@ -710,12 +856,15 @@ async function submitBatchSigningAction(batchId) {
         // 1. Prepare documents
         showToast('ЭЦП', 'Подготовка канонических документов ГИС МТ...', 'info');
         const prepRes = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches/${batchId}/prepare-documents`, {
-            method: 'POST'
+            method: 'POST',
+            body: JSON.stringify({
+                selected_kiz_codes: selectedCodes.length > 0 ? selectedCodes : null
+            })
         });
 
         const docs = prepRes.documents || [];
         if (docs.length === 0) {
-            return showToast('Внимание', 'В пакете нет документов для отправки', 'warning');
+            return showToast('Информация', 'Все выбранные позиции уже в актуальном статусе, подписание не требуется', 'info');
         }
 
         let signedDocs = [];
@@ -766,6 +915,7 @@ async function submitBatchSigningAction(batchId) {
         if (loader) loader.style.display = 'none';
         if (btnText) btnText.style.display = 'inline';
         if (btn) btn.disabled = false;
+        updateBatchSelectedCount();
     }
 }
 
@@ -800,8 +950,11 @@ window.handleArchiveDrop = handleArchiveDrop;
 window.uploadAndPreviewArchive = uploadAndPreviewArchive;
 window.renderArchivePreview = renderArchivePreview;
 window.syncArchiveCzLive = syncArchiveCzLive;
+window.syncBatchCzLive = syncBatchCzLive;
 window.switchArchiveTab = switchArchiveTab;
 window.toggleAllArchiveCheckboxes = toggleAllArchiveCheckboxes;
+window.toggleAllBatchCheckboxes = toggleAllBatchCheckboxes;
+window.updateBatchSelectedCount = updateBatchSelectedCount;
 window.submitArchiveProcessing = submitArchiveProcessing;
 window.loadSignatureBatches = loadSignatureBatches;
 window.updateSignatureBadge = updateSignatureBadge;
@@ -809,3 +962,4 @@ window.submitBatchSigningAction = submitBatchSigningAction;
 window.cancelBatchAction = cancelBatchAction;
 window.switchBatchTab = switchBatchTab;
 window.viewBatchDetailsModal = viewBatchDetailsModal;
+

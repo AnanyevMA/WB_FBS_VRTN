@@ -238,6 +238,16 @@ class WBClient:
             return data.get("stickers", [])
         return []
 
+    async def get_order_sticker(self, order_id: int, format: str = 'svg') -> Optional[Dict]:
+        """
+        Обёртка над get_stickers для скачивания стикера одного заказа.
+        Возвращает dict стикера или None.
+        """
+        stickers = await self.get_stickers([order_id], format=format)
+        if stickers:
+            return stickers[0]
+        return None
+
     # --- Meta / KIZ ---
 
     async def set_order_sgtin(self, order_id: int, kiz_codes: List[str]) -> bool:
@@ -426,16 +436,34 @@ def is_kiz_required(
 ) -> bool:
     """
     Определяет обязательность маркировки «Честный Знак» (КИЗ / SGTIN).
-    Учитывает:
-    1. Явные флаги в ответе WB API (requiredMeta / sgtin / uin / kiz)
-    2. Коды ТН ВЭД маркируемых категорий (легпром: 61xx, 62xx, 6505, 64xx, 6302, 4203, 3303 и др.)
-    3. Категории/предметы товаров (Капоры, Головные уборы, Юбки, Брюки, Худи, Рубашки, Одежда, Обувь и др.)
-    """
-    if order_raw:
-        req_meta = str(order_raw.get("requiredMeta", "")).lower()
-        if any(tag in req_meta for tag in ["sgtin", "kiz", "uin", "mark"]):
-            return True
 
+    Приоритет проверки (по документации WB API):
+    1. Поле `requiredMeta` из ответа GET /api/v3/orders/new —
+       если содержит "sgtin", маркировка ОБЯЗАТЕЛЬНА.
+       Если `requiredMeta` присутствует и НЕ содержит "sgtin" — маркировка НЕ нужна
+       (возврат False без дальнейших эвристик).
+    2. Эвристики по ТН ВЭД и названию категории — используются ТОЛЬКО если
+       `requiredMeta` не передано (например, при работе с архивом,
+       не через orders/new).
+    """
+    # --- 1. requiredMeta из WB API (первичный и определяющий источник) ---
+    if order_raw:
+        required_meta = order_raw.get("requiredMeta")
+
+        # requiredMeta присутствует в payload — это авторитетный ответ WB
+        if required_meta is not None:
+            if isinstance(required_meta, list):
+                return any(
+                    str(item).lower() in ("sgtin", "kiz")
+                    for item in required_meta
+                )
+            elif isinstance(required_meta, str):
+                meta_lower = required_meta.lower()
+                return "sgtin" in meta_lower or "kiz" in meta_lower
+            # requiredMeta присутствует, но пустой/неизвестный тип → не нужен
+            return False
+
+    # --- 2. Эвристики (вторичный источник, без requiredMeta) ---
     if tnved:
         clean_tnved = str(tnved).replace(" ", "").replace(".", "").strip()
         marked_tnved_prefixes = (
@@ -469,3 +497,4 @@ def is_kiz_required(
             return True
 
     return False
+

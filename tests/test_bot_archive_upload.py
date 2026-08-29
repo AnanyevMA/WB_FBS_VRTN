@@ -123,8 +123,8 @@ async def test_bot_archive_excel_parsing_and_batch_creation():
     assert mock_status_msg.edit_text.called
     reply_call_text = mock_status_msg.edit_text.call_args[0][0]
     assert "Отчёт Wildberries успешно обработан" in reply_call_text
-    assert "Продажи (с чеками на вывод)" in reply_call_text
-    assert "Возвраты (на ввод в оборот)" in reply_call_text
+    assert "Продажи (к выводу с чеками)" in reply_call_text
+    assert "Возвраты (к вводу в оборот)" in reply_call_text
     assert "добавлен в очередь на подписание ЭЦП" in reply_call_text
 
     # Verify database state

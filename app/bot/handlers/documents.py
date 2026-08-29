@@ -82,20 +82,21 @@ async def handle_document(message: Message):
             returns = analysis.get("returns", [])
             summary = analysis.get("summary", {})
 
-            sales_count = len(withdrawals)
-            returns_count = len(returns)
-            already_withdrawn = sum(1 for w in withdrawals if not w.get("needs_withdrawal", True))
-            total_processed = summary.get("total_rows") or (sales_count + returns_count)
+            sales_needing_withdrawal = summary.get("sales_needing_withdrawal") if summary.get("sales_needing_withdrawal") is not None else sum(1 for w in withdrawals if w.get("needs_withdrawal", True))
+            sales_already_withdrawn = summary.get("sales_already_withdrawn") if summary.get("sales_already_withdrawn") is not None else sum(1 for w in withdrawals if not w.get("needs_withdrawal", True))
+            returns_needing_cz_return = summary.get("returns_needing_cz_return") if summary.get("returns_needing_cz_return") is not None else sum(1 for r in returns if r.get("needs_cz_return", True))
+            returns_already_in_circulation = summary.get("returns_already_in_circulation") if summary.get("returns_already_in_circulation") is not None else sum(1 for r in returns if not r.get("needs_cz_return", True))
+            total_processed = summary.get("total_rows") or (len(withdrawals) + len(returns))
 
-            # Создаем пакет на подписание в БД
+            # Создаем пакет на подписание в БД (сохраняем количество позиций, требующих подписания)
             new_batch = KizSignatureBatch(
                 seller_id=target_seller.id,
                 filename=filename,
                 source="telegram",
                 status=BatchStatus.PENDING_SIGNATURE,
-                sales_count=sales_count,
-                returns_count=returns_count,
-                already_withdrawn_count=already_withdrawn,
+                sales_count=sales_needing_withdrawal,
+                returns_count=returns_needing_cz_return,
+                already_withdrawn_count=sales_already_withdrawn,
                 total_count=total_processed,
                 data_payload=analysis,
             )
@@ -112,8 +113,10 @@ async def handle_document(message: Message):
                 entity_id=new_batch.id,
                 payload={
                     "filename": filename,
-                    "sales": sales_count,
-                    "returns": returns_count,
+                    "sales_needing_withdrawal": sales_needing_withdrawal,
+                    "sales_already_withdrawn": sales_already_withdrawn,
+                    "returns_needing_cz_return": returns_needing_cz_return,
+                    "returns_already_in_circulation": returns_already_in_circulation,
                     "total": total_processed,
                     "chat_id": chat_id,
                 },
@@ -121,18 +124,22 @@ async def handle_document(message: Message):
             db.add(audit)
             await db.commit()
 
+        total_to_sign = sales_needing_withdrawal + returns_needing_cz_return
         reply_text = (
             f"✅ <b>Отчёт Wildberries успешно обработан!</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"📁 <b>Файл:</b> <code>{filename}</code>\n"
             f"🏪 <b>Магазин:</b> {target_seller.name}\n\n"
-            f"📊 <b>Результаты анализа операций:</b>\n"
-            f"• 🟢 <b>Продажи (с чеками на вывод):</b> <b>{sales_count}</b> шт.\n"
-            f"• 🔄 <b>Возвраты (на ввод в оборот):</b> <b>{returns_count}</b> шт.\n"
-            f"• ⚪ <b>Уже выбыли ранее:</b> {already_withdrawn} шт.\n"
-            f"• 📦 <b>Всего записей в отчёте:</b> {total_processed} шт.\n\n"
-            f"🔏 <b>Пакет №<code>{new_batch.id[:8]}</code> добавлен в очередь на подписание ЭЦП!</b>\n"
-            f"Владелец ЭЦП может открыть веб-дашборд в разделе <b>«🔏 Очередь ЭЦП»</b> и подписать документы в 1 клик."
+            f"📊 <b>Результаты сверки с Честным Знаком:</b>\n"
+            f"• 🟢 <b>Продажи (к выводу с чеками):</b> <b>{sales_needing_withdrawal}</b> шт."
+            + (f" <i>(уже выбыли ранее: {sales_already_withdrawn} шт.)</i>\n" if sales_already_withdrawn > 0 else "\n")
+            + f"• 🔄 <b>Возвраты (к вводу в оборот):</b> <b>{returns_needing_cz_return}</b> шт."
+            + (f" <i>(уже в обороте: {returns_already_in_circulation} шт.)</i>\n" if returns_already_in_circulation > 0 else "\n")
+            + f"• 📦 <b>Всего записей в отчёте:</b> {total_processed} шт.\n\n"
+            + (f"🔏 <b>Пакет №<code>{new_batch.id[:8]}</code> добавлен в очередь на подписание ЭЦП ({total_to_sign} док.)!</b>\n"
+               f"Владелец ЭЦП может открыть веб-дашборд в разделе <b>«🔏 Очередь ЭЦП»</b> и подписать документы в 1 клик."
+               if total_to_sign > 0
+               else f"✅ <b>Все КИЗ уже имеют актуальные статусы в Честном Знаке.</b> Формирование документов на подписание не требуется.")
         )
         await status_msg.edit_text(reply_text)
 

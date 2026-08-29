@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-27T15:20:35.251980+00:00",
+  "updated_at": "2026-08-29T07:18:56.437006+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -875,7 +875,7 @@
     {
       "file": "app/agents/notifier.py",
       "layer": "agents",
-      "hash": "c9293d8a851d",
+      "hash": "5cb04784d692",
       "docstring": "Notifier Agent — отправка уведомлений через Telegram",
       "classes": [],
       "functions": [
@@ -1004,6 +1004,7 @@
         "app.celery_app",
         "app.config",
         "app.models.audit",
+        "app.models.order",
         "app.models.seller",
         "app.services.encryption",
         "app.services.telegram_service",
@@ -1019,7 +1020,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "9ee0b3881ae6",
+      "hash": "dbaf60ae965a",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1932,7 +1933,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "9bd54d311939",
+      "hash": "18f646d350b2",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1963,11 +1964,25 @@
           "docstring": "Возвращает подробные данные пакета (списки продаж с чеками и возвратов)."
         },
         {
+          "name": "sync_signature_batch_cz",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "batch_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/signature-batches/{batch_id}/sync-cz')"
+          ],
+          "docstring": "Принудительная живая сверка всех кодов маркировки пакета с True API Честного Знака."
+        },
+        {
           "name": "prepare_batch_documents_for_signing",
           "is_async": true,
           "args": [
             "seller_id",
             "batch_id",
+            "payload",
             "db"
           ],
           "decorators": [
@@ -2018,6 +2033,12 @@
         },
         {
           "method": "POST",
+          "path": "/kiz/signature-batches/{batch_id}/sync-cz",
+          "handler": "sync_signature_batch_cz",
+          "docstring": "Принудительная живая сверка всех кодов маркировки пакета с True API Честного Знака."
+        },
+        {
+          "method": "POST",
           "path": "/kiz/signature-batches/{batch_id}/prepare-documents",
           "handler": "prepare_batch_documents_for_signing",
           "docstring": "Формирует неподписанные канонические документы (LK_RECEIPT и LP_RETURN)"
@@ -2046,13 +2067,16 @@
         "app.models.seller",
         "app.services.cz_client",
         "app.services.encryption",
+        "app.services.kiz_service",
         "app.services.telegram_service",
         "asyncio",
+        "copy",
         "datetime",
         "fastapi",
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
+        "sqlalchemy.orm.attributes",
         "typing"
       ]
     },
@@ -2992,7 +3016,7 @@
     {
       "file": "app/bot/handlers/documents.py",
       "layer": "core",
-      "hash": "a0d85c1cce45",
+      "hash": "121d1123104f",
       "docstring": "Telegram Bot Document Handlers — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3829,7 +3853,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "0f4efda9e604",
+      "hash": "443de2a85e49",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -4379,7 +4403,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "03b4246755a5",
+      "hash": "8f16255f7607",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -4512,7 +4536,7 @@
     {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "3da838a30710",
+      "hash": "a6f2c34dc8a3",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {
@@ -4562,6 +4586,7 @@
             "get_orders_status",
             "cancel_order",
             "get_stickers",
+            "get_order_sticker",
             "set_order_sgtin",
             "get_orders_meta",
             "get_supplies",
@@ -5063,7 +5088,7 @@
     {
       "file": "tests/test_bot_archive_upload.py",
       "layer": "tests",
-      "hash": "6943bb675e4b",
+      "hash": "2b14215a92af",
       "docstring": "Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing)",
       "classes": [],
       "functions": [
@@ -5460,7 +5485,7 @@
     {
       "file": "tests/test_kiz_signature_batches.py",
       "layer": "tests",
-      "hash": "95de8ab8dfbd",
+      "hash": "816f0be11519",
       "docstring": "Integration & Unit Tests for KIZ Signature Batches and Dashboard Signing Queue",
       "classes": [],
       "functions": [
@@ -5472,6 +5497,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_signature_batch_cz_status_filtering_and_sync",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет:"
         }
       ],
       "endpoints": [],

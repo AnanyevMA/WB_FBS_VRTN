@@ -1,12 +1,14 @@
 """
 FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager
 """
+import copy
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_db
 from app.models.seller import Seller
@@ -92,15 +94,122 @@ async def get_signature_batch(
     }
 
 
-@router.post("/kiz/signature-batches/{batch_id}/prepare-documents")
-async def prepare_batch_documents_for_signing(
+@router.post("/kiz/signature-batches/{batch_id}/sync-cz")
+async def sync_signature_batch_cz(
     seller_id: str,
     batch_id: str,
     db: AsyncSession = Depends(get_db)
 ):
     """
+    Принудительная живая сверка всех кодов маркировки пакета с True API Честного Знака.
+    Обновляет данные в data_payload пакета и актуализирует счетчики.
+    """
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    batch = await db.get(KizSignatureBatch, batch_id)
+    if not batch or str(batch.seller_id) != str(seller_id):
+        raise HTTPException(status_code=404, detail="Пакет не найден")
+
+    payload = copy.deepcopy(batch.data_payload or {})
+    withdrawals = payload.get("withdrawals", [])
+    returns = payload.get("returns", [])
+
+    all_kiz = []
+    for w in withdrawals:
+        if w.get("kiz_code"):
+            all_kiz.append(w["kiz_code"])
+    for r in returns:
+        if r.get("kiz_code"):
+            all_kiz.append(r["kiz_code"])
+
+    if all_kiz:
+        from app.services.kiz_service import batch_verify_and_sync_cises, is_kiz_withdrawn, CZ_STATUS_DESCRIPTIONS, parse_kiz_code
+        synced_map = await batch_verify_and_sync_cises(
+            seller=seller,
+            kiz_codes=all_kiz,
+            db=db,
+            force_refresh=True
+        )
+
+        for w in withdrawals:
+            code = w.get("kiz_code")
+            parsed = parse_kiz_code(code) if code else {}
+            clean = parsed.get("clean_cis")
+            kinfo = synced_map.get(code) or (synced_map.get(clean) if clean else None)
+            if kinfo:
+                withdrawn, w_reason = is_kiz_withdrawn(
+                    status=kinfo.cz_status,
+                    status_ex=kinfo.cz_status_ex,
+                    raw_payload=kinfo.raw_cz_payload or {}
+                )
+                w["cz_status"] = kinfo.cz_status
+                w["cz_status_desc"] = CZ_STATUS_DESCRIPTIONS.get(kinfo.cz_status or "", kinfo.cz_status or "Не проверен")
+                w["is_already_withdrawn"] = withdrawn
+                w["needs_withdrawal"] = not withdrawn
+                w["selected"] = (not withdrawn) and bool(code)
+
+        for r in returns:
+            code = r.get("kiz_code")
+            parsed = parse_kiz_code(code) if code else {}
+            clean = parsed.get("clean_cis")
+            kinfo = synced_map.get(code) or (synced_map.get(clean) if clean else None)
+            if kinfo:
+                withdrawn, w_reason = is_kiz_withdrawn(
+                    status=kinfo.cz_status,
+                    status_ex=kinfo.cz_status_ex,
+                    raw_payload=kinfo.raw_cz_payload or {}
+                )
+                r["cz_status"] = kinfo.cz_status
+                r["db_cz_status"] = kinfo.cz_status
+                r["cz_status_desc"] = CZ_STATUS_DESCRIPTIONS.get(kinfo.cz_status or "", kinfo.cz_status or "Не проверен")
+                r["needs_cz_return"] = withdrawn
+                r["action_recommended"] = "⚠️ Требует возврата в оборот" if withdrawn else "✅ Уже в обороте (готов к привязке)"
+                r["selected"] = withdrawn and bool(code)
+
+        sales_needing = sum(1 for w in withdrawals if w.get("needs_withdrawal"))
+        sales_withdrawn = sum(1 for w in withdrawals if not w.get("needs_withdrawal"))
+        returns_needing = sum(1 for r in returns if r.get("needs_cz_return"))
+        returns_in_circ = sum(1 for r in returns if not r.get("needs_cz_return"))
+
+        summary = payload.get("summary", {})
+        summary["sales_needing_withdrawal"] = sales_needing
+        summary["sales_already_withdrawn"] = sales_withdrawn
+        summary["returns_needing_cz_return"] = returns_needing
+        summary["returns_already_in_circulation"] = returns_in_circ
+        payload["summary"] = summary
+        payload["withdrawals"] = withdrawals
+        payload["returns"] = returns
+
+        batch.sales_count = sales_needing
+        batch.returns_count = returns_needing
+        batch.already_withdrawn_count = sales_withdrawn
+        batch.data_payload = payload
+        flag_modified(batch, "data_payload")
+        await db.commit()
+
+    return {
+        "success": True,
+        "batch_id": batch.id,
+        "sales_count": batch.sales_count,
+        "returns_count": batch.returns_count,
+        "already_withdrawn_count": batch.already_withdrawn_count,
+        "data_payload": batch.data_payload,
+    }
+
+
+@router.post("/kiz/signature-batches/{batch_id}/prepare-documents")
+async def prepare_batch_documents_for_signing(
+    seller_id: str,
+    batch_id: str,
+    payload: Optional[Dict[str, Any]] = Body(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
     Формирует неподписанные канонические документы (LK_RECEIPT и LP_RETURN)
     для последующего подписания через КриптоПро ЭЦП Browser Plugin.
+    Включает только позиции, действительно требующие выбытия или возврата в оборот.
     """
     seller = await db.get(Seller, seller_id)
     if not seller:
@@ -120,13 +229,24 @@ async def prepare_batch_documents_for_signing(
     withdrawals = data.get("withdrawals", [])
     returns = data.get("returns", [])
 
+    selected_kiz_list = payload.get("selected_kiz_codes") if payload else None
+    selected_kiz_set = set(selected_kiz_list) if selected_kiz_list is not None else None
+
     cades_payloads = []
 
     # 1. Документы вывода из оборота (LK_RECEIPT с номером кассового чека)
+    # Формируем только для тех КИЗ, которые еще не выведены (needs_withdrawal == True)
     for w in withdrawals:
         kiz = w.get("kiz_code")
         if not kiz:
             continue
+
+        if selected_kiz_set is not None:
+            if kiz not in selected_kiz_set:
+                continue
+        elif not w.get("needs_withdrawal", True):
+            continue
+
         price_kop = w.get("price_kopecks") or int((w.get("price") or 0) * 100)
         receipt_num = w.get("receipt_number")
         receipt_date = w.get("receipt_date")
@@ -153,10 +273,18 @@ async def prepare_batch_documents_for_signing(
         })
 
     # 2. Документы возврата в оборот (LP_RETURN)
+    # Формируем только для тех КИЗ, которые требуют ввода в оборот (needs_cz_return == True)
     for r in returns:
         kiz = r.get("kiz_code")
         if not kiz:
             continue
+
+        if selected_kiz_set is not None:
+            if kiz not in selected_kiz_set:
+                continue
+        elif not r.get("needs_cz_return", False):
+            continue
+
         doc = client.build_return_payload(
             kiz_codes=[kiz],
             wb_order_id=r.get("order_id"),
@@ -263,7 +391,7 @@ async def submit_signed_batch(
         for w in withdrawals:
             kiz = w.get("kiz_code")
             oid = w.get("order_id")
-            if kiz:
+            if kiz and w.get("needs_withdrawal", True):
                 withdraw_order_kiz.delay(
                     seller_id=seller_id,
                     order_id=oid,
@@ -277,7 +405,7 @@ async def submit_signed_batch(
         for r in returns:
             kiz = r.get("kiz_code")
             oid = r.get("order_id")
-            if kiz:
+            if kiz and r.get("needs_cz_return", False):
                 return_order_kiz.delay(
                     seller_id=seller_id,
                     order_id=oid,

@@ -103,3 +103,147 @@ async def test_refresh_orders_syncs_wb_status_and_supplier_status():
             assert saved_order.wb_status == "sorted"
             assert saved_order.supplier_status == "complete"
             assert saved_order.status == OrderStatus.DELIVERING
+
+
+@pytest.mark.asyncio
+async def test_sync_all_orders_cz_status_not_found():
+    """Verify 404 if seller does not exist."""
+    from app.api.orders import sync_all_orders_cz_status
+    from fastapi import HTTPException
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        with pytest.raises(HTTPException) as exc_info:
+            await sync_all_orders_cz_status(seller_id=str(uuid.uuid4()), db=session)
+        assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_sync_all_orders_cz_status_missing_inn():
+    """Verify 400 if seller has no cz_inn."""
+    from app.api.orders import sync_all_orders_cz_status
+    from fastapi import HTTPException
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Seller No INN",
+            cz_inn=None,
+            wb_api_token_encrypted=encrypt("token"),
+            is_active=True,
+        )
+        session.add(seller)
+        await session.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await sync_all_orders_cz_status(seller_id=seller_id, db=session)
+        assert exc_info.value.status_code == 400
+        assert "ИНН Честного Знака" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_sync_all_orders_cz_status_no_kiz_codes():
+    """Verify friendly response when seller has orders but no KIZ codes."""
+    from app.api.orders import sync_all_orders_cz_status
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Seller No KIZ",
+            cz_inn="7712345678",
+            wb_api_token_encrypted=encrypt("token"),
+            cz_token_encrypted=encrypt("cz_token"),
+            is_active=True,
+        )
+        session.add(seller)
+        await session.commit()
+
+        res = await sync_all_orders_cz_status(seller_id=seller_id, db=session)
+        assert res["success"] is True
+        assert res["total_checked"] == 0
+        assert "нет прикрепленных кодов КИЗ" in res["message"]
+
+
+@pytest.mark.asyncio
+async def test_sync_all_orders_cz_status_success_flow():
+    """Verify bulk sync queries True API, updates KizProductInfo and Order records."""
+    from app.api.orders import sync_all_orders_cz_status
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Seller Bulk KIZ Sync",
+            cz_inn="7700112233",
+            wb_api_token_encrypted=encrypt("token"),
+            cz_token_encrypted=encrypt("cz_token"),
+            is_active=True,
+        )
+        session.add(seller)
+
+        kiz_1 = f"0104630199251001215A{random.randint(1000, 9999)}"
+        kiz_2 = f"0104630199251002215B{random.randint(1000, 9999)}"
+
+        order_1 = Order(
+            id=random.randint(1000000, 9999999),
+            seller_id=seller_id,
+            status=OrderStatus.ASSEMBLING,
+            kiz_code=kiz_1,
+            kiz_status=KizStatus.ATTACHED,
+            kiz_required=True,
+            price=1500.0,
+            wb_created_at=datetime.now(timezone.utc),
+        )
+        order_2 = Order(
+            id=random.randint(1000000, 9999999),
+            seller_id=seller_id,
+            status=OrderStatus.DELIVERED,
+            kiz_code=kiz_2,
+            kiz_status=KizStatus.ATTACHED,
+            kiz_required=True,
+            price=2200.0,
+            wb_created_at=datetime.now(timezone.utc),
+        )
+        session.add_all([order_1, order_2])
+        await session.commit()
+
+        mock_cises_info = [
+            {
+                "cisInfo": {
+                    "requestedCis": kiz_1,
+                    "status": "INTRODUCED",
+                    "statusEx": "IN_CIRCULATION",
+                    "productName": "Футболка белая M",
+                }
+            },
+            {
+                "cisInfo": {
+                    "requestedCis": kiz_2,
+                    "status": "RETIRED",
+                    "statusEx": "RETIRED_SALE",
+                    "productName": "Худи оверсайз",
+                }
+            },
+        ]
+
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_get_info:
+            mock_get_info.return_value = mock_cises_info
+
+            res = await sync_all_orders_cz_status(seller_id=seller_id, db=session)
+
+            assert res["success"] is True
+            assert res["total_checked"] == 2
+            assert res["summary"]["in_circulation"] == 1
+            assert res["summary"]["withdrawn"] == 1
+            assert "В обороте: 1, Выбыли: 1" in res["message"]
+
+        await session.refresh(order_1)
+        await session.refresh(order_2)
+
+        assert order_1.kiz_cz_status == "INTRODUCED"
+        assert order_1.kiz_status == KizStatus.VALIDATED
+
+        assert order_2.kiz_cz_status == "RETIRED"
+        assert order_2.kiz_status == KizStatus.WITHDRAWN
+

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-30T07:04:33.629213+00:00",
+  "updated_at": "2026-08-30T07:19:37.553236+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -2083,7 +2083,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "7691f526d693",
+      "hash": "2c830dcc262d",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2203,6 +2203,19 @@
           "docstring": ""
         },
         {
+          "name": "sync_all_orders_cz_status",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sync-cz')",
+            "router.post('/sync-cz-all')"
+          ],
+          "docstring": "Массовая актуализация статусов всех кодов маркировки (КИЗ) продавца через Честный Знак (True API)."
+        },
+        {
           "name": "refresh_orders",
           "is_async": true,
           "args": [
@@ -2261,6 +2274,18 @@
         },
         {
           "method": "POST",
+          "path": "/sync-cz",
+          "handler": "sync_all_orders_cz_status",
+          "docstring": "Массовая актуализация статусов всех кодов маркировки (КИЗ) продавца через Честный Знак (True API)."
+        },
+        {
+          "method": "POST",
+          "path": "/sync-cz-all",
+          "handler": "sync_all_orders_cz_status",
+          "docstring": "Массовая актуализация статусов всех кодов маркировки (КИЗ) продавца через Честный Знак (True API)."
+        },
+        {
+          "method": "POST",
           "path": "/sync",
           "handler": "refresh_orders",
           "docstring": ""
@@ -2279,6 +2304,7 @@
         "app.agents.cz_withdrawal",
         "app.database",
         "app.models.audit",
+        "app.models.kiz",
         "app.models.order",
         "app.models.seller",
         "app.models.supply",
@@ -5976,7 +6002,7 @@
     {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
-      "hash": "509bc7cee960",
+      "hash": "189dbf7ef7e7",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -5997,6 +6023,42 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify that refresh_orders fetches WB statuses and updates Order.wb_status / supplier_status."
+        },
+        {
+          "name": "test_sync_all_orders_cz_status_not_found",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 404 if seller does not exist."
+        },
+        {
+          "name": "test_sync_all_orders_cz_status_missing_inn",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 400 if seller has no cz_inn."
+        },
+        {
+          "name": "test_sync_all_orders_cz_status_no_kiz_codes",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify friendly response when seller has orders but no KIZ codes."
+        },
+        {
+          "name": "test_sync_all_orders_cz_status_success_flow",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify bulk sync queries True API, updates KizProductInfo and Order records."
         }
       ],
       "endpoints": [],
@@ -6010,6 +6072,7 @@
         "app.services.encryption",
         "app.services.wb_client",
         "datetime",
+        "fastapi",
         "pytest",
         "random",
         "unittest.mock",
@@ -6019,7 +6082,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "e2e7862c6d2a",
+      "hash": "bad782368021",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

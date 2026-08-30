@@ -551,6 +551,109 @@ async def get_sticker(seller_id: str, order_id: int, db: AsyncSession = Depends(
     }
 
 
+@router.post("/sync-cz")
+@router.post("/sync-cz-all")
+async def sync_all_orders_cz_status(seller_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Массовая актуализация статусов всех кодов маркировки (КИЗ) продавца через Честный Знак (True API).
+    Запрашивает актуальный статус всех КИЗ в ГИС МТ,
+    обновляет единый источник правды (KizProductInfo) и все связанные с ними заказы.
+    """
+    from app.models.kiz import KizProductInfo
+    from app.services.kiz_service import batch_verify_and_sync_cises, is_kiz_withdrawn
+
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    if not seller.cz_inn:
+        raise HTTPException(
+            status_code=400,
+            detail="У продавца не настроен ИНН Честного Знака в настройках магазина."
+        )
+
+    # 1. Собираем все уникальные КИЗ продавца
+    # А. Из таблицы orders
+    stmt_orders = select(Order.kiz_code).where(
+        Order.seller_id == seller_id,
+        Order.kiz_code.isnot(None),
+        Order.kiz_code != "",
+    ).distinct()
+    order_kizes = (await db.execute(stmt_orders)).scalars().all()
+
+    # Б. Из таблицы kiz_product_info
+    stmt_kiz_info = select(KizProductInfo.kiz_code).where(
+        KizProductInfo.seller_id == seller_id,
+        KizProductInfo.kiz_code.isnot(None),
+        KizProductInfo.kiz_code != "",
+    ).distinct()
+    info_kizes = (await db.execute(stmt_kiz_info)).scalars().all()
+
+    all_kiz_codes = list(set([
+        k.strip() for k in (list(order_kizes) + list(info_kizes))
+        if k and k.strip()
+    ]))
+
+    if not all_kiz_codes:
+        return {
+            "success": True,
+            "message": "У данного продавца нет прикрепленных кодов КИЗ для проверки.",
+            "total_checked": 0,
+            "updated_count": 0,
+            "summary": {
+                "in_circulation": 0,
+                "withdrawn": 0,
+                "other": 0,
+            }
+        }
+
+    # 2. Пакетная онлайн-проверка в ГИС МТ True API с force_refresh=True
+    synced_map = await batch_verify_and_sync_cises(
+        seller=seller,
+        kiz_codes=all_kiz_codes,
+        db=db,
+        force_refresh=True,
+    )
+
+    await db.commit()
+
+    in_circ = 0
+    withdrawn = 0
+    other = 0
+
+    for code, info in synced_map.items():
+        if not info or not info.cz_status:
+            other += 1
+            continue
+        is_w, _ = is_kiz_withdrawn(
+            status=info.cz_status,
+            status_ex=info.cz_status_ex,
+            raw_payload=info.raw_cz_payload or {},
+        )
+        if is_w:
+            withdrawn += 1
+        elif str(info.cz_status).upper() in ("INTRODUCED", "IN_CIRCULATION"):
+            in_circ += 1
+        else:
+            other += 1
+
+    msg = f"Статусы {len(all_kiz_codes)} КИЗ успешно актуализированы через Честный Знак: В обороте: {in_circ}, Выбыли: {withdrawn}"
+    if other > 0:
+        msg += f", Прочие: {other}"
+
+    return {
+        "success": True,
+        "message": msg,
+        "total_checked": len(all_kiz_codes),
+        "updated_count": len(synced_map),
+        "summary": {
+            "in_circulation": in_circ,
+            "withdrawn": withdrawn,
+            "other": other,
+        }
+    }
+
+
 @router.post("/sync")
 @router.post("/refresh")
 async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):

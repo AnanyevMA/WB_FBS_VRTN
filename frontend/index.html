@@ -166,6 +166,10 @@
                         <button class="btn btn-secondary" onclick="openBatchKizSigningModal('RETURN')" title="Пакетный возврат в оборот отмененных заказов через ЭЦП" style="border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; display: flex; align-items: center; gap: 6px;">
                             <span>🔄</span> Возврат в ЧЗ (ЭЦП)
                         </button>
+                        <button class="btn btn-secondary" id="syncCzOrdersBtn" title="Обновить реальный статус всех КИЗ продавца через Честный Знак (True API)" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
+                            <span class="btn-text">🏷️ Актуализировать ЧЗ</span>
+                            <div class="loader"></div>
+                        </button>
                         <button class="btn btn-primary" id="syncOrdersBtn">
                             <span class="btn-text">Синхронизировать с WB</span>
                             <div class="loader"></div>

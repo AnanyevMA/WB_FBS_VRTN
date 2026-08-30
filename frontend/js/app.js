@@ -102,6 +102,26 @@ async function initApp() {
     const orderSearchInput = document.getElementById('orderSearchInput');
     if (orderSearchInput) orderSearchInput.addEventListener('input', () => loadOrders());
 
+    // Sync KIZ statuses from Chestny Znak button
+    const syncCzOrdersBtn = document.getElementById('syncCzOrdersBtn');
+    if (syncCzOrdersBtn) {
+        syncCzOrdersBtn.addEventListener('click', async (e) => {
+            if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+            const btn = e.currentTarget;
+            btn.classList.add('loading');
+            try {
+                const res = await apiFetch(`/sellers/${currentSellerId}/orders/sync-cz`, { method: 'POST' });
+                showToast('Честный Знак', res.message || 'Статусы КИЗ успешно обновлены через Честный Знак', 'success');
+                await loadOrders(true);
+                await loadDashboard();
+            } catch (err) {
+                showToast('Ошибка Честного Знака', err.message, 'error');
+            } finally {
+                btn.classList.remove('loading');
+            }
+        });
+    }
+
     // Sync orders from WB button
     const syncOrdersBtn = document.getElementById('syncOrdersBtn');
     if (syncOrdersBtn) {

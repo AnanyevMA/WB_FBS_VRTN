@@ -1,10 +1,10 @@
 /**
  * WB FBS Manager — CryptoPro CAdES Browser Integration
  * Подписание документов УКЭП (КриптоПро) в браузере.
+ *
+ * NOTE: isCryptoProAvailable and cryptoProCerts are declared in state.js (loaded first).
+ * Do NOT redeclare them here with let/const — it causes SyntaxError and kills this entire file.
  */
-
-let isCryptoProAvailable = false;
-let cryptoProCerts = [];
 
 /**
  * Update visual plugin badges across the app

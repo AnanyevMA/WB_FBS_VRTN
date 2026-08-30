@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-29T07:18:56.437006+00:00",
+  "updated_at": "2026-08-30T07:04:33.629213+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -4536,7 +4536,7 @@
     {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "a6f2c34dc8a3",
+      "hash": "f7ad5f693bcf",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {
@@ -4577,6 +4577,7 @@
           "docstring": "Wildberries API Client.",
           "methods": [
             "__init__",
+            "client",
             "__aenter__",
             "__aexit__",
             "close",

@@ -68,21 +68,42 @@ class WBClient:
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
-        self.client = httpx.AsyncClient(
-            base_url=self.BASE_URL,
-            headers=self.headers,
-            timeout=30.0,
-        )
+        self._client: Optional[httpx.AsyncClient] = None
+        self._loop = None
         self.log = logger
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Returns or creates an AsyncClient bound to the currently running event loop."""
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if (
+            self._client is None
+            or getattr(self._client, "is_closed", False)
+            or self._loop != current_loop
+        ):
+            self._client = httpx.AsyncClient(
+                base_url=self.BASE_URL,
+                headers=self.headers,
+                timeout=30.0,
+            )
+            self._loop = current_loop
+        return self._client
 
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
-        
+
     async def close(self):
-        await self.client.aclose()
+        if self._client and not getattr(self._client, "is_closed", False):
+            await self._client.aclose()
+            self._client = None
+            self._loop = None
 
     @retry(
         retry=retry_if_exception_type((WBRateLimitError, httpx.RequestError, httpx.TimeoutException)),

@@ -208,6 +208,19 @@ async function initAppPostLogin() {
         }
         if (typeof updateSignatureBadge === 'function') updateSignatureBadge();
     }, 30000);
+
+    // Initial background CZ token check & recurring 15-minute background refresh
+    setTimeout(() => {
+        if (typeof silentCheckAndRefreshCzToken === 'function') {
+            silentCheckAndRefreshCzToken();
+        }
+    }, 2500);
+
+    setInterval(() => {
+        if (typeof silentCheckAndRefreshCzToken === 'function') {
+            silentCheckAndRefreshCzToken();
+        }
+    }, 15 * 60 * 1000);
 }
 
 // Run init on DOM Ready

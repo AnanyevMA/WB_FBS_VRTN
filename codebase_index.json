@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-30T07:48:31.399639+00:00",
+  "updated_at": "2026-08-30T07:55:17.453091+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -2359,7 +2359,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "0cbb71c87fba",
+      "hash": "b8ac13740454",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2516,6 +2516,18 @@
             "router.post('/{seller_id}/cz-signin')"
           ],
           "docstring": "Authenticate with GIS MT True API using signature created in browser by CryptoPro Plugin."
+        },
+        {
+          "name": "get_cz_token_status",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/{seller_id}/cz-token-status')"
+          ],
+          "docstring": "Get the status and freshness of the seller's Chestny Znak (True API) session token."
         }
       ],
       "endpoints": [
@@ -2584,6 +2596,12 @@
           "path": "/{seller_id}/cz-signin",
           "handler": "cz_signin_with_signature",
           "docstring": "Authenticate with GIS MT True API using signature created in browser by CryptoPro Plugin."
+        },
+        {
+          "method": "GET",
+          "path": "/{seller_id}/cz-token-status",
+          "handler": "get_cz_token_status",
+          "docstring": "Get the status and freshness of the seller's Chestny Znak (True API) session token."
         }
       ],
       "celery_tasks": [],
@@ -6002,7 +6020,7 @@
     {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
-      "hash": "189dbf7ef7e7",
+      "hash": "d33916c6eff3",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6059,6 +6077,24 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify bulk sync queries True API, updates KizProductInfo and Order records."
+        },
+        {
+          "name": "test_get_cz_token_status_no_token",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify cz-token-status returns needs_refresh=True when seller has no CZ token."
+        },
+        {
+          "name": "test_get_cz_token_status_recent_and_expired",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify cz-token-status computes age_seconds and needs_refresh based on AuditLog."
         }
       ],
       "endpoints": [],
@@ -6066,7 +6102,9 @@
       "db_tables": [],
       "imports": [
         "app.api.orders",
+        "app.api.sellers",
         "app.database",
+        "app.models.audit",
         "app.models.order",
         "app.models.seller",
         "app.services.encryption",
@@ -6082,7 +6120,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "c6a52ffd0cf2",
+      "hash": "d322b08729e0",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

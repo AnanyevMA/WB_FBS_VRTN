@@ -247,3 +247,76 @@ async def test_sync_all_orders_cz_status_success_flow():
         assert order_2.kiz_cz_status == "RETIRED"
         assert order_2.kiz_status == KizStatus.WITHDRAWN
 
+
+@pytest.mark.asyncio
+async def test_get_cz_token_status_no_token():
+    """Verify cz-token-status returns needs_refresh=True when seller has no CZ token."""
+    from app.api.sellers import get_cz_token_status
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Seller Without CZ Token",
+            cz_inn="7711223344",
+            wb_api_token_encrypted=encrypt("wb_token"),
+            cz_token_encrypted=None,
+            is_active=True,
+        )
+        session.add(seller)
+        await session.commit()
+
+        status = await get_cz_token_status(seller_id=seller_id, db=session)
+        assert status["has_token"] is False
+        assert status["has_inn"] is True
+        assert status["needs_refresh"] is True
+        assert status["last_auth_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_cz_token_status_recent_and_expired():
+    """Verify cz-token-status computes age_seconds and needs_refresh based on AuditLog."""
+    from app.api.sellers import get_cz_token_status
+    from app.models.audit import AuditLog
+    from datetime import timedelta
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Seller Recent CZ Token",
+            cz_inn="7799887766",
+            wb_api_token_encrypted=encrypt("wb_token"),
+            cz_token_encrypted=encrypt("valid_cz_token"),
+            is_active=True,
+        )
+        session.add(seller)
+
+        # 1. Recent auth (1 hour ago) -> needs_refresh = False
+        recent_log = AuditLog(
+            seller_id=seller_id,
+            agent="cz_auth_ui",
+            action="BROWSER_AUTH_SUCCESS",
+            entity_type="seller",
+            entity_id=seller_id,
+            created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        session.add(recent_log)
+        await session.commit()
+
+        status_recent = await get_cz_token_status(seller_id=seller_id, db=session)
+        assert status_recent["has_token"] is True
+        assert status_recent["needs_refresh"] is False
+        assert status_recent["age_seconds"] is not None
+        assert 3500 <= status_recent["age_seconds"] <= 3700
+
+        # 2. Expired auth (7 hours ago) -> needs_refresh = True
+        recent_log.created_at = datetime.now(timezone.utc) - timedelta(hours=7)
+        await session.commit()
+
+        status_expired = await get_cz_token_status(seller_id=seller_id, db=session)
+        assert status_expired["has_token"] is True
+        assert status_expired["needs_refresh"] is True
+        assert status_expired["age_seconds"] >= 25000
+
+

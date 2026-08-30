@@ -106,6 +106,9 @@ async function loadSellersForDropdown() {
         currentSellerId = e.target.value;
         showToast('Переключение', `Выбран магазин`, 'info');
         if (typeof updateSignatureBadge === 'function') updateSignatureBadge();
+        if (typeof silentCheckAndRefreshCzToken === 'function') {
+            setTimeout(silentCheckAndRefreshCzToken, 1000);
+        }
         const activeNav = document.querySelector('.nav-item.active');
         const currentRoute = activeNav ? activeNav.dataset.route : '/';
         navigateTo(currentRoute);

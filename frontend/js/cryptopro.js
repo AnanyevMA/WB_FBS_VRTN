@@ -283,6 +283,126 @@ async function signDataWithCryptoPro(base64Data, thumbprint) {
     return signature;
 }
 
+let isSilentCzRefreshRunning = false;
+let lastSilentCzCheckTimestamp = 0;
+
+/**
+ * Бесшовное авто-продление токена Честного Знака в фоновом режиме через плагин КриптоПро.
+ * Проверяет срок действия токена текущего продавца и при необходимости продлевает его без блокировки интерфейса.
+ */
+async function silentCheckAndRefreshCzToken() {
+    const now = Date.now();
+    // Защита от параллельных запусков и слишком частых проверок (не чаще 1 раза в 3 минуты)
+    if (isSilentCzRefreshRunning || (now - lastSilentCzCheckTimestamp < 3 * 60 * 1000)) {
+        return;
+    }
+    if (!currentSellerId || !window.cadesplugin) {
+        return;
+    }
+
+    try {
+        isSilentCzRefreshRunning = true;
+        lastSilentCzCheckTimestamp = now;
+
+        const status = await apiFetch(`/sellers/${currentSellerId}/cz-token-status`);
+        if (!status || !status.needs_refresh || !status.cz_inn) {
+            return;
+        }
+
+        console.log(`[Auto-Refresh CZ] Seller ${currentSellerId} token needs refresh (age: ${status.age_seconds || 'n/a'}s). Silently requesting challenge...`);
+
+        // 1. Получаем строку аутентификации от ГИС МТ
+        const challenge = await apiFetch(`/sellers/${currentSellerId}/cz-challenge`);
+        if (!challenge || !challenge.uuid || !challenge.data) {
+            return;
+        }
+
+        // 2. Инициализируем cadesplugin
+        let cades = window.cadesplugin;
+        if (cades && typeof cades.then === 'function') {
+            cades = await cades;
+        }
+        if (!cades) return;
+
+        const CURRENT_USER = (cades.CAPICOM_CURRENT_USER_STORE !== undefined) ? cades.CAPICOM_CURRENT_USER_STORE : 2;
+        const MY_STORE = (cades.CAPICOM_MY_STORE !== undefined) ? cades.CAPICOM_MY_STORE : "My";
+        const STORE_OPEN_MAX = (cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+
+        const oStore = await cades.CreateObjectAsync("CAdESCOM.Store");
+        await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
+        const certs = await oStore.Certificates;
+        const count = await certs.Count;
+
+        if (count === 0) {
+            await oStore.Close();
+            return;
+        }
+
+        let selectedCert = null;
+        const targetThumb = status.thumbprint ? status.thumbprint.toLowerCase() : null;
+        const inn = status.cz_inn;
+
+        for (let i = 1; i <= count; i++) {
+            try {
+                const c = await certs.Item(i);
+                let thumb = "";
+                let sub = "";
+                try { thumb = typeof c.Thumbprint !== 'undefined' ? await c.Thumbprint : (typeof c.get_Thumbprint === 'function' ? await c.get_Thumbprint() : ''); } catch (e) {}
+                try { sub = typeof c.SubjectName !== 'undefined' ? await c.SubjectName : (typeof c.get_SubjectName === 'function' ? await c.get_SubjectName() : ''); } catch (e) {}
+
+                if (targetThumb && thumb && thumb.toLowerCase() === targetThumb) {
+                    selectedCert = c;
+                    break;
+                }
+                if (inn && sub && sub.includes(inn)) {
+                    selectedCert = c;
+                    break;
+                }
+            } catch (e) {}
+        }
+
+        if (!selectedCert && count > 0) {
+            selectedCert = await certs.Item(1);
+        }
+
+        if (!selectedCert) {
+            await oStore.Close();
+            return;
+        }
+
+        // 3. Создаем присоединенную подпись строки challenge
+        const oSigner = await cades.CreateObjectAsync("CAdESCOM.CPSigner");
+        await oSigner.propset_Certificate(selectedCert);
+
+        const oSignedData = await cades.CreateObjectAsync("CAdESCOM.CadesSignedData");
+        await oSignedData.propset_Content(challenge.data);
+
+        const signature = await oSignedData.SignCades(oSigner, cades.CADESCOM_CADES_BES, false);
+        await oStore.Close();
+
+        // 4. Отправляем подписанный challenge на сервер
+        const signinRes = await apiFetch(`/sellers/${currentSellerId}/cz-signin`, {
+            method: 'POST',
+            body: JSON.stringify({
+                uuid: challenge.uuid,
+                data: signature
+            })
+        });
+
+        console.log(`[Auto-Refresh CZ] ✅ Token for seller ${currentSellerId} refreshed silently:`, signinRes.token_preview || 'OK');
+        
+        // Обновляем плашку статуса в окне настроек, если оно открыто
+        const czStatusEl = document.getElementById('seller_cz_token_status');
+        if (czStatusEl) {
+            czStatusEl.innerHTML = `<span style="color:var(--status-delivered); font-weight:600;">✅ Токен активен в БД (${signinRes.token_preview || 'обновлен в фоне'})</span>`;
+        }
+    } catch (e) {
+        console.debug("[Auto-Refresh CZ] Silent refresh note:", e.message || e);
+    } finally {
+        isSilentCzRefreshRunning = false;
+    }
+}
+
 // Global window bindings
 window.initCryptoProPlugin = initCryptoProPlugin;
 window.checkPluginLoaded = checkPluginLoaded;
@@ -290,3 +410,4 @@ window.populateCertificatesDropdown = populateCertificatesDropdown;
 window.onCertSelected = onCertSelected;
 window.signDataWithCryptoPro = signDataWithCryptoPro;
 window.signBase64WithCades = signDataWithCryptoPro;
+window.silentCheckAndRefreshCzToken = silentCheckAndRefreshCzToken;

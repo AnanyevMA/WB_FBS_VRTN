@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-08-30 07:48:31 UTC | **Файлов проиндексировано**: 91  
+> **Дата актуализации**: 2026-08-30 07:55:17 UTC | **Файлов проиндексировано**: 91  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -44,7 +44,7 @@
 | [`app/api/kiz/signature_batches.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz/signature_batches.py) | — | `GET /kiz/signature-batches` → `list_signature_batches`<br>`GET /kiz/signature-batches/{batch_id}` → `get_signature_batch`<br>`POST /kiz/signature-batches/{batch_id}/sync-cz` → `sync_signature_batch_cz`<br>`POST /kiz/signature-batches/{batch_id}/prepare-documents` → `prepare_batch_documents_for_signing`<br>`POST /kiz/signature-batches/{batch_id}/submit-signed` → `submit_signed_batch`<br>`DELETE /kiz/signature-batches/{batch_id}` → `cancel_signature_batch` | FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager |
 | [`app/api/orders.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/orders.py) | — | `GET /stats` → `get_dashboard_stats`<br>`GET ` → `list_orders`<br>`GET /{order_id}` → `get_order`<br>`POST /{order_id}/kiz-check` → `check_order_kiz_status`<br>`POST /{order_id}/cancel` → `cancel_order`<br>`POST /{order_id}/mark-assembling` → `mark_assembling`<br>`GET /{order_id}/sticker` → `get_sticker`<br>`POST /sync-cz` → `sync_all_orders_cz_status`<br>`POST /sync-cz-all` → `sync_all_orders_cz_status`<br>`POST /sync` → `refresh_orders`<br>`POST /refresh` → `refresh_orders` | Модуль кодовой базы |
 | [`app/api/qa.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/qa.py) | — | `POST /run-tests` → `run_qa_tests` | QA Router — Эндпоинты запуска автоматического тестировщика |
-| [`app/api/sellers.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/sellers.py) | — | `POST ` → `create_seller`<br>`GET ` → `list_sellers`<br>`GET /{seller_id}` → `get_seller`<br>`PATCH /{seller_id}` → `update_seller`<br>`DELETE /{seller_id}` → `deactivate_seller`<br>`POST /{seller_id}/test-connection` → `test_connection`<br>`POST /{seller_id}/toggle-polling` → `toggle_polling`<br>`GET /{seller_id}/time` → `get_seller_time`<br>`GET /{seller_id}/pending-summary` → `get_pending_summary`<br>`GET /{seller_id}/cz-challenge` → `get_cz_auth_challenge`<br>`POST /{seller_id}/cz-signin` → `cz_signin_with_signature` | Модуль кодовой базы |
+| [`app/api/sellers.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/sellers.py) | — | `POST ` → `create_seller`<br>`GET ` → `list_sellers`<br>`GET /{seller_id}` → `get_seller`<br>`PATCH /{seller_id}` → `update_seller`<br>`DELETE /{seller_id}` → `deactivate_seller`<br>`POST /{seller_id}/test-connection` → `test_connection`<br>`POST /{seller_id}/toggle-polling` → `toggle_polling`<br>`GET /{seller_id}/time` → `get_seller_time`<br>`GET /{seller_id}/pending-summary` → `get_pending_summary`<br>`GET /{seller_id}/cz-challenge` → `get_cz_auth_challenge`<br>`POST /{seller_id}/cz-signin` → `cz_signin_with_signature`<br>`GET /{seller_id}/cz-token-status` → `get_cz_token_status` | Модуль кодовой базы |
 | [`app/api/supplies.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/supplies.py) | — | `GET ` → `list_supplies`<br>`POST /sync` → `sync_supplies`<br>`POST /refresh` → `sync_supplies`<br>`POST ` → `create_supply`<br>`GET /{supply_id}` → `get_supply`<br>`GET /{supply_id}/barcode` → `get_supply_barcode`<br>`POST /create-from-pending` → `create_supply_from_pending` | Модуль кодовой базы |
 
 ### ⚙️ Бизнес-Логика & Клиенты API (`app/services/`)
@@ -128,7 +128,7 @@
 | [`tests/test_polling_and_digest_schema.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_polling_and_digest_schema.py) | `TestDigestSettings`, `TestSellerCreatePollingInterval`, `TestSellerUpdateDigest`, `TestSellerResponseComputedInterval` | — | Tests: polling interval + digest settings — seller schema validation. |
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
-| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 2 | Модуль кодовой базы |
+| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 4 | Модуль кодовой базы |
 
 ### 📄 Системные Конфигурации & Скрипты
 

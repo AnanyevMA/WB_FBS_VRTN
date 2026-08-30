@@ -425,3 +425,52 @@ async def cz_signin_with_signature(
         raise HTTPException(status_code=err.status_code or 400, detail=str(err))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Ошибка аутентификации: {str(exc)}")
+
+
+@router.get("/{seller_id}/cz-token-status")
+async def get_cz_token_status(seller_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Get the status and freshness of the seller's Chestny Znak (True API) session token.
+    Used by the client application to trigger silent background token refresh.
+    """
+    from app.models.audit import AuditLog
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    has_token = bool(seller.cz_token_encrypted)
+    stmt = (
+        select(AuditLog.created_at)
+        .where(
+            AuditLog.seller_id == seller_id,
+            AuditLog.action.in_(["BROWSER_AUTH_SUCCESS", "TOKEN_REFRESH_SUCCESS"]),
+        )
+        .order_by(AuditLog.created_at.desc())
+        .limit(1)
+    )
+    last_auth_at = (await db.execute(stmt)).scalar_one_or_none()
+
+    age_seconds = None
+    needs_refresh = True
+    if has_token:
+        if last_auth_at:
+            now_utc = datetime.now(timezone.utc)
+            auth_dt = last_auth_at if last_auth_at.tzinfo else last_auth_at.replace(tzinfo=timezone.utc)
+            age_seconds = max(0, int((now_utc - auth_dt).total_seconds()))
+            # True API token expires in 10 hours (36000 sec). Refresh when older than 6 hours (21600 sec)
+            needs_refresh = age_seconds > (6 * 3600)
+        else:
+            # Token exists in DB but no recent audit log recorded yet
+            needs_refresh = False
+
+    return {
+        "seller_id": seller_id,
+        "has_token": has_token,
+        "has_inn": bool(seller.cz_inn),
+        "cz_inn": seller.cz_inn,
+        "thumbprint": seller.cryptopro_cert_thumbprint or seller.cz_cert_path,
+        "last_auth_at": last_auth_at.isoformat() if last_auth_at else None,
+        "age_seconds": age_seconds,
+        "needs_refresh": needs_refresh,
+    }
+

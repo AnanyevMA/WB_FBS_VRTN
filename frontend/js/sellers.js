@@ -4,6 +4,18 @@
 
 let currentEditingSellerId = null;
 
+async function safePopulateCertificatesDropdown(targetId = null) {
+    try {
+        if (typeof window.populateCertificatesDropdown === 'function') {
+            await window.populateCertificatesDropdown(targetId);
+        } else if (typeof populateCertificatesDropdown === 'function') {
+            await populateCertificatesDropdown(targetId);
+        }
+    } catch (e) {
+        console.warn('CryptoPro certs dropdown note:', e);
+    }
+}
+
 function openAddSellerModal() {
     currentEditingSellerId = null;
     document.getElementById('sellerForm').reset();
@@ -13,7 +25,7 @@ function openAddSellerModal() {
     if (testResultBox) testResultBox.style.display = 'none';
 
     // Populate crypto certificates
-    populateCertificatesDropdown();
+    safePopulateCertificatesDropdown();
     openModal('sellerModal');
 }
 
@@ -88,7 +100,7 @@ async function editSeller(sellerId) {
         }
         
         // Sync certificate select if matches known thumbprint
-        await populateCertificatesDropdown();
+        await safePopulateCertificatesDropdown();
         const sellerCertSelect = document.getElementById('seller_cert_select');
         if (sellerCertSelect && certVal) {
             const matchOpt = Array.from(sellerCertSelect.options).find(o => o.value.toLowerCase() === certVal.toLowerCase());

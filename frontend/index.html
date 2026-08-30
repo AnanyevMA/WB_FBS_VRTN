@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=1.0.2">
+    <link rel="stylesheet" href="css/style.css?v=1.0.5">
 </head>
 <body>
 
@@ -166,11 +166,11 @@
                         <button class="btn btn-secondary" onclick="openBatchKizSigningModal('RETURN')" title="Пакетный возврат в оборот отмененных заказов через ЭЦП" style="border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; display: flex; align-items: center; gap: 6px;">
                             <span>🔄</span> Возврат в ЧЗ (ЭЦП)
                         </button>
-                        <button class="btn btn-secondary" id="syncCzOrdersBtn" title="Обновить реальный статус всех КИЗ продавца через Честный Знак (True API)" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
+                        <button class="btn btn-secondary" id="syncCzOrdersBtn" onclick="syncAllOrdersCzStatus()" title="Обновить реальный статус всех КИЗ продавца через Честный Знак (True API)" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
                             <span class="btn-text">🏷️ Актуализировать ЧЗ</span>
                             <div class="loader"></div>
                         </button>
-                        <button class="btn btn-primary" id="syncOrdersBtn">
+                        <button class="btn btn-primary" id="syncOrdersBtn" onclick="syncOrdersFromWB()">
                             <span class="btn-text">Синхронизировать с WB</span>
                             <div class="loader"></div>
                         </button>
@@ -994,18 +994,18 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- JavaScript Modules -->
-<script src="js/state.js?v=1.0.3"></script>
-<script src="js/api.js?v=1.0.3"></script>
-<script src="js/ui.js?v=1.0.3"></script>
-<script src="js/auth.js?v=1.0.3"></script>
-<script src="js/dashboard.js?v=1.0.3"></script>
-<script src="js/orders.js?v=1.0.3"></script>
-<script src="js/cryptopro.js?v=1.0.3"></script>
-<script src="js/kiz.js?v=1.0.3"></script>
-<script src="js/signature_queue.js?v=1.0.3"></script>
-<script src="js/supplies.js?v=1.0.3"></script>
-<script src="js/sellers.js?v=1.0.3"></script>
-<script src="js/audit.js?v=1.0.3"></script>
-<script src="js/app.js?v=1.0.3"></script>
+<script src="js/state.js?v=1.0.5"></script>
+<script src="js/api.js?v=1.0.5"></script>
+<script src="js/ui.js?v=1.0.5"></script>
+<script src="js/auth.js?v=1.0.5"></script>
+<script src="js/dashboard.js?v=1.0.5"></script>
+<script src="js/orders.js?v=1.0.5"></script>
+<script src="js/cryptopro.js?v=1.0.5"></script>
+<script src="js/kiz.js?v=1.0.5"></script>
+<script src="js/signature_queue.js?v=1.0.5"></script>
+<script src="js/supplies.js?v=1.0.5"></script>
+<script src="js/sellers.js?v=1.0.5"></script>
+<script src="js/audit.js?v=1.0.5"></script>
+<script src="js/app.js?v=1.0.5"></script>
 </body>
 </html>

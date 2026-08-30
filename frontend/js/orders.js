@@ -341,3 +341,40 @@ async function submitModalKizAttach() {
         btn.classList.remove('loading');
     }
 }
+
+async function syncAllOrdersCzStatus() {
+    if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+    const btn = document.getElementById('syncCzOrdersBtn');
+    if (btn) btn.classList.add('loading');
+    showToast('Честный Знак', 'Запрос актуальных статусов КИЗ в ГИС МТ...', 'info');
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/orders/sync-cz`, { method: 'POST' });
+        showToast('Честный Знак', res.message || 'Статусы КИЗ успешно обновлены через Честный Знак', 'success');
+        await loadOrders(true);
+        await loadDashboard();
+    } catch (err) {
+        showToast('Ошибка Честного Знака', err.message || String(err), 'error');
+    } finally {
+        if (btn) btn.classList.remove('loading');
+    }
+}
+
+async function syncOrdersFromWB() {
+    if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+    const btn = document.getElementById('syncOrdersBtn');
+    if (btn) btn.classList.add('loading');
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/orders/sync`, { method: 'POST' });
+        showToast('Успех', res.message || 'Синхронизация заказов с WB запущена', 'success');
+        await loadOrders();
+        await loadDashboard();
+    } catch (err) {
+        showToast('Ошибка', err.message || String(err), 'error');
+    } finally {
+        if (btn) btn.classList.remove('loading');
+    }
+}
+
+window.syncAllOrdersCzStatus = syncAllOrdersCzStatus;
+window.syncOrdersFromWB = syncOrdersFromWB;
+

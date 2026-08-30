@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Knowledge Base",
-  "updated_at": "2026-08-30T07:37:29.793369+00:00",
+  "updated_at": "2026-08-30T07:48:26.063639+00:00",
   "description": "High-level two-tier semantic routing and lookup index. Agents must query this index to locate the exact document before loading full content.",
   "categories": [
     {

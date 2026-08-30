@@ -608,14 +608,32 @@ async def sync_all_orders_cz_status(seller_id: str, db: AsyncSession = Depends(g
         }
 
     # 2. Пакетная онлайн-проверка в ГИС МТ True API с force_refresh=True
-    synced_map = await batch_verify_and_sync_cises(
-        seller=seller,
-        kiz_codes=all_kiz_codes,
-        db=db,
-        force_refresh=True,
-    )
+    from app.services.cz_client import CZUnauthorizedError
+    try:
+        synced_map = await batch_verify_and_sync_cises(
+            seller=seller,
+            kiz_codes=all_kiz_codes,
+            db=db,
+            force_refresh=True,
+        )
+    except CZUnauthorizedError as ue:
+        raise HTTPException(
+            status_code=401,
+            detail=str(ue)
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ошибка актуализации Честного Знака: {exc}"
+        )
 
     await db.commit()
+
+    if not synced_map or len(synced_map) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Честный Знак не вернул данные по указанным кодам маркировки. Проверьте правильность токена или авторизуйтесь через ЭЦП в Настройках магазина."
+        )
 
     in_circ = 0
     withdrawn = 0
@@ -637,7 +655,7 @@ async def sync_all_orders_cz_status(seller_id: str, db: AsyncSession = Depends(g
         else:
             other += 1
 
-    msg = f"Статусы {len(all_kiz_codes)} КИЗ успешно актуализированы через Честный Знак: В обороте: {in_circ}, Выбыли: {withdrawn}"
+    msg = f"Статусы {len(synced_map)} КИЗ успешно актуализированы через Честный Знак: В обороте: {in_circ}, Выбыли: {withdrawn}"
     if other > 0:
         msg += f", Прочие: {other}"
 

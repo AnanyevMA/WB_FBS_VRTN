@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-30T07:37:34.899222+00:00",
+  "updated_at": "2026-08-30T07:48:31.399639+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -2083,7 +2083,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "2c830dcc262d",
+      "hash": "de7caa0f5e25",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4331,7 +4331,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "4e928ff7ac85",
+      "hash": "0ae6dd9e3dc2",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6082,7 +6082,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "6b994518bf33",
+      "hash": "c6a52ffd0cf2",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

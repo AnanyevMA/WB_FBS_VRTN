@@ -130,7 +130,7 @@ function onSellerCertChanged() {
 
     if (certInput) certInput.value = thumb;
 
-    const cert = cryptoProCerts.find(c => c.thumbprint === thumb);
+    const cert = cryptoProCerts.find(c => c.thumbprint && c.thumbprint.toLowerCase() === thumb.toLowerCase());
     if (cert) {
         if (previewEl) {
             previewEl.innerHTML = `<span style="color:#34d399;">✓ Выбран:</span> <strong>${cert.subject}</strong> ${cert.inn ? `(ИНН: ${cert.inn})` : ''} — действует до ${new Date(cert.validTo).toLocaleDateString('ru-RU')}`;

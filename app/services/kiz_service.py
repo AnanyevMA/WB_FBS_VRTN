@@ -626,55 +626,75 @@ async def batch_verify_and_sync_cises(
         parsed = parse_kiz_code(c)
         clean = parsed.get("clean_cis") or c.strip()
         cis_to_original[clean] = c
+        cis_to_original[c.strip()] = c
+        if clean.startswith("01") and len(clean) >= 16:
+            # Also map without 01/21 prefix
+            gtin = clean[2:16]
+            serial = clean[16:]
+            cis_to_original[f"{gtin}{serial}"] = c
         lookup_cises.append(clean)
 
     cz_token = decrypt(seller.cz_token_encrypted) if seller.cz_token_encrypted else None
     thumbprint = seller.cryptopro_cert_thumbprint or seller.cz_cert_path
 
+    from app.services.cz_client import CZClient, CZUnauthorizedError
+
     if not cz_token and not thumbprint:
-        logger.debug(f"Seller {seller.id} has no CZ token or cert thumbprint for batch verify")
+        logger.warning(f"Seller {seller.id} has no CZ token or cert thumbprint for batch verify")
+        if force_refresh:
+            raise CZUnauthorizedError("У продавца не настроен токен Честного Знака и не выбран сертификат ЭЦП. Откройте «Настройки» магазина и нажмите «Получить через ЭЦП».")
         return results
 
-    try:
-        from app.services.cz_client import CZClient, CZUnauthorizedError
-        async with CZClient(inn=seller.cz_inn, token=cz_token, cert_thumbprint=thumbprint) as cz:
-            cises_info = []
-            try:
-                cises_info = await cz.get_cises_info(lookup_cises)
-            except CZUnauthorizedError:
+    async with CZClient(inn=seller.cz_inn, token=cz_token, cert_thumbprint=thumbprint) as cz:
+        cises_info = []
+        try:
+            cises_info = await cz.get_cises_info(lookup_cises)
+        except CZUnauthorizedError:
+            if thumbprint:
                 try:
                     await cz.authenticate()
                     cises_info = await cz.get_cises_info(lookup_cises)
                 except Exception as auth_err:
                     logger.warning(f"Batch CZ auth error for seller {seller.id}: {auth_err}")
-            except Exception as cz_err:
-                logger.warning(f"Batch CZ get_cises_info error: {cz_err}")
+                    if force_refresh:
+                        raise CZUnauthorizedError(f"Ошибка авторизации в Честном Знаке: {auth_err}")
+            else:
+                if force_refresh:
+                    raise CZUnauthorizedError("Срок действия токена Честного Знака истек (401). Перейдите в «Настройки» продавца и нажмите «Получить через ЭЦП» для обновления токена.")
+        except Exception as cz_err:
+            logger.warning(f"Batch CZ get_cises_info error: {cz_err}")
+            if force_refresh:
+                raise RuntimeError(f"Ошибка обращения к Честному Знаку: {cz_err}")
 
-            if cises_info and isinstance(cises_info, list):
-                for item in cises_info:
-                    info = item.get("cisInfo") or item.get("result") or item
-                    if not isinstance(info, dict):
-                        continue
+        if cises_info and isinstance(cises_info, list):
+            for item in cises_info:
+                info = item.get("cisInfo") or item.get("result") or item
+                if not isinstance(info, dict):
+                    continue
 
-                    req_cis = item.get("requestedCis") or info.get("requestedCis") or info.get("cis")
-                    orig_code = cis_to_original.get(req_cis) or req_cis
+                req_cis = item.get("requestedCis") or info.get("requestedCis") or info.get("cis") or item.get("cis")
+                orig_code = cis_to_original.get(req_cis) or cis_to_original.get(str(req_cis).strip())
+                if not orig_code:
+                    for k, orig in cis_to_original.items():
+                        if k and (k in str(req_cis) or str(req_cis) in k):
+                            orig_code = orig
+                            break
+                if not orig_code:
+                    orig_code = str(req_cis).strip()
 
-                    st = info.get("status") or info.get("cisStatus")
-                    st_ex = info.get("statusEx")
-                    if st:
-                        st = str(st).upper().strip()
+                st = info.get("status") or info.get("cisStatus") or info.get("statusName")
+                st_ex = info.get("statusEx")
+                if st:
+                    st = str(st).upper().strip()
 
-                    k_info = await sync_kiz_status_record(
-                        db=db,
-                        kiz_code=orig_code,
-                        cz_status=st,
-                        cz_status_ex=st_ex,
-                        raw_payload=info,
-                        seller_id=str(seller.id),
-                    )
-                    results[orig_code] = k_info
-
-    except Exception as e:
-        logger.warning(f"Error during batch_verify_and_sync_cises for seller {seller.id}: {e}")
+                k_info = await sync_kiz_status_record(
+                    db=db,
+                    kiz_code=orig_code,
+                    cz_status=st,
+                    cz_status_ex=st_ex,
+                    raw_payload=info,
+                    seller_id=str(seller.id),
+                )
+                results[orig_code] = k_info
 
     return results

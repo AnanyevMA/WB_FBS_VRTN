@@ -45,7 +45,10 @@ async function checkPluginLoaded() {
         return false;
     }
     try {
-        await window.cadesplugin;
+        let cades = window.cadesplugin;
+        if (cades && typeof cades.then === 'function') {
+            cades = await cades;
+        }
         isCryptoProAvailable = true;
         if (badge) {
             badge.style.background = 'rgba(16, 185, 129, 0.15)';
@@ -67,36 +70,90 @@ async function checkPluginLoaded() {
     }
 }
 
+function renderCertsToSelectElements(customTargetId = null) {
+    const selectElements = [];
+    if (customTargetId) {
+        const el = document.getElementById(customTargetId);
+        if (el) selectElements.push(el);
+    }
+    const defaultSelects = ['seller_cert_select', 'kizSigningCertSelect', 'batchCertSelect'];
+    defaultSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !selectElements.includes(el)) selectElements.push(el);
+    });
+
+    selectElements.forEach(sel => {
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">-- Выберите сертификат УКЭП --</option>';
+        if (!cryptoProCerts || cryptoProCerts.length === 0) {
+            sel.innerHTML = '<option value="">-- В хранилище "Личные" нет сертификатов --</option>';
+            return;
+        }
+        cryptoProCerts.forEach(cert => {
+            const opt = document.createElement('option');
+            opt.value = cert.thumbprint;
+            opt.textContent = `${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''} — до ${new Date(cert.validTo).toLocaleDateString('ru-RU')}`;
+            sel.appendChild(opt);
+        });
+        if (currentVal) {
+            const match = Array.from(sel.options).find(o => o.value && o.value.toLowerCase() === currentVal.toLowerCase());
+            if (match) sel.value = match.value;
+        }
+    });
+}
+
 async function populateCertificatesDropdown(customTargetId = null) {
-    const select = customTargetId ? document.getElementById(customTargetId) : document.getElementById('kizSigningCertSelect');
-    const sellerCertSelect = document.getElementById('seller_cert_select');
-    
-    if (select) select.innerHTML = '<option value="">-- Поиск сертификатов в хранилище... --</option>';
-    if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- Поиск сертификатов в хранилище... --</option>';
+    if (cryptoProCerts && cryptoProCerts.length > 0) {
+        renderCertsToSelectElements(customTargetId);
+    }
 
     if (!window.cadesplugin) {
-        if (select) select.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен (доступна серверная отправка) --</option>';
-        if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен --</option>';
+        if (typeof loadCadesScript === 'function') loadCadesScript();
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    if (!window.cadesplugin) {
+        const defaultSelects = ['seller_cert_select', 'kizSigningCertSelect', 'batchCertSelect'];
+        defaultSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && (!cryptoProCerts || cryptoProCerts.length === 0)) {
+                el.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен в браузере --</option>';
+            }
+        });
         return;
     }
 
     try {
-        const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
-        await oStore.Open(window.cadesplugin.CAPICOM_CURRENT_USER_STORE, window.cadesplugin.CAPICOM_MY_STORE, window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED);
+        let cades = window.cadesplugin;
+        if (cades && typeof cades.then === 'function') {
+            cades = await cades;
+        }
+        if (!cades) return;
+
+        const CURRENT_USER = (cades.CAPICOM_CURRENT_USER_STORE !== undefined) ? cades.CAPICOM_CURRENT_USER_STORE : 2;
+        const MY_STORE = (cades.CAPICOM_MY_STORE !== undefined) ? cades.CAPICOM_MY_STORE : "My";
+        const STORE_OPEN_MAX = (cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+
+        const oStore = await cades.CreateObjectAsync("CAdESCOM.Store");
+        await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
         const certs = await oStore.Certificates;
         const count = await certs.Count;
-        cryptoProCerts = [];
-
-        if (select) select.innerHTML = '<option value="">-- Выберите сертификат для подписания --</option>';
-        if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- Выберите сертификат УКЭП для магазина --</option>';
+        const loadedCerts = [];
 
         for (let i = 1; i <= count; i++) {
-            const cert = await certs.Item(i);
             try {
-                const subjectName = await cert.SubjectName;
-                const validTo = await cert.ValidToDate;
-                const thumbprint = await cert.Thumbprint;
-                const serial = await cert.SerialNumber;
+                const cert = await certs.Item(i);
+                let subjectName = "";
+                let validTo = "";
+                let thumbprint = "";
+                let serial = "";
+
+                try { subjectName = typeof cert.SubjectName !== 'undefined' ? await cert.SubjectName : (typeof cert.get_SubjectName === 'function' ? await cert.get_SubjectName() : ''); } catch (e) {}
+                try { validTo = typeof cert.ValidToDate !== 'undefined' ? await cert.ValidToDate : (typeof cert.get_ValidToDate === 'function' ? await cert.get_ValidToDate() : ''); } catch (e) {}
+                try { thumbprint = typeof cert.Thumbprint !== 'undefined' ? await cert.Thumbprint : (typeof cert.get_Thumbprint === 'function' ? await cert.get_Thumbprint() : ''); } catch (e) {}
+                try { serial = typeof cert.SerialNumber !== 'undefined' ? await cert.SerialNumber : (typeof cert.get_SerialNumber === 'function' ? await cert.get_SerialNumber() : ''); } catch (e) {}
+
+                if (!thumbprint) continue;
 
                 let cn = subjectName;
                 const cnMatch = subjectName.match(/CN=([^,]+)/);
@@ -105,50 +162,35 @@ async function populateCertificatesDropdown(customTargetId = null) {
                 const innMatch = subjectName.match(/ИНН=([^,]+)/) || subjectName.match(/ИНН ЮЛ=([^,]+)/) || subjectName.match(/INN=([^,]+)/);
                 if (innMatch) inn = innMatch[1];
 
-                const certData = {
+                loadedCerts.push({
                     thumbprint: thumbprint,
                     subject: cn,
                     inn: inn,
                     validTo: validTo,
                     serial: serial,
                     rawSubject: subjectName
-                };
-                cryptoProCerts.push(certData);
-
-                const label = `${cn} ${inn ? `(ИНН: ${inn})` : ''} — до ${new Date(validTo).toLocaleDateString('ru-RU')}`;
-                
-                if (select) {
-                    const opt = document.createElement('option');
-                    opt.value = thumbprint;
-                    opt.textContent = label;
-                    select.appendChild(opt);
-                }
-
-                if (sellerCertSelect && !customTargetId) {
-                    const opt2 = document.createElement('option');
-                    opt2.value = thumbprint;
-                    opt2.textContent = label;
-                    sellerCertSelect.appendChild(opt2);
-                }
+                });
             } catch (ce) {
-                console.log("Error inspecting cert item:", ce);
+                console.log("Error reading cert item:", ce);
             }
         }
         await oStore.Close();
+        cryptoProCerts = loadedCerts;
+        renderCertsToSelectElements(customTargetId);
 
-        if (cryptoProCerts.length === 0) {
-            if (select) select.innerHTML = '<option value="">-- В хранилище "Личные" нет доступных сертификатов --</option>';
-            if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- Сертификаты не найдены --</option>';
-        } else {
-            if (select && select.options.length > 1) {
-                select.selectedIndex = 1;
-                if (!customTargetId) onCertSelected();
-            }
+        // Auto select callback if any
+        if (!customTargetId && typeof onCertSelected === 'function') {
+            onCertSelected();
         }
     } catch (e) {
         console.error("Error reading certs from store:", e);
-        if (select) select.innerHTML = `<option value="">-- Ошибка чтения сертификатов: ${e.message} --</option>`;
-        if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = `<option value="">-- Ошибка чтения: ${e.message} --</option>`;
+        const defaultSelects = ['seller_cert_select', 'kizSigningCertSelect', 'batchCertSelect'];
+        defaultSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && (!cryptoProCerts || cryptoProCerts.length === 0)) {
+                el.innerHTML = `<option value="">-- Ошибка чтения сертификатов: ${e.message} --</option>`;
+            }
+        });
     }
 }
 

@@ -45,10 +45,7 @@ async function checkPluginLoaded() {
         return false;
     }
     try {
-        let cades = window.cadesplugin;
-        if (cades && typeof cades.then === 'function') {
-            cades = await cades;
-        }
+        await window.cadesplugin;
         isCryptoProAvailable = true;
         if (badge) {
             badge.style.background = 'rgba(16, 185, 129, 0.15)';
@@ -70,88 +67,51 @@ async function checkPluginLoaded() {
     }
 }
 
-function renderCertsToSelectElements(customTargetId = null) {
-    const selectElements = [];
-    if (customTargetId) {
-        const el = document.getElementById(customTargetId);
-        if (el) selectElements.push(el);
-    }
-    const defaultSelects = ['seller_cert_select', 'kizSigningCertSelect', 'batchCertSelect'];
-    defaultSelects.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && !selectElements.includes(el)) selectElements.push(el);
-    });
-
-    selectElements.forEach(sel => {
-        const currentVal = sel.value;
-        sel.innerHTML = '<option value="">-- Выберите сертификат УКЭП --</option>';
-        if (!cryptoProCerts || cryptoProCerts.length === 0) {
-            sel.innerHTML = '<option value="">-- В хранилище "Личные" нет сертификатов --</option>';
-            return;
-        }
-        cryptoProCerts.forEach(cert => {
-            const opt = document.createElement('option');
-            opt.value = cert.thumbprint;
-            opt.textContent = `${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''} — до ${new Date(cert.validTo).toLocaleDateString('ru-RU')}`;
-            sel.appendChild(opt);
-        });
-        if (currentVal) {
-            const match = Array.from(sel.options).find(o => o.value && o.value.toLowerCase() === currentVal.toLowerCase());
-            if (match) sel.value = match.value;
-        }
-    });
-}
-
 async function populateCertificatesDropdown(customTargetId = null) {
-    if (cryptoProCerts && cryptoProCerts.length > 0) {
-        renderCertsToSelectElements(customTargetId);
-    }
+    const select = customTargetId ? document.getElementById(customTargetId) : document.getElementById('kizSigningCertSelect');
+    const sellerCertSelect = document.getElementById('seller_cert_select');
+    const batchCertSelect = document.getElementById('batchCertSelect');
+    
+    if (select) select.innerHTML = '<option value="">-- Поиск сертификатов в хранилище... --</option>';
+    if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- Поиск сертификатов в хранилище... --</option>';
+    if (batchCertSelect && !customTargetId) batchCertSelect.innerHTML = '<option value="">-- Поиск сертификатов в хранилище... --</option>';
 
     if (!window.cadesplugin) {
-        if (typeof loadCadesScript === 'function') loadCadesScript();
-        await new Promise(r => setTimeout(r, 400));
-    }
-
-    if (!window.cadesplugin) {
-        const defaultSelects = ['seller_cert_select', 'kizSigningCertSelect', 'batchCertSelect'];
-        defaultSelects.forEach(id => {
-            const el = document.getElementById(id);
-            if (el && (!cryptoProCerts || cryptoProCerts.length === 0)) {
-                el.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен в браузере --</option>';
-            }
-        });
+        if (select) select.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен (доступна серверная отправка) --</option>';
+        if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен --</option>';
+        if (batchCertSelect && !customTargetId) batchCertSelect.innerHTML = '<option value="">-- КриптоПро плагин не обнаружен --</option>';
         return;
     }
 
     try {
-        let cades = window.cadesplugin;
-        if (cades && typeof cades.then === 'function') {
-            cades = await cades;
-        }
-        if (!cades) return;
+        await window.cadesplugin;
 
-        const CURRENT_USER = (cades.CAPICOM_CURRENT_USER_STORE !== undefined) ? cades.CAPICOM_CURRENT_USER_STORE : 2;
-        const MY_STORE = (cades.CAPICOM_MY_STORE !== undefined) ? cades.CAPICOM_MY_STORE : "My";
-        const STORE_OPEN_MAX = (cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+        const CURRENT_USER = window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;
+        const MY_STORE = window.cadesplugin.CAPICOM_MY_STORE !== undefined ? window.cadesplugin.CAPICOM_MY_STORE : "My";
+        const STORE_OPEN_MAX = window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined ? window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
 
-        const oStore = await cades.CreateObjectAsync("CAdESCOM.Store");
+        const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
         await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
         const certs = await oStore.Certificates;
         const count = await certs.Count;
-        const loadedCerts = [];
+        cryptoProCerts = [];
+
+        if (select) select.innerHTML = '<option value="">-- Выберите сертификат для подписания --</option>';
+        if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- Выберите сертификат УКЭП для магазина --</option>';
+        if (batchCertSelect && !customTargetId) batchCertSelect.innerHTML = '<option value="">-- Выберите сертификат УКЭП --</option>';
 
         for (let i = 1; i <= count; i++) {
+            const cert = await certs.Item(i);
             try {
-                const cert = await certs.Item(i);
                 let subjectName = "";
                 let validTo = "";
                 let thumbprint = "";
                 let serial = "";
 
-                try { subjectName = typeof cert.SubjectName !== 'undefined' ? await cert.SubjectName : (typeof cert.get_SubjectName === 'function' ? await cert.get_SubjectName() : ''); } catch (e) {}
-                try { validTo = typeof cert.ValidToDate !== 'undefined' ? await cert.ValidToDate : (typeof cert.get_ValidToDate === 'function' ? await cert.get_ValidToDate() : ''); } catch (e) {}
-                try { thumbprint = typeof cert.Thumbprint !== 'undefined' ? await cert.Thumbprint : (typeof cert.get_Thumbprint === 'function' ? await cert.get_Thumbprint() : ''); } catch (e) {}
-                try { serial = typeof cert.SerialNumber !== 'undefined' ? await cert.SerialNumber : (typeof cert.get_SerialNumber === 'function' ? await cert.get_SerialNumber() : ''); } catch (e) {}
+                try { subjectName = await cert.SubjectName; } catch (e) {}
+                try { validTo = await cert.ValidToDate; } catch (e) {}
+                try { thumbprint = await cert.Thumbprint; } catch (e) {}
+                try { serial = await cert.SerialNumber; } catch (e) {}
 
                 if (!thumbprint) continue;
 
@@ -162,35 +122,69 @@ async function populateCertificatesDropdown(customTargetId = null) {
                 const innMatch = subjectName.match(/ИНН=([^,]+)/) || subjectName.match(/ИНН ЮЛ=([^,]+)/) || subjectName.match(/INN=([^,]+)/);
                 if (innMatch) inn = innMatch[1];
 
-                loadedCerts.push({
+                const certData = {
                     thumbprint: thumbprint,
                     subject: cn,
                     inn: inn,
                     validTo: validTo,
                     serial: serial,
                     rawSubject: subjectName
-                });
+                };
+                cryptoProCerts.push(certData);
+
+                const label = `${cn} ${inn ? `(ИНН: ${inn})` : ''} — до ${new Date(validTo).toLocaleDateString('ru-RU')}`;
+                
+                if (select) {
+                    const opt = document.createElement('option');
+                    opt.value = thumbprint;
+                    opt.textContent = label;
+                    select.appendChild(opt);
+                }
+
+                if (sellerCertSelect && !customTargetId) {
+                    const opt2 = document.createElement('option');
+                    opt2.value = thumbprint;
+                    opt2.textContent = label;
+                    sellerCertSelect.appendChild(opt2);
+                }
+
+                if (batchCertSelect && !customTargetId) {
+                    const opt3 = document.createElement('option');
+                    opt3.value = thumbprint;
+                    opt3.textContent = label;
+                    batchCertSelect.appendChild(opt3);
+                }
             } catch (ce) {
-                console.log("Error reading cert item:", ce);
+                console.log("Error inspecting cert item:", ce);
             }
         }
         await oStore.Close();
-        cryptoProCerts = loadedCerts;
-        renderCertsToSelectElements(customTargetId);
 
-        // Auto select callback if any
-        if (!customTargetId && typeof onCertSelected === 'function') {
-            onCertSelected();
+        if (cryptoProCerts.length === 0) {
+            if (select) select.innerHTML = '<option value="">-- В хранилище "Личные" нет доступных сертификатов --</option>';
+            if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = '<option value="">-- Сертификаты не найдены в хранилище --</option>';
+            if (batchCertSelect && !customTargetId) batchCertSelect.innerHTML = '<option value="">-- Сертификаты не найдены --</option>';
+        } else {
+            if (select && select.options.length > 1) {
+                select.selectedIndex = 1;
+                if (!customTargetId && typeof onCertSelected === 'function') onCertSelected();
+            }
+            if (sellerCertSelect && sellerCertSelect.options.length > 1) {
+                const certInput = document.getElementById('seller_cert_path');
+                const targetThumb = certInput ? certInput.value.trim().toLowerCase() : '';
+                if (targetThumb) {
+                    const match = Array.from(sellerCertSelect.options).find(o => o.value && o.value.toLowerCase() === targetThumb);
+                    if (match) {
+                        sellerCertSelect.value = match.value;
+                        if (typeof onSellerCertChanged === 'function') onSellerCertChanged();
+                    }
+                }
+            }
         }
     } catch (e) {
         console.error("Error reading certs from store:", e);
-        const defaultSelects = ['seller_cert_select', 'kizSigningCertSelect', 'batchCertSelect'];
-        defaultSelects.forEach(id => {
-            const el = document.getElementById(id);
-            if (el && (!cryptoProCerts || cryptoProCerts.length === 0)) {
-                el.innerHTML = `<option value="">-- Ошибка чтения сертификатов: ${e.message} --</option>`;
-            }
-        });
+        if (select) select.innerHTML = `<option value="">-- Ошибка чтения сертификатов: ${e.message} --</option>`;
+        if (sellerCertSelect && !customTargetId) sellerCertSelect.innerHTML = `<option value="">-- Ошибка чтения: ${e.message} --</option>`;
     }
 }
 
@@ -212,8 +206,14 @@ function onCertSelected() {
 async function signDataWithCryptoPro(base64Data, thumbprint) {
     if (!window.cadesplugin) throw new Error("КриптоПро ЭЦП Browser Plug-in не доступен");
 
+    await window.cadesplugin;
+
+    const CURRENT_USER = window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;
+    const MY_STORE = window.cadesplugin.CAPICOM_MY_STORE !== undefined ? window.cadesplugin.CAPICOM_MY_STORE : "My";
+    const STORE_OPEN_MAX = window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined ? window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+
     const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
-    await oStore.Open(window.cadesplugin.CAPICOM_CURRENT_USER_STORE, window.cadesplugin.CAPICOM_MY_STORE, window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED);
+    await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
     const certs = await oStore.Certificates;
     const count = await certs.Count;
 
@@ -317,18 +317,13 @@ async function silentCheckAndRefreshCzToken() {
             return;
         }
 
-        // 2. Инициализируем cadesplugin
-        let cades = window.cadesplugin;
-        if (cades && typeof cades.then === 'function') {
-            cades = await cades;
-        }
-        if (!cades) return;
+        await window.cadesplugin;
 
-        const CURRENT_USER = (cades.CAPICOM_CURRENT_USER_STORE !== undefined) ? cades.CAPICOM_CURRENT_USER_STORE : 2;
-        const MY_STORE = (cades.CAPICOM_MY_STORE !== undefined) ? cades.CAPICOM_MY_STORE : "My";
-        const STORE_OPEN_MAX = (cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? cades.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+        const CURRENT_USER = window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;
+        const MY_STORE = window.cadesplugin.CAPICOM_MY_STORE !== undefined ? window.cadesplugin.CAPICOM_MY_STORE : "My";
+        const STORE_OPEN_MAX = window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined ? window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
 
-        const oStore = await cades.CreateObjectAsync("CAdESCOM.Store");
+        const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
         await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
         const certs = await oStore.Certificates;
         const count = await certs.Count;
@@ -371,13 +366,13 @@ async function silentCheckAndRefreshCzToken() {
         }
 
         // 3. Создаем присоединенную подпись строки challenge
-        const oSigner = await cades.CreateObjectAsync("CAdESCOM.CPSigner");
+        const oSigner = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
         await oSigner.propset_Certificate(selectedCert);
 
-        const oSignedData = await cades.CreateObjectAsync("CAdESCOM.CadesSignedData");
+        const oSignedData = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
         await oSignedData.propset_Content(challenge.data);
 
-        const signature = await oSignedData.SignCades(oSigner, cades.CADESCOM_CADES_BES, false);
+        const signature = await oSignedData.SignCades(oSigner, window.cadesplugin.CADESCOM_CADES_BES, false);
         await oStore.Close();
 
         // 4. Отправляем подписанный challenge на сервер
@@ -411,3 +406,4 @@ window.onCertSelected = onCertSelected;
 window.signDataWithCryptoPro = signDataWithCryptoPro;
 window.signBase64WithCades = signDataWithCryptoPro;
 window.silentCheckAndRefreshCzToken = silentCheckAndRefreshCzToken;
+

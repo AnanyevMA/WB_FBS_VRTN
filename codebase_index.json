@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-30T07:55:17.453091+00:00",
+  "updated_at": "2026-08-30T08:04:47.538471+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -6120,7 +6120,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "d322b08729e0",
+      "hash": "859d299c2b45",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

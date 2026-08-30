@@ -43,7 +43,18 @@ function updatePluginBadges(status, text) {
  */
 async function initCryptoProPlugin() {
     try {
-        await checkPluginLoaded();
+        if (window.cadesplugin) {
+            await checkPluginLoaded();
+        } else {
+            let tries = 0;
+            const interval = setInterval(async () => {
+                tries++;
+                if (window.cadesplugin || tries > 30) {
+                    clearInterval(interval);
+                    await checkPluginLoaded();
+                }
+            }, 100);
+        }
     } catch (e) {
         console.debug("CryptoPro init note:", e);
     }
@@ -51,7 +62,13 @@ async function initCryptoProPlugin() {
 
 async function checkPluginLoaded() {
     updatePluginBadges('loading', '⏳ Сканирование ЭЦП...');
+    if (!window.cadesplugin) {
+        isCryptoProAvailable = false;
+        updatePluginBadges('error', '❌ Плагин не найден');
+        return false;
+    }
     try {
+        await window.cadesplugin;
         const certs = await loadCryptoProCerts();
         if (certs && certs.length > 0) {
             isCryptoProAvailable = true;
@@ -64,102 +81,81 @@ async function checkPluginLoaded() {
         }
     } catch (err) {
         isCryptoProAvailable = false;
-        updatePluginBadges('error', '❌ Плагин не активен');
+        updatePluginBadges('error', '❌ Ошибка плагина');
         return false;
     }
 }
 
 /**
- * Load certificates from CryptoPro store (using cryptoPro library or direct CAdES fallback)
+ * Load certificates from CryptoPro store (CurrentUser\My)
  */
 async function loadCryptoProCerts() {
     const results = [];
 
-    // Method 1: Using standalone cryptoPro library (handles all extensions & promises)
-    if (window.cryptoPro && typeof window.cryptoPro.getUserCertificates === 'function') {
-        try {
-            const certList = await window.cryptoPro.getUserCertificates();
-            if (Array.isArray(certList)) {
-                certList.forEach(c => {
-                    if (!c.thumbprint) return;
-                    let inn = c.inn || '';
-                    if (!inn && c.subjectName) {
-                        const m = c.subjectName.match(/ИНН=([^,]+)/) || c.subjectName.match(/ИНН ЮЛ=([^,]+)/) || c.subjectName.match(/INN=([^,]+)/);
-                        if (m) inn = m[1];
-                    }
-                    results.push({
-                        thumbprint: c.thumbprint,
-                        subject: c.name || c.subjectName || 'Сертификат УКЭП',
-                        inn: inn,
-                        validTo: c.validTo,
-                        validFrom: c.validFrom,
-                        rawSubject: c.subjectName,
-                        issuer: c.issuerName
-                    });
-                });
-                if (results.length > 0) {
-                    cryptoProCerts = results;
-                    return results;
-                }
-            }
-        } catch (e) {
-            console.warn("cryptoPro.getUserCertificates note:", e);
-        }
+    if (!window.cadesplugin) {
+        console.warn("window.cadesplugin is not defined");
+        return results;
     }
 
-    // Method 2: Direct CAdESCOM.Store fallback
-    if (window.cadesplugin) {
-        try {
-            await window.cadesplugin;
-            const CURRENT_USER = (window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined) ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;
-            const MY_STORE = (window.cadesplugin.CAPICOM_MY_STORE !== undefined) ? window.cadesplugin.CAPICOM_MY_STORE : "My";
-            const STORE_OPEN_MAX = (window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+    try {
+        await window.cadesplugin;
 
-            const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
-            await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
-            const certs = await oStore.Certificates;
-            const count = await certs.Count;
+        const CURRENT_USER = (window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined) ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;
+        const MY_STORE = (window.cadesplugin.CAPICOM_MY_STORE !== undefined) ? window.cadesplugin.CAPICOM_MY_STORE : "My";
+        const STORE_OPEN_MAX = (window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
 
-            for (let i = 1; i <= count; i++) {
-                try {
-                    const cert = await certs.Item(i);
-                    let subjectName = "";
-                    let validTo = "";
-                    let thumbprint = "";
+        const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+        await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
+        const certs = await oStore.Certificates;
+        const count = await certs.Count;
 
-                    try { subjectName = await cert.SubjectName; } catch (e) {}
-                    if (!subjectName) { try { subjectName = await cert.get_SubjectName(); } catch (e) {} }
+        for (let i = 1; i <= count; i++) {
+            try {
+                const cert = await certs.Item(i);
+                let subjectName = "";
+                let validTo = "";
+                let validFrom = "";
+                let thumbprint = "";
 
-                    try { validTo = await cert.ValidToDate; } catch (e) {}
-                    if (!validTo) { try { validTo = await cert.get_ValidToDate(); } catch (e) {} }
+                try { subjectName = await cert.SubjectName; } catch (e) {}
+                if (!subjectName) { try { subjectName = await cert.get_SubjectName(); } catch (e) {} }
 
-                    try { thumbprint = await cert.Thumbprint; } catch (e) {}
-                    if (!thumbprint) { try { thumbprint = await cert.get_Thumbprint(); } catch (e) {} }
+                try { validTo = await cert.ValidToDate; } catch (e) {}
+                if (!validTo) { try { validTo = await cert.get_ValidToDate(); } catch (e) {} }
 
-                    if (!thumbprint) continue;
+                try { validFrom = await cert.ValidFromDate; } catch (e) {}
+                if (!validFrom) { try { validFrom = await cert.get_ValidFromDate(); } catch (e) {} }
 
-                    let cn = subjectName;
-                    const cnMatch = subjectName.match(/CN=([^,]+)/);
-                    if (cnMatch) cn = cnMatch[1];
-                    let inn = '';
-                    const innMatch = subjectName.match(/ИНН=([^,]+)/) || subjectName.match(/ИНН ЮЛ=([^,]+)/) || subjectName.match(/INN=([^,]+)/);
-                    if (innMatch) inn = innMatch[1];
+                try { thumbprint = await cert.Thumbprint; } catch (e) {}
+                if (!thumbprint) { try { thumbprint = await cert.get_Thumbprint(); } catch (e) {} }
 
-                    results.push({
-                        thumbprint: thumbprint,
-                        subject: cn,
-                        inn: inn,
-                        validTo: validTo,
-                        rawSubject: subjectName
-                    });
-                } catch (ce) {
-                    console.debug("Error inspecting cert item:", ce);
-                }
+                if (!thumbprint) continue;
+
+                let cn = subjectName;
+                const cnMatch = subjectName.match(/CN=([^,]+)/);
+                if (cnMatch) cn = cnMatch[1];
+                let inn = '';
+                const innMatch = subjectName.match(/ИНН=([^,]+)/) || subjectName.match(/ИНН ЮЛ=([^,]+)/) || subjectName.match(/INN=([^,]+)/);
+                if (innMatch) inn = innMatch[1];
+
+                const isExpired = validTo ? (new Date(validTo).getTime() < Date.now()) : false;
+
+                results.push({
+                    thumbprint: thumbprint.toUpperCase(),
+                    subject: cn || 'Сертификат УКЭП',
+                    inn: inn,
+                    validTo: validTo,
+                    validFrom: validFrom,
+                    rawSubject: subjectName,
+                    isExpired: isExpired
+                });
+            } catch (ce) {
+                console.debug("Error inspecting cert item:", ce);
             }
-            await oStore.Close();
-        } catch (e) {
-            console.warn("Direct cadesplugin store read note:", e);
         }
+        await oStore.Close();
+    } catch (e) {
+        console.warn("Direct cadesplugin store read note:", e);
     }
 
     cryptoProCerts = results;
@@ -200,7 +196,8 @@ async function populateCertificatesDropdown(customTargetId = null, userTriggered
         const defaultOption = '<option value="">-- Выберите сертификат УКЭП --</option>';
         const optionsHtml = defaultOption + certs.map(cert => {
             const dateStr = cert.validTo ? new Date(cert.validTo).toLocaleDateString('ru-RU') : '';
-            return `<option value="${cert.thumbprint}">${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''} ${dateStr ? `— до ${dateStr}` : ''}</option>`;
+            const expLabel = cert.isExpired ? ` (истёк ${dateStr})` : ` — до ${dateStr}`;
+            return `<option value="${cert.thumbprint}">${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''}${expLabel}</option>`;
         }).join('');
 
         updateOptions(optionsHtml);
@@ -208,9 +205,9 @@ async function populateCertificatesDropdown(customTargetId = null, userTriggered
         // Auto-select match for active seller if configured
         if (sellerCertSelect && !customTargetId) {
             const certInput = document.getElementById('seller_cert_path');
-            const targetThumb = certInput ? certInput.value.trim().toLowerCase() : '';
+            const targetThumb = certInput ? certInput.value.trim().toUpperCase() : '';
             if (targetThumb) {
-                const match = Array.from(sellerCertSelect.options).find(o => o.value && o.value.toLowerCase() === targetThumb);
+                const match = Array.from(sellerCertSelect.options).find(o => o.value && o.value.toUpperCase() === targetThumb);
                 if (match) {
                     sellerCertSelect.value = match.value;
                     if (typeof onSellerCertChanged === 'function') onSellerCertChanged();
@@ -278,16 +275,7 @@ async function signDataWithCryptoPro(base64Data, thumbprint) {
         throw new Error("Не выбран сертификат УКЭП для подписания");
     }
 
-    // Method 1: Standalone cryptoPro library
-    if (window.cryptoPro && typeof window.cryptoPro.createDetachedSignature === 'function') {
-        try {
-            return await window.cryptoPro.createDetachedSignature(targetThumb, base64Data);
-        } catch (e) {
-            console.warn("cryptoPro.createDetachedSignature fallback:", e);
-        }
-    }
-
-    // Method 2: Direct CAdES plugin
+    // Direct CAdES plugin
     if (window.cadesplugin) {
         await window.cadesplugin;
         const CURRENT_USER = (window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined) ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;

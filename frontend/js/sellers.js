@@ -103,7 +103,7 @@ async function editSeller(sellerId) {
         await safePopulateCertificatesDropdown();
         const sellerCertSelect = document.getElementById('seller_cert_select');
         if (sellerCertSelect && certVal) {
-            const matchOpt = Array.from(sellerCertSelect.options).find(o => o.value.toLowerCase() === certVal.toLowerCase());
+            const matchOpt = Array.from(sellerCertSelect.options).find(o => o.value && o.value.toLowerCase() === certVal.toLowerCase());
             if (matchOpt) {
                 sellerCertSelect.value = matchOpt.value;
                 onSellerCertChanged();

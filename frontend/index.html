@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=1.0.8">
+    <link rel="stylesheet" href="css/style.css?v=1.0.9">
 </head>
 <body>
 
@@ -505,7 +505,7 @@
                     <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <span>✍️ Выбор сертификата ЭЦП (КриптоПро)</span>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            <button type="button" class="btn btn-secondary" onclick="populateCertificatesDropdown()" style="font-size: 11px; padding: 2px 8px;" id="btnRefreshCerts" title="Пересканировать хранилище сертификатов">🔄 Обновить список</button>
+                            <button type="button" class="btn btn-secondary" onclick="populateCertificatesDropdown(null, true)" style="font-size: 11px; padding: 2px 8px;" id="btnRefreshCerts" title="Пересканировать хранилище сертификатов">🔄 Обновить список</button>
                             <span id="sellerCertPluginBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">Хранилище сертификатов</span>
                         </div>
                     </label>
@@ -997,18 +997,19 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- JavaScript Modules -->
-<script src="js/state.js?v=1.0.8"></script>
-<script src="js/api.js?v=1.0.8"></script>
-<script src="js/ui.js?v=1.0.8"></script>
-<script src="js/auth.js?v=1.0.8"></script>
-<script src="js/dashboard.js?v=1.0.8"></script>
-<script src="js/orders.js?v=1.0.8"></script>
-<script src="js/cryptopro.js?v=1.0.8"></script>
-<script src="js/kiz.js?v=1.0.8"></script>
-<script src="js/signature_queue.js?v=1.0.8"></script>
-<script src="js/supplies.js?v=1.0.8"></script>
-<script src="js/sellers.js?v=1.0.8"></script>
-<script src="js/audit.js?v=1.0.8"></script>
-<script src="js/app.js?v=1.0.8"></script>
+<script src="js/state.js?v=1.0.9"></script>
+<script src="js/api.js?v=1.0.9"></script>
+<script src="js/ui.js?v=1.0.9"></script>
+<script src="js/auth.js?v=1.0.9"></script>
+<script src="js/dashboard.js?v=1.0.9"></script>
+<script src="js/orders.js?v=1.0.9"></script>
+<script src="js/crypto-pro.min.js?v=1.0.9"></script>
+<script src="js/cryptopro.js?v=1.0.9"></script>
+<script src="js/kiz.js?v=1.0.9"></script>
+<script src="js/signature_queue.js?v=1.0.9"></script>
+<script src="js/supplies.js?v=1.0.9"></script>
+<script src="js/sellers.js?v=1.0.9"></script>
+<script src="js/audit.js?v=1.0.9"></script>
+<script src="js/app.js?v=1.0.9"></script>
 </body>
 </html>

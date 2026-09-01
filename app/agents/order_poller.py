@@ -159,7 +159,7 @@ def get_order_sticker(seller_id: str, order_id: int) -> Optional[dict]:
             return sticker_res
         except Exception as exc:
             logger.error(f"Failed to fetch sticker for order {order_id}: {exc}")
-            raise
+            return None
 
 
 # Alias for backward-compatibility with prompt signature get_stickers.si(...)
@@ -464,22 +464,15 @@ def poll_all_sellers(self: Any) -> dict:
                     continue
 
                 if len(new_ids) == 1:
-                    # Single order: classic chain — sticker then notify
-                    # Передаём order_data (payload), чтобы уведомление содержало
-                    # название товара, цену, артикул и флаг КИЗ
+                    # 1 заказ: немедленно отправляем уведомление в Telegram и фоном качаем стикер
                     order_payload = new_payloads[0] if new_payloads else None
-                    chain(
-                        get_stickers.si(seller_id_str, new_ids[0]),
-                        _notify_new_order.si(seller_id_str, new_ids[0], order_payload),
-                    ).apply_async()
+                    _notify_new_order.delay(seller_id_str, new_ids[0], order_payload)
+                    get_stickers.delay(seller_id_str, new_ids[0])
                 else:
-                    # Multiple orders: parallel sticker downloads, then one batch notification
-                    chord(
-                        celery_group(
-                            get_stickers.si(seller_id_str, oid) for oid in new_ids
-                        ),
-                        notify_batch_orders.si(seller_id_str, new_payloads),
-                    ).apply_async()
+                    # Несколько заказов: немедленный пакетный алерт в Telegram и фоновое скачивание стикеров
+                    notify_batch_orders.delay(seller_id_str, new_payloads)
+                    for oid in new_ids:
+                        get_stickers.delay(seller_id_str, oid)
 
             except WBUnauthorizedError as exc:
                 logger.error(f"WB API Unauthorized for seller {seller.id}: {exc}. Disabling seller polling.")

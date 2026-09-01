@@ -230,31 +230,33 @@ class WBClient:
 
     # --- Stickers ---
 
-    async def get_stickers(self, order_ids: List[int], format: str = 'svg') -> List[Dict]:
+    async def get_stickers(self, order_ids: List[int], format: str = 'svg', width: int = 58, height: int = 40) -> List[Dict]:
         """
-        POST /api/v3/orders/stickers
-        Body: {orders: [id1, id2], type: 'svg'|'zpl', width: 58, height: 40}
+        POST /api/v3/orders/stickers?type=svg&width=58&height=40
+        Body: {"orders": [id1, id2]}
         
         Response structure:
         {
           "stickers": [
             {
               "orderId": 123456,
-              "partA": 1234,
-              "partB": 5678,
+              "partA": "1234",
+              "partB": "5678",
               "barcode": "12345678",
               "file": "base64_encoded_content..." 
             }
           ]
         }
         """
-        payload = {
-            "orders": order_ids,
+        params = {
             "type": format,
-            "width": 58,
-            "height": 40
+            "width": width,
+            "height": height
         }
-        data = await self._request("POST", "/api/v3/orders/stickers", json=payload)
+        payload = {
+            "orders": order_ids
+        }
+        data = await self._request("POST", "/api/v3/orders/stickers", params=params, json=payload)
         if data and isinstance(data, dict):
             return data.get("stickers", [])
         return []

@@ -144,3 +144,90 @@ async def test_bot_archive_excel_parsing_and_batch_creation():
         # Verify seller last_archive_uploaded_at was updated
         s = await session.get(Seller, seller_id)
         assert s.last_archive_uploaded_at is not None
+
+
+@pytest.mark.asyncio
+async def test_bot_ignores_non_excel_files_in_groups():
+    """Confirms that .conf, .pdf, .zip etc. in group chats are silently ignored without replies."""
+    from app.bot import create_bot_router
+    router = create_bot_router()
+
+    doc_handler = next((h.callback for h in router.message.handlers if getattr(h.callback, "__name__", "") == "handle_document"), None)
+    assert doc_handler is not None
+
+    mock_msg = MagicMock()
+    mock_msg.chat.id = -100123456789
+    mock_msg.chat.type = "supergroup"
+    mock_msg.document.file_name = "VRTN_Notebook_2.conf"
+    mock_msg.reply = AsyncMock()
+    mock_msg.answer = AsyncMock()
+
+    await doc_handler(mock_msg)
+
+    # Should NOT have sent any reply or answer
+    assert not mock_msg.reply.called
+    assert not mock_msg.answer.called
+
+
+@pytest.mark.asyncio
+async def test_bot_warns_non_excel_files_in_private_chat():
+    """Confirms that in private chat, the bot sends an informative format hint."""
+    from app.bot import create_bot_router
+    router = create_bot_router()
+
+    doc_handler = next((h.callback for h in router.message.handlers if getattr(h.callback, "__name__", "") == "handle_document"), None)
+    assert doc_handler is not None
+
+    mock_msg = MagicMock()
+    mock_msg.chat.id = 12345678
+    mock_msg.chat.type = "private"
+    mock_msg.document.file_name = "VRTN_Notebook_2.conf"
+    mock_msg.reply = AsyncMock()
+
+    await doc_handler(mock_msg)
+
+    assert mock_msg.reply.called
+    reply_text = mock_msg.reply.call_args[0][0]
+    assert "Формат файла не поддерживается" in reply_text
+
+
+@pytest.mark.asyncio
+async def test_bot_ignores_non_wb_excel_files_in_groups():
+    """Confirms that a random non-WB excel workbook uploaded in a group chat is silently ignored."""
+    from app.bot import create_bot_router
+    router = create_bot_router()
+
+    doc_handler = next((h.callback for h in router.message.handlers if getattr(h.callback, "__name__", "") == "handle_document"), None)
+    assert doc_handler is not None
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "ПрайсЛист"
+    ws.append(["Товар", "Цена", "Количество"])
+    ws.append(["Тестовый товар", 500, 10])
+    buf = io.BytesIO()
+    wb.save(buf)
+    random_excel_bytes = buf.getvalue()
+
+    mock_bot = AsyncMock()
+    mock_file_info = MagicMock()
+    mock_file_info.file_path = "documents/pricelist.xlsx"
+    mock_bot.get_file.return_value = mock_file_info
+
+    async def _mock_download(file_path, destination):
+        destination.write(random_excel_bytes)
+    mock_bot.download_file.side_effect = _mock_download
+
+    mock_msg = MagicMock()
+    mock_msg.bot = mock_bot
+    mock_msg.chat.id = -100123456789
+    mock_msg.chat.type = "group"
+    mock_msg.document.file_name = "pricelist.xlsx"
+    mock_msg.document.file_id = "doc_random_123"
+    mock_msg.reply = AsyncMock()
+
+    await doc_handler(mock_msg)
+
+    # Should NOT have sent any reply in the group
+    assert not mock_msg.reply.called
+

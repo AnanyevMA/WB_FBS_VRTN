@@ -72,3 +72,7 @@ certbot/conf/*
 !certbot/conf/.gitkeep
 certbot/www/*
 !certbot/www/.gitkeep
+
+# Gemini AI agent artifacts
+.gemini/
+

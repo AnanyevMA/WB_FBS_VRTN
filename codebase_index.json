@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-08-30T09:30:12.151805+00:00",
+  "updated_at": "2026-09-01T14:31:02.425757+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 91,
   "files": [
@@ -1020,7 +1020,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "dbaf60ae965a",
+      "hash": "418ccd81b07d",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3060,7 +3060,7 @@
     {
       "file": "app/bot/handlers/documents.py",
       "layer": "core",
-      "hash": "121d1123104f",
+      "hash": "8d96b99914bb",
       "docstring": "Telegram Bot Document Handlers — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4580,7 +4580,7 @@
     {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "f7ad5f693bcf",
+      "hash": "8fa5ceefcd78",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {

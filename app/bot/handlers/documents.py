@@ -29,9 +29,15 @@ async def handle_document(message: Message):
     if not doc:
         return
 
+    is_group = message.chat.type in ["group", "supergroup", "channel"]
     filename = doc.file_name or "archive.xlsx"
     filename_lower = filename.lower()
+
     if not (filename_lower.endswith(".xlsx") or filename_lower.endswith(".xls")):
+        # В группах молча игнорируем любые сторонние файлы (.conf, .pdf, .zip, .png и т.д.)
+        if is_group:
+            return
+        # В личных сообщениях отправляем информативную подсказку
         await message.reply(
             "⚠️ <b>Формат файла не поддерживается.</b>\n\n"
             "Пожалуйста, отправьте отчёт в формате <code>.xlsx</code> или <code>.xls</code> "
@@ -39,14 +45,52 @@ async def handle_document(message: Message):
         )
         return
 
-    status_msg = await message.reply("⏳ <i>Принят файл отчёта. Скачиваю и анализирую чеки WB...</i>")
-
+    status_msg = None
     try:
         bot = message.bot
         file_obj = await bot.get_file(doc.file_id)
         file_bytes_io = io.BytesIO()
         await bot.download_file(file_obj.file_path, destination=file_bytes_io)
         file_bytes = file_bytes_io.getvalue()
+
+        # Парсинг и валидация Excel-отчета
+        try:
+            parsed_sheets = parse_wb_archive_excel(file_bytes)
+        except Exception as parse_err:
+            if is_group:
+                logger.debug(f"Excel parsing failed in group chat, ignoring: {parse_err}")
+                return
+            raise parse_err
+
+        # Проверяем, содержит ли файл данные архива WB (КИЗ / Сборочные задания)
+        kiz_rows = parsed_sheets.get("kiz_rows", [])
+        tasks_rows = parsed_sheets.get("tasks_rows", [])
+
+        def _is_wb_archive_row(row: dict) -> bool:
+            wb_markers = ("киз", "задан", "стикер", "qr-код", "order_id", "sticker_id")
+            for k in row.keys():
+                k_lower = str(k).lower()
+                if any(m in k_lower for m in wb_markers):
+                    return True
+            return False
+
+        has_wb_data = (
+            any(_is_wb_archive_row(r) for r in kiz_rows[:5]) or
+            any(_is_wb_archive_row(r) for r in tasks_rows[:5])
+        )
+
+        if not has_wb_data:
+            if is_group:
+                logger.debug(f"Non-WB Excel file uploaded in group chat ({filename}), ignoring.")
+                return
+            await message.reply(
+                "⚠️ <b>Файл не распознан как отчёт Wildberries.</b>\n\n"
+                "В файле не найдены обязательные столбцы (<i>«КИЗ»</i> или <i>«№ задания»</i>).\n"
+                "Убедитесь, что вы загружаете оригинальную выгрузку архива сборочных заданий из ЛК WB."
+            )
+            return
+
+        status_msg = await message.reply("⏳ <i>Принят файл отчёта. Скачиваю и анализирую чеки WB...</i>")
 
         async with AsyncSessionLocal() as db:
             chat_id = message.chat.id
@@ -74,8 +118,6 @@ async def handle_document(message: Message):
                 await status_msg.edit_text("❌ <b>Ошибка:</b> Не найден активный магазин для этого чата.")
                 return
 
-            # Парсинг и анализ Excel-отчета
-            parsed_sheets = parse_wb_archive_excel(file_bytes)
             analysis = await analyze_archive_data(seller=target_seller, archive_data=parsed_sheets, db=db)
 
             withdrawals = analysis.get("withdrawals", [])
@@ -145,7 +187,10 @@ async def handle_document(message: Message):
 
     except Exception as e:
         logger.error(f"Error handling document in telegram bot: {e}", exc_info=True)
-        await status_msg.edit_text(f"❌ <b>Ошибка при обработке файла:</b>\n<code>{str(e)}</code>")
+        if status_msg is not None:
+            await status_msg.edit_text(f"❌ <b>Ошибка при обработке файла:</b>\n<code>{str(e)}</code>")
+        elif not is_group:
+            await message.reply(f"❌ <b>Ошибка при обработке файла:</b>\n<code>{str(e)}</code>")
 
 
 def register_document_handlers(router: Router):

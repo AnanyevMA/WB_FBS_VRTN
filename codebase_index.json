@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-01T14:31:02.425757+00:00",
+  "updated_at": "2026-09-02T14:13:21.963807+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 91,
+  "total_files": 96,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1020,7 +1020,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "418ccd81b07d",
+      "hash": "cf37737bea65",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1040,10 +1040,26 @@
           "name": "_check_kiz_required",
           "is_async": false,
           "args": [
-            "order_raw"
+            "order_raw",
+            "subject",
+            "tnved"
           ],
           "decorators": [],
           "docstring": "Determine if KIZ / SGTIN marking is required for an order."
+        },
+        {
+          "name": "_resolve_order_metadata",
+          "is_async": false,
+          "args": [
+            "order_raw",
+            "seller",
+            "session",
+            "wb_client",
+            "catalog_cache",
+            "wb_order_id_int"
+          ],
+          "decorators": [],
+          "docstring": "Resolve product metadata (chrt_id, nm_id, name, brand, subject, sizes, tnved) hierarchically:"
         },
         {
           "name": "poll_seller_orders",
@@ -4447,7 +4463,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "8f16255f7607",
+      "hash": "9d1e037d9b56",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -4493,6 +4509,7 @@
         "aiogram.types",
         "asyncio",
         "datetime",
+        "html",
         "logging",
         "typing"
       ]
@@ -4869,6 +4886,18 @@
       ]
     },
     {
+      "file": "tests/run_adversarial.py",
+      "layer": "tests",
+      "hash": "e3b0c44298fc",
+      "docstring": "",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
+    },
+    {
       "file": "tests/test_agent_delegation_sync.py",
       "layer": "tests",
       "hash": "a1607c7e14ae",
@@ -5133,7 +5162,7 @@
     {
       "file": "tests/test_bot_archive_upload.py",
       "layer": "tests",
-      "hash": "2b14215a92af",
+      "hash": "5c86595450b0",
       "docstring": "Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing)",
       "classes": [],
       "functions": [
@@ -5155,6 +5184,33 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_bot_ignores_non_excel_files_in_groups",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Confirms that .conf, .pdf, .zip etc. in group chats are silently ignored without replies."
+        },
+        {
+          "name": "test_bot_warns_non_excel_files_in_private_chat",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Confirms that in private chat, the bot sends an informative format hint."
+        },
+        {
+          "name": "test_bot_ignores_non_wb_excel_files_in_groups",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Confirms that a random non-WB excel workbook uploaded in a group chat is silently ignored."
         }
       ],
       "endpoints": [],
@@ -5789,6 +5845,247 @@
       ]
     },
     {
+      "file": "tests/test_order_poller_adversarial.py",
+      "layer": "tests",
+      "hash": "912431b0df58",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_db",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_seller",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_resolve_order_metadata_string_and_invalid_chrt_nm_ids",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 1: Handle string digits, non-numeric strings, lists, dicts for chrtId and nmId."
+        },
+        {
+          "name": "test_resolve_order_metadata_empty_and_missing_payload",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 2: Handle empty dict or missing fields, ensuring robust fallbacks."
+        },
+        {
+          "name": "test_resolve_order_metadata_seller_multi_tenant_isolation",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 3: Ensure local DB cache cannot leak metadata from other sellers."
+        },
+        {
+          "name": "test_resolve_order_metadata_ignores_empty_or_null_name_in_db_cache",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 4: Local DB cache must ignore existing orders where name is None or empty."
+        },
+        {
+          "name": "test_resolve_order_metadata_content_api_exceptions_and_timeouts",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 5: Handle network timeouts, connection errors, and unexpected exceptions."
+        },
+        {
+          "name": "test_resolve_order_metadata_malformed_catalog_responses",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 6: Handle non-dict, None, or broken catalog responses."
+        },
+        {
+          "name": "test_poll_seller_orders_malformed_orders_and_type_casting",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 7: Stress-test poll_seller_orders with malformed orders list."
+        },
+        {
+          "name": "test_poll_seller_orders_idempotent_deduplication",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 8: Ensure poll_seller_orders is completely idempotent when called multiple times."
+        },
+        {
+          "name": "test_poll_all_sellers_session_rollback_resilience",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Adversarial Test 9: Verify poll_all_sellers rolls back session on unexpected seller errors and continues."
+        },
+        {
+          "name": "test_kiz_required_heuristic_boundary_cases",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Adversarial Test 10: Test _check_kiz_required with various casing, categories, and tnved codes."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.order_poller",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "asyncio",
+        "datetime",
+        "decimal",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_order_poller_enrichment.py",
+      "layer": "tests",
+      "hash": "170cb0c7cd2d",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_db",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_seller",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_resolve_order_metadata_from_local_db_cache_by_chrt_id",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify metadata resolution hits local DB cache when matching chrt_id exists."
+        },
+        {
+          "name": "test_resolve_order_metadata_from_local_db_cache_by_article",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify metadata resolution hits local DB cache when matching article exists."
+        },
+        {
+          "name": "test_resolve_order_metadata_from_wb_content_api",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify metadata resolution queries WB Content API when DB cache misses."
+        },
+        {
+          "name": "test_resolve_order_metadata_graceful_fallback_on_content_api_error",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify graceful fallback to article and default values when Content API raises exception."
+        },
+        {
+          "name": "test_poll_seller_orders_end_to_end_enrichment_and_persistence",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Test poll_seller_orders full flow:"
+        },
+        {
+          "name": "test_poll_seller_orders_batch_mixed_cache_and_catalog",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Test batch order polling with multiple orders:"
+        },
+        {
+          "name": "test_poll_all_sellers_dispatches_single_and_batch_notifications",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify poll_all_sellers triggers single order notification or batch notification appropriately."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.order_poller",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "decimal",
+        "pytest",
+        "pytest_asyncio",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_orders_sorting_and_archive.py",
       "layer": "tests",
       "hash": "446b9e2e3ada",
@@ -5955,6 +6252,237 @@
         "app.agents.security_audit_agent",
         "app.database",
         "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_telegram_adversarial_stress.py",
+      "layer": "tests",
+      "hash": "96dead01cc36",
+      "docstring": "Empirical Adversarial Stress Test Suite for TelegramService.",
+      "classes": [
+        {
+          "name": "TelegramHTMLValidator",
+          "bases": [
+            "HTMLParser"
+          ],
+          "docstring": "Strict HTML Parser validating Telegram parse-mode tags and balanced structure.",
+          "methods": [
+            "__init__",
+            "handle_starttag",
+            "handle_endtag"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "_stub_aiogram",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stub out aiogram so tests run reliably offline."
+        },
+        {
+          "name": "_verify_telegram_html_validity",
+          "is_async": false,
+          "args": [
+            "text"
+          ],
+          "decorators": [],
+          "docstring": "Empirical check: Verify that message text forms valid XML/HTML entities"
+        },
+        {
+          "name": "test_send_new_order_adversarial_html_xss_injection",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_new_order_notification escapes all dangerous HTML/XSS and unescaped brackets."
+        },
+        {
+          "name": "test_all_methods_adversarial_html_escaping",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that every single method in TelegramService escapes dynamic string parameters."
+        },
+        {
+          "name": "test_explicit_none_keys_in_all_fields",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that dictionaries with explicit None values do not crash or render 'None'."
+        },
+        {
+          "name": "test_price_handling_variations",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify price formatting across integer kopecks, zero, None, floats, strings, and Decimals."
+        },
+        {
+          "name": "test_send_batch_orders_stress_100_items",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify batch notification handles large lists (>10 items), None prices, missing keys, and HTML."
+        },
+        {
+          "name": "test_morning_digest_empty_and_stress_cases",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify morning digest formats cleanly with 0 items, malformed timestamps, and None fields."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.telegram_service",
+        "decimal",
+        "html",
+        "html.parser",
+        "pytest",
+        "sys",
+        "unittest.mock",
+        "xml.etree.ElementTree"
+      ]
+    },
+    {
+      "file": "tests/test_telegram_notifications.py",
+      "layer": "tests",
+      "hash": "50d6c1a0f040",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_stub_aiogram",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stub out aiogram so tests run reliably without network/bot tokens."
+        },
+        {
+          "name": "setup_db",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_seller",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_telegram_send_new_order_notification_with_full_metadata",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_new_order_notification formats product details (name, brand, subject, article, price, KIZ)."
+        },
+        {
+          "name": "test_telegram_send_new_order_notification_fallback_dashes_when_empty",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_new_order_notification gracefully falls back to dashes when metadata is missing."
+        },
+        {
+          "name": "test_telegram_send_batch_orders_notification",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_batch_orders_notification correctly formats multiple items, total price, and KIZ summary."
+        },
+        {
+          "name": "test_notify_new_order_task_with_payload",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify notify_new_order Celery task passes full order_data to TelegramService."
+        },
+        {
+          "name": "test_notify_new_order_task_fallback_to_db_record",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify notify_new_order Celery task queries DB record when order_data is None."
+        },
+        {
+          "name": "test_notify_batch_orders_task",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify notify_batch_orders Celery task calls send_batch_orders_notification."
+        },
+        {
+          "name": "test_telegram_send_new_order_html_escaping_and_null_coalescing",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify HTML special characters are properly escaped and explicit None fields coalesce cleanly."
+        },
+        {
+          "name": "test_telegram_send_batch_orders_with_null_prices_and_html",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify batch order notification handles None prices without TypeError and escapes HTML."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.notifier",
+        "app.agents.order_poller",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "asyncio",
+        "datetime",
+        "decimal",
+        "pytest",
+        "random",
+        "sys",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {

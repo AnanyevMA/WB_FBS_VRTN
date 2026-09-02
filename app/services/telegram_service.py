@@ -3,6 +3,7 @@ Telegram Notification Service — отправка Push-уведомлений �
 Использует aiogram 3.x для отправки сообщений с inline-кнопками
 """
 import asyncio
+import html
 import logging
 from typing import Optional
 
@@ -59,16 +60,16 @@ class TelegramService:
         ⏰ Срок: до 13:00 завтра
         💰 Цена: 1 490 ₽
         """
-        kiz_required = (order_data or {}).get("kiz_required", False)
+        kiz_required = bool((order_data or {}).get("kiz_required", False))
         kiz_icon = "⚠️ ТРЕБУЕТСЯ" if kiz_required else "✅ не нужен"
 
-        price = (order_data or {}).get("price", 0)
+        price = (order_data or {}).get("price") or 0
         price_str = f"{price / 100:.0f} ₽" if isinstance(price, int) else f"{price} ₽"
 
-        article = (order_data or {}).get("article", "—")
-        name = (order_data or {}).get("name", "—")
-        subject = (order_data or {}).get("subject", "—")
-        brand = (order_data or {}).get("brand", "—")
+        article = html.escape(str((order_data or {}).get("article") or "—"))
+        name = html.escape(str((order_data or {}).get("name") or "—"))
+        subject = html.escape(str((order_data or {}).get("subject") or "—"))
+        brand = html.escape(str((order_data or {}).get("brand") or "—"))
 
         text = (
             f"🆕 <b>НОВЫЙ ЗАКАЗ FBS #{order_id}</b>\n"
@@ -111,9 +112,10 @@ class TelegramService:
         order_name: str,
     ) -> bool:
         """Напоминание: к заказу не привязан КИЗ."""
+        order_name_esc = html.escape(str(order_name or "—"))
         text = (
             f"⚠️ <b>ТРЕБУЕТСЯ КИЗ</b>\n"
-            f"Заказ #{order_id} ({order_name})\n"
+            f"Заказ #{order_id} ({order_name_esc})\n"
             f"Товар подлежит маркировке. Отсканируйте КИЗ."
         )
         keyboard = InlineKeyboardMarkup(
@@ -136,16 +138,18 @@ class TelegramService:
     ) -> bool:
         """Статус вывода из оборота."""
         if success:
+            doc_id_esc = html.escape(str(doc_id or "—"))
             text = (
                 f"✅ <b>Вывод из оборота выполнен</b>\n"
                 f"Заказ #{order_id}\n"
-                f"Документ ГИС МТ: <code>{doc_id}</code>"
+                f"Документ ГИС МТ: <code>{doc_id_esc}</code>"
             )
         else:
+            err_esc = html.escape(str(error or "неизвестная ошибка"))
             text = (
                 f"❌ <b>Ошибка вывода из оборота</b>\n"
                 f"Заказ #{order_id}\n"
-                f"Ошибка: {error or 'неизвестная ошибка'}"
+                f"Ошибка: {err_esc}"
             )
         return await self._broadcast(chat_ids, text)
 
@@ -156,9 +160,10 @@ class TelegramService:
         orders_count: int,
     ) -> bool:
         """Уведомление об успешной передаче поставки в доставку."""
+        supply_id_esc = html.escape(str(supply_id or "—"))
         text = (
             f"🚚 <b>Поставка передана в доставку</b>\n"
-            f"ID поставки: <code>{supply_id}</code>\n"
+            f"ID поставки: <code>{supply_id_esc}</code>\n"
             f"Заказов в поставке: {orders_count}"
         )
         return await self._broadcast(chat_ids, text)
@@ -170,10 +175,12 @@ class TelegramService:
         message: str,
     ) -> bool:
         """Алерт об ошибке агента (эскалация)."""
+        agent_esc = html.escape(str(agent or "—"))
+        message_esc = html.escape(str(message or "—"))
         text = (
             f"🚨 <b>ОШИБКА АГЕНТА</b>\n"
-            f"Агент: {agent}\n"
-            f"Сообщение: {message}\n"
+            f"Агент: {agent_esc}\n"
+            f"Сообщение: {message_esc}\n"
             f"Требуется ручное вмешательство!"
         )
         return await self._broadcast(chat_ids, text)
@@ -192,16 +199,18 @@ class TelegramService:
         """
         count = len(orders)
         kiz_count = sum(1 for o in orders if o.get("kiz_required"))
-        total_price = sum(o.get("price", 0) for o in orders)
-        total_rub = total_price / 100 if isinstance(total_price, int) else total_price
+        total_price = sum((o.get("price") or 0) for o in orders)
+        total_rub = total_price / 100 if isinstance(total_price, int) else float(total_price or 0)
 
         lines = []
         for i, o in enumerate(orders[:10], start=1):  # показываем максимум 10
-            name = o.get("name") or o.get("article") or f"Заказ #{o.get('id')}"
-            price = o.get("price", 0)
-            price_rub = price / 100 if isinstance(price, int) else price
+            raw_name = o.get("name") or o.get("article") or f"Заказ #{o.get('id')}"
+            name = html.escape(str(raw_name))
+            price = o.get("price") or 0
+            price_rub = price / 100 if isinstance(price, int) else float(price or 0)
             kiz_tag = " ⚠️<b>КИЗ</b>" if o.get("kiz_required") else ""
-            lines.append(f"  {i}. <code>#{o.get('id')}</code> · {name}\n     💰 {price_rub:.0f} ₽{kiz_tag}")
+            order_id_esc = html.escape(str(o.get('id') or '—'))
+            lines.append(f"  {i}. <code>#{order_id_esc}</code> · {name}\n     💰 {price_rub:.0f} ₽{kiz_tag}")
 
         if count > 10:
             lines.append(f"  <i>... и ещё {count - 10} заказов</i>")
@@ -268,8 +277,8 @@ class TelegramService:
 
         # --- Есть заказы ---
         kiz_count = sum(1 for o in pending_orders if o.get("kiz_required"))
-        total_price = sum(o.get("price", 0) for o in pending_orders)
-        total_rub = total_price / 100 if isinstance(total_price, int) else float(total_price)
+        total_price = sum((o.get("price") or 0) for o in pending_orders)
+        total_rub = total_price / 100 if isinstance(total_price, int) else float(total_price or 0)
 
         # Oldest order age
         oldest_age_str = ""
@@ -295,9 +304,10 @@ class TelegramService:
         # Build order lines (up to 10)
         lines = []
         for i, o in enumerate(pending_orders[:10], start=1):
-            name = o.get("name") or o.get("article") or f"Заказ #{o.get('id')}"
-            price = o.get("price", 0)
-            price_rub = price / 100 if isinstance(price, int) else float(price)
+            raw_name = o.get("name") or o.get("article") or f"Заказ #{o.get('id')}"
+            name = html.escape(str(raw_name))
+            price = o.get("price") or 0
+            price_rub = price / 100 if isinstance(price, int) else float(price or 0)
             kiz_tag = " ⚠️" if o.get("kiz_required") else ""
 
             age_tag = ""
@@ -312,8 +322,9 @@ class TelegramService:
             except Exception:
                 pass
 
+            order_id_esc = html.escape(str(o.get('id') or '—'))
             lines.append(
-                f"  {i}. <code>#{o.get('id')}</code> · {name}\n"
+                f"  {i}. <code>#{order_id_esc}</code> · {name}\n"
                 f"     💰 {price_rub:.0f} ₽{kiz_tag}{age_tag}"
             )
 
@@ -365,11 +376,12 @@ class TelegramService:
         """
         Отправляет напоминание менеджеру о необходимости выгрузки архива WB.
         """
+        seller_name_esc = html.escape(str(seller_name or "—"))
         since_text = f" (прошло {days_since_last} дн. с последней загрузки)" if days_since_last is not None else ""
         text = (
             f"🔔 <b>НАПОМИНАНИЕ: ВЫГРУЗКА АРХИВА ЧЕКОВ WB</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"🏪 <b>Продавец:</b> {seller_name}{since_text}\n\n"
+            f"🏪 <b>Продавец:</b> {seller_name_esc}{since_text}\n\n"
             f"📋 <b>Инструкция для менеджера:</b>\n"
             f"1. Зайдите в ЛК WB: <i>Маркетплейс → Сборочные задания → Архив</i>\n"
             f"2. Выгрузите отчёт в Excel (детализация с КИЗ)\n"

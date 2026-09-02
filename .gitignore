@@ -75,4 +75,5 @@ certbot/www/*
 
 # Gemini AI agent artifacts
 .gemini/
+.agents/
 

@@ -307,3 +307,39 @@ async def submit_signed_kiz_document(
         "order_ids": order_ids,
         "message": f"Документ {action_label} успешно подписан и принят ГИС МТ (ID: {doc_id})",
     }
+
+
+@router.get("/kiz/documents/{doc_id}/status")
+async def get_cz_document_status(
+    seller_id: str,
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Проверка статуса обработки документа в ГИС МТ (True API).
+    """
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+    if not seller.cz_token_encrypted:
+        raise HTTPException(status_code=400, detail="Токен Честного Знака не настроен")
+
+    from app.services.encryption import decrypt
+    from app.services.cz_client import CZClient
+
+    token = decrypt(seller.cz_token_encrypted)
+    inn = seller.cz_inn
+
+    async with CZClient(inn=inn, token=token) as client:
+        try:
+            status_data = await client.get_document_status(doc_id)
+            return {
+                "success": True,
+                "doc_id": doc_id,
+                "status": status_data.get("status", ""),
+                "data": status_data,
+            }
+        except Exception as exc:
+            logger.error(f"Error querying CZ document status for {doc_id}: {exc}")
+            raise HTTPException(status_code=502, detail=f"Ошибка запроса к Честному Знаку: {str(exc)}")
+

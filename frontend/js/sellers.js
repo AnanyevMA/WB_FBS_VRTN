@@ -134,6 +134,7 @@ async function editSeller(sellerId) {
                 sellerCertSelect.value = matchOpt.value;
                 onSellerCertChanged();
             }
+        }
         // Notification schedule & mode
         const notifMode = seller.notification_mode || 'instant';
         if (notifMode === 'scheduled') {

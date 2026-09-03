@@ -47,22 +47,55 @@ async def check_document_status(doc_id: str, seller_id: str = None):
     print("=" * 60)
     print("⏳ Отправка запроса в ГИС МТ (True API)...")
 
-    async with CZClient(inn=inn, token=token) as client:
-        try:
-            status_data = await client.get_document_status(doc_id)
-            print("\n✅ Ответ от системы Честный Знак:")
-            print(json.dumps(status_data, indent=2, ensure_ascii=False))
+    import httpx
+    headers = {
+        "clientToken": token,
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+    candidate_paths = [
+        f"/api/v3/true-api/documents/receipts/{doc_id}",
+        f"/api/v3/true-api/doc/{doc_id}/status",
+        f"/api/v3/true-api/documents/{doc_id}",
+        f"/api/v3/facade/doc/{doc_id}/status",
+        f"/api/v3/lk/documents/{doc_id}",
+        f"/api/v3/lk/documents/{doc_id}/status",
+        f"/api/v3/true-api/doc/{doc_id}",
+    ]
 
-            status = status_data.get("status", "")
-            if status in ("CHECKED_OK", "ACCEPTED", "SUCCESS", "COMPLETED"):
-                print(f"\n🎉 Статус документа: {status} (Успешно обработан)")
-            elif status in ("IN_PROGRESS", "PROCESSING", "PENDING"):
-                print(f"\n⏳ Статус документа: {status} (В обработке)")
-            else:
-                print(f"\n⚠️ Статус документа: {status}")
-        except Exception as e:
-            print(f"\n❌ Ошибка при обращении к True API: {e}")
-            sys.exit(1)
+    found = False
+    async with httpx.AsyncClient(base_url="https://markirovka.crpt.ru", timeout=15.0, headers=headers) as client:
+        for path in candidate_paths:
+            try:
+                res = await client.get(path)
+                if res.status_code in (200, 201):
+                    print(f"\n✅ Успешный ответ по адресу {path} (код {res.status_code}):")
+                    try:
+                        data = res.json()
+                        print(json.dumps(data, indent=2, ensure_ascii=False))
+                    except Exception:
+                        print(res.text)
+                    found = True
+                    break
+                else:
+                    print(f"ℹ️ {path} -> {res.status_code}: {res.text[:120]}")
+            except Exception as e:
+                print(f"⚠️ Ошибка запроса к {path}: {e}")
+
+    if not found:
+        print("\n🔍 Поиск по реестру документов через True API...")
+        # Try searching via /api/v3/true-api/documents/list or filter
+        search_paths = [
+            f"/api/v3/true-api/documents/list?number={doc_id}",
+            f"/api/v3/facade/doc/listV2?number={doc_id}",
+        ]
+        async with httpx.AsyncClient(base_url="https://markirovka.crpt.ru", timeout=15.0, headers=headers) as client:
+            for sp in search_paths:
+                try:
+                    res = await client.get(sp)
+                    print(f"ℹ️ {sp} -> {res.status_code}: {res.text[:200]}")
+                except Exception as e:
+                    print(f"⚠️ {sp} -> {e}")
 
 
 if __name__ == "__main__":

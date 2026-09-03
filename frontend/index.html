@@ -554,6 +554,55 @@
                     </div>
                 </div>
 
+                <!-- Режим отправки уведомлений о заказах -->
+                <div class="form-group" style="margin-top: 14px; margin-bottom: 12px;">
+                    <label class="form-label" style="font-weight: 600;">Режим доставки уведомлений о заказах</label>
+                    <div style="display: flex; gap: 20px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px;">
+                            <input type="radio" name="seller_notification_mode" id="notif_mode_instant" value="instant" checked onchange="onNotificationModeChanged()" style="accent-color: var(--primary); width: 16px; height: 16px;">
+                            <span>⚡ Мгновенно при поступлении</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px;">
+                            <input type="radio" name="seller_notification_mode" id="notif_mode_scheduled" value="scheduled" onchange="onNotificationModeChanged()" style="accent-color: var(--primary); width: 16px; height: 16px;">
+                            <span>🕒 По расписанию (пакетная сводка)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Блок расписания уведомлений (показывается при выборе "По расписанию") -->
+                <div id="seller_schedule_container" style="display:none; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius:10px; padding:16px; margin-bottom:16px;">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label" style="font-size:13px; font-weight:600; display:flex; justify-content:space-between;">
+                            <span>Время отправки сводки (ЧЧ:ММ через запятую)</span>
+                            <span style="font-size:11px; color:var(--text-muted);">Формат: 10:00, 14:00, 18:00</span>
+                        </label>
+                        <input type="text" class="form-control" id="seller_notification_schedule" name="notification_schedule" placeholder="10:00, 14:00, 18:00" value="10:00, 14:00, 18:00">
+                        <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; align-items:center;">
+                            <span style="font-size:11px; color:var(--text-muted);">Пресеты:</span>
+                            <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:11px; min-height:auto; height:24px;" onclick="setNotificationSchedulePreset('10:00, 14:00, 18:00')">10:00, 14:00, 18:00</button>
+                            <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:11px; min-height:auto; height:24px;" onclick="setNotificationSchedulePreset('09:00, 13:00, 17:00, 21:00')">09:00, 13:00, 17:00, 21:00</button>
+                            <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:11px; min-height:auto; height:24px;" onclick="setNotificationSchedulePreset('11:00, 17:00')">11:00, 17:00</button>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label" style="font-size:12px; font-weight:600;">Часовой пояс продавца</label>
+                        <select class="form-control" id="seller_timezone" name="timezone" style="font-size:13px;">
+                            <option value="Europe/Moscow">Europe/Moscow (UTC+3, Москва)</option>
+                            <option value="Europe/Kaliningrad">Europe/Kaliningrad (UTC+2, Калининград)</option>
+                            <option value="Europe/Samara">Europe/Samara (UTC+4, Самара)</option>
+                            <option value="Asia/Yekaterinburg">Asia/Yekaterinburg (UTC+5, Екатеринбург)</option>
+                            <option value="Asia/Omsk">Asia/Omsk (UTC+6, Омск)</option>
+                            <option value="Asia/Krasnoyarsk">Asia/Krasnoyarsk (UTC+7, Красноярск, Новосибирск)</option>
+                            <option value="Asia/Irkutsk">Asia/Irkutsk (UTC+8, Иркутск)</option>
+                            <option value="Asia/Yakutsk">Asia/Yakutsk (UTC+9, Якутск)</option>
+                            <option value="Asia/Vladivostok">Asia/Vladivostok (UTC+10, Владивосток)</option>
+                            <option value="Asia/Magadan">Asia/Magadan (UTC+11, Магадан)</option>
+                            <option value="Asia/Kamchatka">Asia/Kamchatka (UTC+12, Камчатка)</option>
+                            <option value="UTC">UTC (UTC+0)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <h4 style="margin: 20px 0 10px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">⚙️ Настройки опроса и дайджеста</h4>
 
                 <!-- Polling Interval -->

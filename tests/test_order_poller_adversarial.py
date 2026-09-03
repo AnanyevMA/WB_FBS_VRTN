@@ -465,3 +465,13 @@ def test_kiz_required_heuristic_boundary_cases():
     assert _check_kiz_required({}, subject="Духи и туалетная вода") is True
     assert _check_kiz_required({}, subject="Канцтовары") is False
     assert _check_kiz_required({}, subject="Электроника") is False
+
+    # Heuristic category & TN VED checks when requiredMeta is empty [] or None
+    assert _check_kiz_required({"requiredMeta": []}, subject="Платья") is True
+    assert _check_kiz_required({"requiredMeta": []}, subject="Брюки") is True
+    assert _check_kiz_required({"requiredMeta": []}, subject="Ботинки") is True
+    assert _check_kiz_required({"requiredMeta": []}, tnved="6104") is True
+    assert _check_kiz_required({"requiredMeta": []}, tnved="6403") is True
+    assert _check_kiz_required({"requiredMeta": []}, subject="Канцтовары") is False
+    assert _check_kiz_required({"requiredMeta": None}, subject="Куртки зимние") is True
+    assert _check_kiz_required({"requiredMeta": None}, subject="Канцтовары") is False

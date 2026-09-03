@@ -32,6 +32,11 @@ class Seller(Base):
     polling_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     polling_interval_seconds: Mapped[int] = mapped_column(Integer, default=60, server_default="60")
 
+    # Notification schedule settings
+    notification_mode: Mapped[str] = mapped_column(String(32), default="instant", server_default="instant", nullable=False)
+    notification_schedule: Mapped[list] = mapped_column(JSON, default=list, server_default="[]", nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), default="Europe/Moscow", server_default="Europe/Moscow", nullable=False)
+
     # Morning digest settings
     digest_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     digest_hour: Mapped[int] = mapped_column(Integer, default=8, server_default="8")
@@ -55,3 +60,30 @@ class Seller(Base):
     kiz_operations: Mapped[list["KizOperation"]] = relationship("KizOperation", back_populates="seller", cascade="all, delete-orphan")
     signature_batches: Mapped[list["KizSignatureBatch"]] = relationship("KizSignatureBatch", back_populates="seller", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="seller", cascade="all, delete-orphan")
+
+    @property
+    def has_wb_token(self) -> bool:
+        return bool(self.wb_api_token_encrypted)
+
+    @property
+    def has_cz_token(self) -> bool:
+        return bool(self.cz_token_encrypted)
+
+    @property
+    def has_telegram_token(self) -> bool:
+        return bool(self.telegram_bot_token_encrypted)
+
+    @property
+    def cz_token_preview(self) -> Optional[str]:
+        if not self.cz_token_encrypted:
+            return None
+        try:
+            from app.services.encryption import decrypt
+            dec = decrypt(self.cz_token_encrypted)
+            if dec and len(dec) > 14:
+                return f"{dec[:8]}...{dec[-6:]}"
+            elif dec:
+                return "активен"
+        except Exception:
+            return "сохранен"
+        return None

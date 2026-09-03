@@ -36,6 +36,8 @@ def _apply_digest_settings(seller: Seller, data: dict) -> None:
             seller.digest_hour = getattr(digest_obj, "hour", 8)
             seller.digest_minute = getattr(digest_obj, "minute", 0)
             seller.digest_timezone = getattr(digest_obj, "timezone", "Europe/Moscow")
+        if "timezone" not in data:
+            seller.timezone = seller.digest_timezone
     else:
         if "digest_enabled" in data:
             seller.digest_enabled = data.pop("digest_enabled")
@@ -45,6 +47,8 @@ def _apply_digest_settings(seller: Seller, data: dict) -> None:
             seller.digest_minute = data.pop("digest_minute")
         if "digest_timezone" in data:
             seller.digest_timezone = data.pop("digest_timezone")
+            if "timezone" not in data:
+                seller.timezone = seller.digest_timezone
 
 
 @router.post("", response_model=SellerResponse)
@@ -80,6 +84,12 @@ async def create_seller(seller_in: SellerCreate, db: AsyncSession = Depends(get_
             data["digest_hour"] = getattr(digest_obj, "hour", 8)
             data["digest_minute"] = getattr(digest_obj, "minute", 0)
             data["digest_timezone"] = getattr(digest_obj, "timezone", "Europe/Moscow")
+        if not data.get("timezone"):
+            data["timezone"] = data["digest_timezone"]
+
+    # Timezone synchronization
+    if data.get("timezone") and not data.get("digest_timezone"):
+        data["digest_timezone"] = data["timezone"]
 
     # Cert thumbprint / path sync
     if data.get("cryptopro_cert_thumbprint") and not data.get("cz_cert_path"):
@@ -116,7 +126,7 @@ async def update_seller(seller_id: str, seller_in: SellerUpdate, db: AsyncSessio
 
     data = seller_in.model_dump(exclude_unset=True)
 
-    # Handle encrypted fields (never overwrite with empty or whitespace-only values)
+    # Handle encrypted fields (never overwrite with empty, whitespace-only or null values)
     if "wb_api_token" in data:
         tok = data.pop("wb_api_token")
         if tok and str(tok).strip():
@@ -129,6 +139,28 @@ async def update_seller(seller_id: str, seller_in: SellerUpdate, db: AsyncSessio
         tok = data.pop("telegram_bot_token")
         if tok and str(tok).strip():
             seller.telegram_bot_token_encrypted = encrypt(str(tok).strip())
+
+    # Guarantee telegram_chat_ids preservation (never overwrite if None or omitted)
+    if "telegram_chat_ids" in data:
+        chat_ids = data.pop("telegram_chat_ids")
+        if chat_ids is not None:
+            seller.telegram_chat_ids = chat_ids
+
+    # Notification schedule and mode
+    if "notification_mode" in data:
+        mode = data.pop("notification_mode")
+        if mode:
+            seller.notification_mode = mode
+    if "notification_schedule" in data:
+        sched = data.pop("notification_schedule")
+        if sched is not None:
+            seller.notification_schedule = sched
+    if "timezone" in data:
+        tz = data.pop("timezone")
+        if tz:
+            seller.timezone = tz
+            if "digest_timezone" not in data:
+                seller.digest_timezone = tz
 
     # Convert polling minutes → seconds
     _apply_polling_interval(seller, data)

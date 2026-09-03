@@ -16,6 +16,21 @@ async function safePopulateCertificatesDropdown(targetId = null) {
     }
 }
 
+function onNotificationModeChanged() {
+    const isScheduled = document.getElementById('notif_mode_scheduled')?.checked;
+    const container = document.getElementById('seller_schedule_container');
+    if (container) {
+        container.style.display = isScheduled ? 'block' : 'none';
+    }
+}
+
+function setNotificationSchedulePreset(presetStr) {
+    const input = document.getElementById('seller_notification_schedule');
+    if (input) {
+        input.value = presetStr;
+    }
+}
+
 function openAddSellerModal() {
     currentEditingSellerId = null;
     document.getElementById('sellerForm').reset();
@@ -23,6 +38,17 @@ function openAddSellerModal() {
     document.getElementById('wbTokenRequiredLabel').style.display = 'inline';
     const testResultBox = document.getElementById('sellerTestResultBox');
     if (testResultBox) testResultBox.style.display = 'none';
+
+    // Notification schedule defaults
+    const notifInstant = document.getElementById('notif_mode_instant');
+    if (notifInstant) notifInstant.checked = true;
+    const notifScheduled = document.getElementById('notif_mode_scheduled');
+    if (notifScheduled) notifScheduled.checked = false;
+    const schedInput = document.getElementById('seller_notification_schedule');
+    if (schedInput) schedInput.value = '10:00, 14:00, 18:00';
+    const tzSelect = document.getElementById('seller_timezone');
+    if (tzSelect) tzSelect.value = 'Europe/Moscow';
+    onNotificationModeChanged();
 
     // Populate crypto certificates
     safePopulateCertificatesDropdown();
@@ -108,7 +134,34 @@ async function editSeller(sellerId) {
                 sellerCertSelect.value = matchOpt.value;
                 onSellerCertChanged();
             }
+        // Notification schedule & mode
+        const notifMode = seller.notification_mode || 'instant';
+        if (notifMode === 'scheduled') {
+            const el = document.getElementById('notif_mode_scheduled');
+            if (el) el.checked = true;
+        } else {
+            const el = document.getElementById('notif_mode_instant');
+            if (el) el.checked = true;
         }
+
+        const schedInput = document.getElementById('seller_notification_schedule');
+        if (schedInput) {
+            if (Array.isArray(seller.notification_schedule) && seller.notification_schedule.length > 0) {
+                schedInput.value = seller.notification_schedule.join(', ');
+            } else if (typeof seller.notification_schedule === 'string' && seller.notification_schedule.trim()) {
+                schedInput.value = seller.notification_schedule;
+            } else {
+                schedInput.value = '10:00, 14:00, 18:00';
+            }
+        }
+
+        const notifTzSelect = document.getElementById('seller_timezone');
+        if (notifTzSelect) {
+            const tzVal = seller.timezone || seller.digest_timezone || 'Europe/Moscow';
+            const tzOption = Array.from(notifTzSelect.options).find(o => o.value === tzVal);
+            notifTzSelect.value = tzOption ? tzVal : 'Europe/Moscow';
+        }
+        onNotificationModeChanged();
 
         openModal('sellerModal');
     } catch (e) {
@@ -204,6 +257,19 @@ async function saveSeller() {
 
     const tgChatIds = tgChatIdsRaw ? tgChatIdsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
 
+    const notifMode = document.querySelector('input[name="seller_notification_mode"]:checked')?.value || 'instant';
+    const schedRaw = (document.getElementById('seller_notification_schedule')?.value || '').trim();
+    const notificationSchedule = schedRaw
+        ? schedRaw.split(',')
+            .map(s => s.trim())
+            .filter(s => /^([01]?\d|2[0-3]):[0-5]\d$/.test(s))
+            .map(s => {
+                const parts = s.split(':');
+                return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+            })
+        : ['10:00', '14:00', '18:00'];
+    const sellerTimezone = document.getElementById('seller_timezone')?.value || 'Europe/Moscow';
+
     try {
         if (!currentEditingSellerId) {
             if (!wbToken) {
@@ -223,12 +289,15 @@ async function saveSeller() {
                 mod_fias: czFias || null,
                 telegram_bot_token: tgToken || null,
                 telegram_chat_ids: tgChatIds.length ? tgChatIds : null,
+                notification_mode: notifMode,
+                notification_schedule: notificationSchedule.length ? notificationSchedule : ['10:00', '14:00', '18:00'],
+                timezone: sellerTimezone,
                 polling_interval_minutes: parseInt(document.getElementById('seller_polling_interval').value) || 1,
                 digest: {
                     enabled: document.getElementById('seller_digest_enabled').checked,
                     hour: parseInt(document.getElementById('seller_digest_hour').value) || 8,
                     minute: parseInt(document.getElementById('seller_digest_minute').value) || 0,
-                    timezone: document.getElementById('seller_digest_timezone').value || 'Europe/Moscow',
+                    timezone: document.getElementById('seller_digest_timezone').value || sellerTimezone || 'Europe/Moscow',
                 },
             };
             await apiFetch('/sellers', {
@@ -246,11 +315,14 @@ async function saveSeller() {
                 cryptopro_cert_thumbprint: certPath || null,
                 mod_fias: czFias || null,
                 telegram_chat_ids: tgChatIds,
+                notification_mode: notifMode,
+                notification_schedule: notificationSchedule.length ? notificationSchedule : ['10:00', '14:00', '18:00'],
+                timezone: sellerTimezone,
                 polling_interval_minutes: parseInt(document.getElementById('seller_polling_interval').value) || 1,
                 digest_enabled: document.getElementById('seller_digest_enabled').checked,
                 digest_hour: parseInt(document.getElementById('seller_digest_hour').value) || 8,
                 digest_minute: parseInt(document.getElementById('seller_digest_minute').value) || 0,
-                digest_timezone: document.getElementById('seller_digest_timezone').value || 'Europe/Moscow',
+                digest_timezone: document.getElementById('seller_digest_timezone').value || sellerTimezone || 'Europe/Moscow',
             };
             // Only send tokens if user typed new values (prevent resetting encrypted secrets)
             if (wbToken) payload.wb_api_token = wbToken;

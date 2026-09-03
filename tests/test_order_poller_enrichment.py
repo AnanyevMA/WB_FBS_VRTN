@@ -499,3 +499,60 @@ def test_poll_all_sellers_dispatches_single_and_batch_notifications(test_seller)
             assert payload["name"] == f"SOLO-ITEM (WB #{order_id})"
             assert "brand" in payload
             assert "subject" in payload
+
+
+def test_poll_all_sellers_scheduled_mode_suppresses_instant_alerts_and_runs_stickers(test_seller):
+    """Verify that when seller has notification_mode='scheduled', instant telegram alerts are suppressed,
+    orders are saved with notified_at=None, and get_stickers.delay IS called."""
+    seller_id = test_seller
+    order_id = random.randint(9100000, 9900000)
+    _last_polled.clear()
+
+    with SyncSessionLocal() as session:
+        session.query(Seller).filter(Seller.id != seller_id).update({"is_active": False})
+        seller = session.query(Seller).filter(Seller.id == seller_id).first()
+        seller.last_polled_at = None
+        seller.is_active = True
+        seller.polling_enabled = True
+        seller.polling_interval_seconds = 0
+        seller.notification_mode = "scheduled"
+        seller.notification_schedule = ["10:00", "14:00", "18:00"]
+        session.commit()
+
+    mock_wb_orders = [
+        {
+            "id": order_id,
+            "article": "SCHEDULED-ITEM",
+            "price": 250000,
+        }
+    ]
+
+    with patch("app.agents.order_poller.WBClient") as mock_wb_class, \
+         patch("app.agents.notifier.notify_new_order.delay") as mock_notify_single, \
+         patch("app.agents.notifier.notify_batch_orders.delay") as mock_notify_batch, \
+         patch("app.agents.order_poller.get_stickers.delay") as mock_stickers:
+
+        mock_client = MagicMock()
+        mock_client.get_new_orders.return_value = mock_wb_orders
+        mock_client.get_cards_catalog.return_value = {}
+        mock_client.get_orders_status.return_value = []
+        mock_wb_class.return_value = mock_client
+
+        result = poll_all_sellers()
+
+        assert result["status"] == "success"
+        assert result["new_orders"] >= 1
+
+        # Instant notifications MUST be suppressed
+        mock_notify_single.assert_not_called()
+        mock_notify_batch.assert_not_called()
+
+        # Background stickers generation MUST still be queued
+        mock_stickers.assert_called_once_with(seller_id, order_id)
+
+    # Verify in DB: order exists and notified_at is None
+    with SyncSessionLocal() as session:
+        saved_order = session.query(Order).filter(Order.id == str(order_id)).first()
+        assert saved_order is not None
+        assert saved_order.notified_at is None
+        assert saved_order.seller_id == seller_id

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import logging
 from typing import Optional, Dict, Any
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, and_, update
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -87,6 +87,10 @@ def notify_new_order(seller_id: str, order_id: int, order_data: Optional[dict] =
         try:
             await svc.send_new_order_notification(chat_ids, order_id, order_data)
             with Session(sync_engine) as db:
+                from app.models.order import Order
+                ord_obj = db.execute(select(Order).where(Order.id == order_id)).scalar_one_or_none()
+                if ord_obj:
+                    ord_obj.notified_at = datetime.now(timezone.utc)
                 _log_audit(db, seller_id, "NOTIFY_NEW_ORDER_SUCCESS", "order", str(order_id))
                 db.commit()
         except Exception as exc:
@@ -128,6 +132,14 @@ def notify_batch_orders(seller_id: str, orders_payload: list):
                 orders=orders_payload,
             )
             with Session(sync_engine) as db:
+                from app.models.order import Order
+                order_ids = [o.get("id") for o in orders_payload if o.get("id")]
+                if order_ids:
+                    db.execute(
+                        update(Order)
+                        .where(Order.id.in_(order_ids))
+                        .values(notified_at=datetime.now(timezone.utc))
+                    )
                 _log_audit(
                     db, seller_id, "NOTIFY_BATCH_ORDERS_SUCCESS",
                     "order_batch", f"count:{len(orders_payload)}",
@@ -246,3 +258,200 @@ def send_alert(seller_id: str, agent: str, message: str):
             await svc.close()
 
     asyncio.run(_send())
+
+
+# In-memory tracking for scheduled digests: (seller_id, YYYY-MM-DD, HH:MM)
+_scheduled_digest_sent: set[tuple[str, str, str]] = set()
+
+
+def is_scheduled_slot_due(
+    schedule: list[str],
+    local_now: datetime,
+    grace_minutes: int = 15,
+) -> Optional[str]:
+    """
+    Check if local_now falls within [slot_time, slot_time + grace_minutes] for any slot in schedule.
+    Returns matching slot string 'HH:MM' or None.
+    """
+    if not schedule:
+        return None
+
+    for slot in schedule:
+        try:
+            parts = str(slot).strip().split(":")
+            if len(parts) != 2:
+                continue
+            sh, sm = int(parts[0]), int(parts[1])
+            target_dt = local_now.replace(hour=sh, minute=sm, second=0, microsecond=0)
+            diff_sec = (local_now - target_dt).total_seconds()
+            if 0 <= diff_sec < (grace_minutes * 60):
+                return f"{sh:02d}:{sm:02d}"
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+@celery_app.task(
+    name="app.agents.notifier.send_scheduled_orders_digest",
+    queue="notifications",
+    bind=True,
+    max_retries=3,
+)
+def send_scheduled_orders_digest(self=None, now_utc_override: Optional[datetime] = None) -> dict:
+    """
+    Periodic task checking active sellers with notification_mode='scheduled'.
+    Evaluates current time in seller's timezone against seller.notification_schedule.
+    Dispatches summary of all unnotified orders and stamps order.notified_at.
+    """
+    import asyncio
+    import zoneinfo
+    from app.models.order import Order, OrderStatus
+    from app.services.telegram_service import TelegramService
+
+    now_utc = now_utc_override or datetime.now(timezone.utc)
+    results = {"processed_sellers": 0, "sent_digests": 0, "orders_notified": 0}
+
+    with Session(sync_engine) as db:
+        try:
+            sellers = db.execute(
+                select(Seller).where(
+                    and_(
+                        Seller.is_active.is_(True),
+                        Seller.polling_enabled.is_(True),
+                        Seller.notification_mode == "scheduled",
+                    )
+                )
+            ).scalars().all()
+        except Exception as exc:
+            logger.error(f"[ScheduledDigest] Failed to query sellers: {exc}")
+            if self:
+                raise self.retry(exc=exc, countdown=60)
+            return results
+
+        for seller in sellers:
+            seller_id = str(seller.id)
+            results["processed_sellers"] += 1
+
+            if not seller.telegram_bot_token_encrypted or not seller.telegram_chat_ids:
+                logger.debug(f"[ScheduledDigest] Seller {seller_id} lacks TG token or chat IDs")
+                continue
+
+            # Determine seller local time
+            tz_name = getattr(seller, "timezone", None) or getattr(seller, "digest_timezone", None) or "Europe/Moscow"
+            try:
+                seller_tz = zoneinfo.ZoneInfo(tz_name)
+            except Exception:
+                seller_tz = zoneinfo.ZoneInfo("Europe/Moscow")
+
+            local_now = now_utc.astimezone(seller_tz)
+            date_str = local_now.strftime("%Y-%m-%d")
+
+            schedule = getattr(seller, "notification_schedule", None) or ["10:00", "14:00", "18:00"]
+            matched_slot = is_scheduled_slot_due(schedule, local_now)
+            if not matched_slot:
+                continue
+
+            dedup_key = (seller_id, date_str, matched_slot)
+            if dedup_key in _scheduled_digest_sent:
+                continue
+
+            # Check persistent audit log
+            already_recorded = db.execute(
+                select(AuditLog.id).where(
+                    and_(
+                        AuditLog.seller_id == seller_id,
+                        AuditLog.action.in_(["SCHEDULED_DIGEST_SUCCESS", "SCHEDULED_DIGEST_SKIPPED_EMPTY"]),
+                        AuditLog.entity_id == f"{date_str}:{matched_slot}",
+                    )
+                ).limit(1)
+            ).scalar_one_or_none()
+            if already_recorded:
+                _scheduled_digest_sent.add(dedup_key)
+                continue
+
+            # Query unnotified orders
+            unnotified_orders = db.execute(
+                select(Order).where(
+                    and_(
+                        Order.seller_id == seller.id,
+                        Order.notified_at.is_(None),
+                        Order.status != OrderStatus.CANCELLED,
+                    )
+                ).order_by(Order.created_at.asc())
+            ).scalars().all()
+
+            if not unnotified_orders:
+                _scheduled_digest_sent.add(dedup_key)
+                _log_audit(
+                    db, seller_id, "SCHEDULED_DIGEST_SKIPPED_EMPTY",
+                    "scheduled_digest", f"{date_str}:{matched_slot}",
+                    payload={"count": 0, "slot": matched_slot}
+                )
+                db.commit()
+                continue
+
+            # Format orders payload for Telegram batch notification
+            orders_payload = []
+            for ord_item in unnotified_orders:
+                price_val = float(ord_item.price or 0.0)
+                orders_payload.append({
+                    "id": ord_item.id,
+                    "name": ord_item.name or ord_item.subject or "—",
+                    "article": ord_item.article or "",
+                    "brand": ord_item.brand or "—",
+                    "subject": ord_item.subject or "—",
+                    "price": price_val,
+                    "kiz_required": bool(ord_item.kiz_required),
+                    "wb_created_at": ord_item.wb_created_at.isoformat() if ord_item.wb_created_at else "",
+                })
+
+            bot_token = decrypt(seller.telegram_bot_token_encrypted)
+            chat_ids = seller.telegram_chat_ids or []
+
+            async def _send_digest():
+                svc = TelegramService(bot_token)
+                try:
+                    await svc.send_batch_orders_notification(
+                        chat_ids=chat_ids,
+                        seller_id=seller_id,
+                        orders=orders_payload,
+                    )
+                finally:
+                    await svc.close()
+
+            try:
+                asyncio.run(_send_digest())
+                stamp = datetime.now(timezone.utc)
+                for ord_item in unnotified_orders:
+                    ord_item.notified_at = stamp
+
+                _log_audit(
+                    db, seller_id, "SCHEDULED_DIGEST_SUCCESS",
+                    "scheduled_digest", f"{date_str}:{matched_slot}",
+                    payload={
+                        "count": len(unnotified_orders),
+                        "slot": matched_slot,
+                        "order_ids": [o.id for o in unnotified_orders],
+                    }
+                )
+                db.commit()
+                _scheduled_digest_sent.add(dedup_key)
+                results["sent_digests"] += 1
+                results["orders_notified"] += len(unnotified_orders)
+                logger.info(
+                    f"[ScheduledDigest] Sent digest for seller {seller_id}: "
+                    f"{len(unnotified_orders)} orders in slot {matched_slot}"
+                )
+            except Exception as exc:
+                db.rollback()
+                _log_audit(
+                    db, seller_id, "SCHEDULED_DIGEST_FAILED",
+                    "scheduled_digest", f"{date_str}:{matched_slot}",
+                    error=str(exc)
+                )
+                db.commit()
+                logger.error(f"[ScheduledDigest] Failed sending digest for seller {seller_id}: {exc}")
+                if self:
+                    raise self.retry(exc=exc, countdown=30)
+
+    return results

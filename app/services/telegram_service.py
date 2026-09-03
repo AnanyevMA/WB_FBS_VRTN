@@ -367,6 +367,24 @@ class TelegramService:
         )
         return await self._broadcast(chat_ids, text, keyboard)
 
+    async def send_orders_digest(
+        self,
+        chat_ids: list[str | int],
+        seller_id: str,
+        pending_orders: list[dict],
+        digest_time_str: str = "По расписанию",
+    ) -> bool:
+        """
+        Сводное уведомление (дайджест) по расписанию.
+        Делегирует в send_morning_digest.
+        """
+        return await self.send_morning_digest(
+            chat_ids=chat_ids,
+            seller_id=seller_id,
+            pending_orders=pending_orders,
+            digest_time_str=digest_time_str,
+        )
+
     async def send_archive_reminder(
         self,
         chat_ids: list[str | int],

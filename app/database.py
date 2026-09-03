@@ -76,6 +76,14 @@ async def init_db() -> None:
                     cols = {c["name"] for c in inspector.get_columns("users")}
                     if "must_change_password" in cols:
                         sync_conn.exec_driver_sql("UPDATE users SET must_change_password = 0 WHERE must_change_password IS NULL")
+                if "sellers" in inspector.get_table_names():
+                    seller_cols = {c["name"] for c in inspector.get_columns("sellers")}
+                    if "notification_mode" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET notification_mode = 'instant' WHERE notification_mode IS NULL")
+                    if "notification_schedule" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET notification_schedule = '[\"10:00\", \"14:00\", \"18:00\"]' WHERE notification_schedule IS NULL")
+                    if "timezone" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET timezone = 'Europe/Moscow' WHERE timezone IS NULL")
             await conn.run_sync(sync_sqlite_columns)
 
         # PostgreSQL auto-migration for TIMESTAMP WITH TIME ZONE

@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-02T14:13:21.963807+00:00",
+  "updated_at": "2026-09-03T13:38:29.804856+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 96,
+  "total_files": 100,
   "files": [
     {
       "file": "alembic/env.py",
@@ -875,7 +875,7 @@
     {
       "file": "app/agents/notifier.py",
       "layer": "agents",
-      "hash": "5cb04784d692",
+      "hash": "af1dd22d0115",
       "docstring": "Notifier Agent — отправка уведомлений через Telegram",
       "classes": [],
       "functions": [
@@ -969,6 +969,29 @@
             "celery_app.task()"
           ],
           "docstring": "Send error alert to seller's admin."
+        },
+        {
+          "name": "is_scheduled_slot_due",
+          "is_async": false,
+          "args": [
+            "schedule",
+            "local_now",
+            "grace_minutes"
+          ],
+          "decorators": [],
+          "docstring": "Check if local_now falls within [slot_time, slot_time + grace_minutes] for any slot in schedule."
+        },
+        {
+          "name": "send_scheduled_orders_digest",
+          "is_async": false,
+          "args": [
+            "self",
+            "now_utc_override"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Periodic task checking active sellers with notification_mode='scheduled'."
         }
       ],
       "endpoints": [],
@@ -997,6 +1020,11 @@
           "name": "app.agents.notifier.send_alert",
           "function": "send_alert",
           "docstring": "Send error alert to seller's admin."
+        },
+        {
+          "name": "app.agents.notifier.send_scheduled_orders_digest",
+          "function": "send_scheduled_orders_digest",
+          "docstring": "Periodic task checking active sellers with notification_mode='scheduled'."
         }
       ],
       "db_tables": [],
@@ -1014,13 +1042,14 @@
         "sqlalchemy",
         "sqlalchemy.orm",
         "typing",
-        "uuid"
+        "uuid",
+        "zoneinfo"
       ]
     },
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "cf37737bea65",
+      "hash": "94cb16715e19",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2375,7 +2404,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "b8ac13740454",
+      "hash": "ac2199144b99",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3237,7 +3266,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "495e1a5ebe9e",
+      "hash": "c088c65b8b37",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3292,7 +3321,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "f8994c0c875c",
+      "hash": "3b1946247a54",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -3569,7 +3598,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "1e4744bb200c",
+      "hash": "d34214b69373",
       "docstring": "",
       "classes": [
         {
@@ -3578,7 +3607,12 @@
             "Base"
           ],
           "docstring": "",
-          "methods": []
+          "methods": [
+            "has_wb_token",
+            "has_cz_token",
+            "has_telegram_token",
+            "cz_token_preview"
+          ]
         }
       ],
       "functions": [],
@@ -3589,6 +3623,7 @@
       ],
       "imports": [
         "app.database",
+        "app.services.encryption",
         "datetime",
         "sqlalchemy",
         "sqlalchemy.orm",
@@ -3826,7 +3861,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "f31a288026a6",
+      "hash": "2a6030964e1a",
       "docstring": "",
       "classes": [
         {
@@ -3845,7 +3880,14 @@
             "BaseModel"
           ],
           "docstring": "",
-          "methods": []
+          "methods": [
+            "default_notification_mode",
+            "default_tz",
+            "default_schedule",
+            "validate_notification_mode",
+            "validate_schedule",
+            "validate_tz"
+          ]
         },
         {
           "name": "SellerCreate",
@@ -3862,6 +3904,8 @@
           ],
           "docstring": "",
           "methods": [
+            "validate_notification_mode",
+            "validate_schedule",
             "validate_timezone"
           ]
         },
@@ -3882,6 +3926,8 @@
           ],
           "docstring": "",
           "methods": [
+            "default_item_mode",
+            "default_item_tz",
             "model_validate"
           ]
         }
@@ -3894,6 +3940,7 @@
         "app.services.encryption",
         "datetime",
         "pydantic",
+        "re",
         "typing",
         "zoneinfo"
       ]
@@ -4463,7 +4510,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "9d1e037d9b56",
+      "hash": "b73260a05392",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -4481,6 +4528,7 @@
             "send_error_alert",
             "send_batch_orders_notification",
             "send_morning_digest",
+            "send_orders_digest",
             "send_archive_reminder",
             "send_text",
             "_broadcast"
@@ -4597,7 +4645,7 @@
     {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "8fa5ceefcd78",
+      "hash": "39e60ca5e770",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {
@@ -4886,18 +4934,6 @@
       ]
     },
     {
-      "file": "tests/run_adversarial.py",
-      "layer": "tests",
-      "hash": "e3b0c44298fc",
-      "docstring": "",
-      "classes": [],
-      "functions": [],
-      "endpoints": [],
-      "celery_tasks": [],
-      "db_tables": [],
-      "imports": []
-    },
-    {
       "file": "tests/test_agent_delegation_sync.py",
       "layer": "tests",
       "hash": "a1607c7e14ae",
@@ -4979,6 +5015,74 @@
         "app.agent_manifest",
         "json",
         "pathlib"
+      ]
+    },
+    {
+      "file": "tests/test_api_sellers.py",
+      "layer": "tests",
+      "hash": "6b0c3719e4d9",
+      "docstring": "Tests for Seller API Endpoints (PATCH, POST, GET) & Token/ChatID Preservation.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_get_auth_headers",
+          "is_async": true,
+          "args": [
+            "client"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_patch_seller_notification_settings_preserves_tokens_and_chat_ids",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_patch_seller_updates_tokens_when_non_empty_values_provided",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_patch_seller_schedule_validation_errors",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_create_seller_with_notification_schedule",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "httpx",
+        "pytest",
+        "uuid"
       ]
     },
     {
@@ -5233,6 +5337,316 @@
       ]
     },
     {
+      "file": "tests/test_challenger_r1_adversarial.py",
+      "layer": "tests",
+      "hash": "0693953ce601",
+      "docstring": "Adversarial Stress Test Suite for Objective R1 (Challenger 1).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "clean_digest_and_poller_state",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_get_auth_headers",
+          "is_async": true,
+          "args": [
+            "client"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_patch_empty_and_whitespace_tokens_preserves_originals",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify empty string, whitespace, and None tokens do not overwrite existing DB tokens."
+        },
+        {
+          "name": "test_patch_schedule_normalization_and_validation",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify schedule deduplication, sorting, and rejection of malformed schedules."
+        },
+        {
+          "name": "test_order_poller_scheduled_mode_suppression_single_order",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Ingest single order for scheduled seller: notify_new_order.delay NOT called, get_stickers.delay IS called."
+        },
+        {
+          "name": "test_order_poller_scheduled_mode_suppression_batch_orders",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Ingest multiple orders for scheduled seller: notify_batch_orders.delay NOT called, get_stickers.delay IS called for each."
+        },
+        {
+          "name": "test_scheduled_digest_multi_timezone_slot_matching",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify slot matching across multiple timezones (Europe/Moscow UTC+3, Asia/Yekaterinburg UTC+5, Europe/Kaliningrad UTC+2)."
+        },
+        {
+          "name": "test_scheduled_digest_immediate_second_call_no_duplicate",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that calling send_scheduled_orders_digest a second time immediately afterwards does NOT duplicate send."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.notifier",
+        "app.agents.order_poller",
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "httpx",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_challenger_r2_adversarial.py",
+      "layer": "tests",
+      "hash": "0eb4f0d87977",
+      "docstring": "Challenger 2 Adversarial Verification Test Harness for Objective R2.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_ensure_aiogram_mock",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "setup_db",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_kiz_required_clothing_categories_with_empty_meta",
+          "is_async": false,
+          "args": [
+            "category"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('category', List(elts=[Constant(value='Платья'), Constant(value='Брюки'), Constant(value='Куртки'), Constant(value='Ботинки'), Constant(value='Пальто'), Constant(value='Джинсы'), Constant(value='ПЛАТЬЯ'), Constant(value='брюки'), Constant(value='  Куртки  '), Constant(value='Платье летнее'), Constant(value='Брюки классические'), Constant(value='Куртка зимняя'), Constant(value='Ботинки зимние'), Constant(value='Пальто демисезонное'), Constant(value='Джинсы прямого кроя')], ctx=Load()))"
+          ],
+          "docstring": "Empty requiredMeta: [] with clothing categories MUST return True."
+        },
+        {
+          "name": "test_kiz_required_perfume_cosmetics_with_empty_meta",
+          "is_async": false,
+          "args": [
+            "perfume_item"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('perfume_item', List(elts=[Constant(value='Духи'), Constant(value='Туалетная вода'), Constant(value='Парфюмерия'), Constant(value='ДУХИ'), Constant(value='туалетная вода'), Constant(value='Парфюмерная вода 50мл'), Constant(value='Духи женские стойкие'), Constant(value='Французская парфюмерия')], ctx=Load()))"
+          ],
+          "docstring": "Empty requiredMeta: [] with perfume/cosmetics MUST return True."
+        },
+        {
+          "name": "test_kiz_required_textiles_with_empty_meta",
+          "is_async": false,
+          "args": [
+            "textile_item"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('textile_item', List(elts=[Constant(value='Постельное белье'), Constant(value='Полотенце махровое'), Constant(value='ПОСТЕЛЬНОЕ БЕЛЬЕ'), Constant(value='полотенце махровое'), Constant(value='Комплект постельного белья сатин'), Constant(value='Полотенце кухонное'), Constant(value='Текстиль для дома')], ctx=Load()))"
+          ],
+          "docstring": "Empty requiredMeta: [] with bed linen / textiles MUST return True."
+        },
+        {
+          "name": "test_kiz_required_tnved_prefixes_with_empty_meta",
+          "is_async": false,
+          "args": [
+            "tnved_code"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('tnved_code', List(elts=[Constant(value='6109100000'), Constant(value='6203423500'), Constant(value='6403599900'), Constant(value='3303001000'), Constant(value='4203100000'), Constant(value='4011100000'), Constant(value='6302210000'), Constant(value='6505009000'), Constant(value='9004100000'), Constant(value=6109100000), Constant(value=6203423500), Constant(value=' 6109100000 '), Constant(value='61.09.10.00.00'), Constant(value='6403-59-9900')], ctx=Load()))"
+          ],
+          "docstring": "Empty requiredMeta: [] with marked TN VED prefixes MUST return True."
+        },
+        {
+          "name": "test_kiz_required_explicit_required_meta_variations",
+          "is_async": false,
+          "args": [
+            "meta_val"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('meta_val', List(elts=[List(elts=[Constant(value='sgtin')], ctx=Load()), List(elts=[Constant(value='SGTIN')], ctx=Load()), List(elts=[Constant(value='kiz')], ctx=Load()), List(elts=[Constant(value='KIZ')], ctx=Load()), List(elts=[Constant(value='Sgtin')], ctx=Load()), List(elts=[Constant(value='KiZ')], ctx=Load()), List(elts=[Constant(value='unknown'), Constant(value='sgtin')], ctx=Load()), List(elts=[Constant(value='other_flag'), Constant(value='KIZ'), Constant(value='something')], ctx=Load()), Constant(value='sgtin'), Constant(value='SGTIN'), Constant(value='kiz'), Constant(value='KIZ'), Constant(value='contains sgtin inside text')], ctx=Load()))"
+          ],
+          "docstring": "Explicit requiredMeta with sgtin or kiz MUST return True regardless of subject/tnved."
+        },
+        {
+          "name": "test_kiz_required_non_marked_items_return_false",
+          "is_async": false,
+          "args": [
+            "subject",
+            "tnved"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('subject,tnved', List(elts=[Tuple(elts=[Constant(value='Канцтовары'), Constant(value='4820100000')], ctx=Load()), Tuple(elts=[Constant(value='Ручка шариковая'), Constant(value='9608101000')], ctx=Load()), Tuple(elts=[Constant(value='Ноутбук'), Constant(value='8517120000')], ctx=Load()), Tuple(elts=[Constant(value='Смартфон'), Constant(value='8517120000')], ctx=Load()), Tuple(elts=[Constant(value='Тетрадь школьная'), Constant(value='4820200000')], ctx=Load()), Tuple(elts=[Constant(value='Кабель USB Type-C'), Constant(value='8544429007')], ctx=Load()), Tuple(elts=[Constant(value='Чехол для телефона'), Constant(value='3926909709')], ctx=Load()), Tuple(elts=[Constant(value='Игрушка пластиковая'), Constant(value='9503003500')], ctx=Load()), Tuple(elts=[Constant(value='Книга печатная'), Constant(value='4901990000')], ctx=Load()), Tuple(elts=[Constant(value='Посуда стеклянная'), Constant(value='7013379900')], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": "Non-marked items with empty requiredMeta: [] MUST return False."
+        },
+        {
+          "name": "test_is_kiz_required_adversarial_types_no_crash",
+          "is_async": false,
+          "args": [
+            "corrupt_raw"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('corrupt_raw', List(elts=[Constant(value=None), Dict(), Dict(keys=[Constant(value='requiredMeta')], values=[Constant(value=None)]), Dict(keys=[Constant(value='requiredMeta')], values=[List(ctx=Load())]), Dict(keys=[Constant(value='requiredMeta')], values=[List(elts=[Constant(value=None), Constant(value=12345), Constant(value=False), Dict()], ctx=Load())]), Dict(keys=[Constant(value='requiredMeta')], values=[Constant(value=12345)]), Dict(keys=[Constant(value='requiredMeta')], values=[Constant(value=True)]), Dict(keys=[Constant(value='requiredMeta')], values=[Dict(keys=[Constant(value='key')], values=[Constant(value='val')])]), Dict(keys=[Constant(value='requiredMeta')], values=[List(elts=[Constant(value=b'bytes'), Call(func=Name(id='object', ctx=Load()))], ctx=Load())]), Constant(value='not a dictionary'), Constant(value=12345678), List(elts=[Constant(value=1), Constant(value=2), Constant(value=3)], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": "Function MUST gracefully handle corrupt, non-dict, None, or weird order_raw without raising."
+        },
+        {
+          "name": "test_is_kiz_required_adversarial_tnved_types_no_crash",
+          "is_async": false,
+          "args": [
+            "bad_tnved"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('bad_tnved', List(elts=[Constant(value=None), Constant(value=''), Constant(value='   '), Constant(value=12345), Constant(value=9999999999), List(elts=[Constant(value='6109100000')], ctx=Load()), Dict(keys=[Constant(value='code')], values=[Constant(value='6109100000')]), Call(func=Name(id='object', ctx=Load()))], ctx=Load()))"
+          ],
+          "docstring": "Function MUST handle odd TN VED data types without crashing."
+        },
+        {
+          "name": "test_is_kiz_required_adversarial_subject_types_no_crash",
+          "is_async": false,
+          "args": [
+            "bad_subject"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('bad_subject', List(elts=[Constant(value=None), Constant(value=''), Constant(value='   '), Constant(value=12345), List(elts=[Constant(value='Платья')], ctx=Load()), Dict(keys=[Constant(value='subject')], values=[Constant(value='Платья')]), Constant(value=False)], ctx=Load()))"
+          ],
+          "docstring": "Function MUST handle odd subject data types without crashing."
+        },
+        {
+          "name": "test_is_kiz_required_priority_and_fallbacks",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify fallback from subject to name in order_raw and priority rules."
+        },
+        {
+          "name": "test_telegram_single_order_notification_kiz_required_true",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Order with kiz_required=True -> message MUST contain 🏷️ <b>КИЗ:</b> ⚠️ ТРЕБУЕТСЯ."
+        },
+        {
+          "name": "test_telegram_single_order_notification_kiz_required_false",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Order with kiz_required=False -> message MUST contain 🏷️ <b>КИЗ:</b> ✅ не нужен."
+        },
+        {
+          "name": "test_telegram_single_order_notification_falsy_kiz_handled",
+          "is_async": true,
+          "args": [
+            "falsy_kiz"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('falsy_kiz', List(elts=[Constant(value=None), Constant(value=False), Constant(value=0), Constant(value='')], ctx=Load()))"
+          ],
+          "docstring": "Any falsy kiz_required value MUST safely produce '✅ не нужен'."
+        },
+        {
+          "name": "test_telegram_single_order_notification_missing_kiz_handled",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Order data dictionary missing kiz_required entirely MUST default to '✅ не нужен'."
+        },
+        {
+          "name": "test_telegram_batch_notification_kiz_tally",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Batch notification correctly identifies items requiring KIZ and tags them."
+        },
+        {
+          "name": "test_order_poller_e2e_clothing_empty_meta_persistence",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Simulate WB FBS returning order with requiredMeta: [] and clothing category."
+        },
+        {
+          "name": "test_order_poller_e2e_stationery_empty_meta_persistence",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Simulate WB FBS returning order with requiredMeta: [] and stationery category."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "aiogram",
+        "app.agents.order_poller",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "app.services.wb_client",
+        "asyncio",
+        "datetime",
+        "decimal",
+        "pytest",
+        "random",
+        "sys",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_codebase_indexer.py",
       "layer": "tests",
       "hash": "6ca4dfaecd6d",
@@ -5444,6 +5858,160 @@
         "app.services.kb_service",
         "pathlib",
         "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_heuristics_r2.py",
+      "layer": "tests",
+      "hash": "87b19a6e12a4",
+      "docstring": "Unit and integration tests for Milestone 2 (R2):",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_stub_aiogram",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stub out aiogram so tests run reliably without network/bot tokens."
+        },
+        {
+          "name": "setup_db",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_seller",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_is_kiz_required_sgtin_in_required_meta_precedence",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that requiredMeta containing 'sgtin' or 'kiz' returns True even for non-marked category."
+        },
+        {
+          "name": "test_is_kiz_required_empty_required_meta_marked_categories",
+          "is_async": false,
+          "args": [
+            "category"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('category', List(elts=[Constant(value='Платья'), Constant(value='Платье вечернее'), Constant(value='Брюки женские'), Constant(value='Куртки зимние'), Constant(value='Куртка демисезонная'), Constant(value='Ботинки мужские'), Constant(value='Туфли'), Constant(value='Сапоги кожаные'), Constant(value='Кроссовки'), Constant(value='Духи'), Constant(value='Туалетная вода'), Constant(value='Парфюмерия'), Constant(value='Худи'), Constant(value='Свитшот'), Constant(value='Свитер вязаный'), Constant(value='Футболка хлопок'), Constant(value='Постельное белье сатин'), Constant(value='Полотенца банные'), Constant(value='Текстиль для дома'), Constant(value='Пальто шерстяное'), Constant(value='Пуховик'), Constant(value='Джинсы классические'), Constant(value='Юбки плиссе'), Constant(value='Рубашки'), Constant(value='Блузки'), Constant(value='Капор утепленный'), Constant(value='Шапка трикотажная')], ctx=Load()))"
+          ],
+          "docstring": "Verify empty requiredMeta: [] does NOT return False for marked apparel, footwear, textiles, perfumes."
+        },
+        {
+          "name": "test_is_kiz_required_empty_required_meta_marked_tnved",
+          "is_async": false,
+          "args": [
+            "tnved_code"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('tnved_code', List(elts=[Constant(value='6109100000'), Constant(value='6104420000'), Constant(value='6201110000'), Constant(value='6203420000'), Constant(value='6403599900'), Constant(value='6404110000'), Constant(value='3303001000'), Constant(value='6302210000'), Constant(value='6505009000'), Constant(value='4203100000'), Constant(value='4303100000'), Constant(value='4011100000'), Constant(value='9004100000'), Constant(value='61'), Constant(value='62'), Constant(value='64'), Constant(value='6301'), Constant(value='6302'), Constant(value='6303'), Constant(value='6304'), Constant(value='6109.10.00'), Constant(value='6403 59 99')], ctx=Load()))"
+          ],
+          "docstring": "Verify empty requiredMeta: [] evaluates TN VED prefixes and returns True for marked groups."
+        },
+        {
+          "name": "test_is_kiz_required_non_marked_goods_returns_false",
+          "is_async": false,
+          "args": [
+            "category",
+            "tnved_code"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('category,tnved_code', List(elts=[Tuple(elts=[Constant(value='Канцтовары'), Constant(value='4820100000')], ctx=Load()), Tuple(elts=[Constant(value='Электроника'), Constant(value='8517120000')], ctx=Load()), Tuple(elts=[Constant(value='Тетрадь школьная'), Constant(value='4820200000')], ctx=Load()), Tuple(elts=[Constant(value='Кабель USB Type-C'), Constant(value='8544429007')], ctx=Load()), Tuple(elts=[Constant(value='Чехол для телефона'), Constant(value='3926909709')], ctx=Load()), Tuple(elts=[Constant(value='Игрушка пластиковая'), Constant(value='9503003500')], ctx=Load()), Tuple(elts=[Constant(value='Книга печатная'), Constant(value='4901990000')], ctx=Load()), Tuple(elts=[Constant(value='Посуда стеклянная'), Constant(value='7013379900')], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": "Verify genuinely non-marked goods return False when requiredMeta is empty and heuristics do not match."
+        },
+        {
+          "name": "test_is_kiz_required_empty_payload_without_heuristics",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify calling with empty order_raw and no subject/tnved returns False."
+        },
+        {
+          "name": "test_is_kiz_required_fallback_to_name_in_order_raw",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that if subject is generic ('Товар'), product title 'name' is inspected."
+        },
+        {
+          "name": "test_order_poller_enriches_and_persists_kiz_required_with_empty_required_meta",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Simulate full poll_seller_orders flow:"
+        },
+        {
+          "name": "test_order_poller_persists_non_marked_item_as_not_required",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Simulate poll_seller_orders with non-marked item (stationery):"
+        },
+        {
+          "name": "test_poll_all_sellers_dispatches_notification_with_kiz_required_true",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "End-to-end task test:"
+        },
+        {
+          "name": "test_telegram_single_order_notification_template_kiz_tag_display",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_new_order_notification displays exact tags for True and False."
+        },
+        {
+          "name": "test_telegram_batch_and_digest_kiz_count_display",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_batch_orders_notification and send_orders_digest display KIZ requirement summary."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.order_poller",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "app.services.wb_client",
+        "asyncio",
+        "datetime",
+        "decimal",
+        "pytest",
+        "random",
+        "sys",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -5847,7 +6415,7 @@
     {
       "file": "tests/test_order_poller_adversarial.py",
       "layer": "tests",
-      "hash": "912431b0df58",
+      "hash": "42c5d355326e",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -5980,7 +6548,7 @@
     {
       "file": "tests/test_order_poller_enrichment.py",
       "layer": "tests",
-      "hash": "170cb0c7cd2d",
+      "hash": "6822623b2fbe",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6064,6 +6632,15 @@
           ],
           "decorators": [],
           "docstring": "Verify poll_all_sellers triggers single order notification or batch notification appropriately."
+        },
+        {
+          "name": "test_poll_all_sellers_scheduled_mode_suppresses_instant_alerts_and_runs_stickers",
+          "is_async": false,
+          "args": [
+            "test_seller"
+          ],
+          "decorators": [],
+          "docstring": "Verify that when seller has notification_mode='scheduled', instant telegram alerts are suppressed,"
         }
       ],
       "endpoints": [],
@@ -6219,6 +6796,76 @@
         "pydantic",
         "pytest",
         "types"
+      ]
+    },
+    {
+      "file": "tests/test_scheduled_orders_digest.py",
+      "layer": "tests",
+      "hash": "1ab0915ba0bf",
+      "docstring": "Tests for Scheduled Orders Digest Task (app.agents.notifier.send_scheduled_orders_digest)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_db_and_digest",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_is_scheduled_slot_due_helper",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_send_scheduled_orders_digest_dispatches_and_stamps_orders",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_send_scheduled_orders_digest_idempotency",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_send_scheduled_orders_digest_skips_when_slot_not_due",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_send_scheduled_orders_digest_timezone_conversion",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.notifier",
+        "app.agents.order_poller",
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -6648,7 +7295,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "f33d0048be1f",
+      "hash": "8cc85bc848bd",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

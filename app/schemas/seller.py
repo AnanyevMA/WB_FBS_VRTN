@@ -40,6 +40,65 @@ class SellerBase(BaseModel):
     mod_fias: Optional[str] = None
     mod_kpp: Optional[str] = None
     telegram_chat_ids: Optional[List[str]] = None
+    notification_mode: Optional[str] = "instant"
+    notification_schedule: Optional[List[str]] = Field(default_factory=lambda: ["10:00", "14:00", "18:00"])
+    timezone: Optional[str] = "Europe/Moscow"
+
+    @field_validator("notification_mode", mode="before")
+    @classmethod
+    def default_notification_mode(cls, v):
+        return v or "instant"
+
+    @field_validator("timezone", mode="before")
+    @classmethod
+    def default_tz(cls, v):
+        return v or "Europe/Moscow"
+
+    @field_validator("notification_schedule", mode="before")
+    @classmethod
+    def default_schedule(cls, v):
+        if not v:
+            return ["10:00", "14:00", "18:00"]
+        return v
+
+    @field_validator("notification_mode")
+    @classmethod
+    def validate_notification_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in ("instant", "scheduled"):
+            raise ValueError(f"Недопустимый режим уведомлений: '{v}'. Допустимо: 'instant', 'scheduled'")
+        return v
+
+    @field_validator("notification_schedule")
+    @classmethod
+    def validate_schedule(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        import re
+        cleaned = []
+        for item in v:
+            s = str(item).strip()
+            if not re.match(r"^([01]?\d|2[0-3]):[0-5]\d$", s):
+                raise ValueError(f"Неверный формат времени '{item}'. Ожидается ЧЧ:ММ (00:00–23:59)")
+            parts = s.split(":")
+            cleaned.append(f"{int(parts[0]):02d}:{int(parts[1]):02d}")
+        return sorted(list(set(cleaned)))
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_tz(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        try:
+            import zoneinfo
+            zoneinfo.ZoneInfo(v)
+        except Exception:
+            raise ValueError(
+                f"Неверный часовой пояс: '{v}'. "
+                f"Используйте IANA-формат, например: {_TZ_EXAMPLES}"
+            )
+        return v
 
 
 class SellerCreate(SellerBase):
@@ -86,13 +145,41 @@ class SellerUpdate(BaseModel):
     digest_hour: Optional[int] = Field(None, ge=0, le=23)
     digest_minute: Optional[int] = Field(None, ge=0, le=59)
     digest_timezone: Optional[str] = None
+    # Notification schedule settings
+    notification_mode: Optional[str] = None
+    notification_schedule: Optional[List[str]] = None
+    timezone: Optional[str] = None
     # Nested convenience object — takes priority if provided
     digest: Optional[DigestSettings] = Field(
         None,
         description="Настройки дайджеста (вложенный объект — приоритет над плоскими полями)",
     )
 
-    @field_validator("digest_timezone")
+    @field_validator("notification_mode")
+    @classmethod
+    def validate_notification_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in ("instant", "scheduled"):
+            raise ValueError(f"Недопустимый режим уведомлений: '{v}'. Допустимо: 'instant', 'scheduled'")
+        return v
+
+    @field_validator("notification_schedule")
+    @classmethod
+    def validate_schedule(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return v
+        import re
+        cleaned = []
+        for item in v:
+            s = str(item).strip()
+            if not re.match(r"^([01]?\d|2[0-3]):[0-5]\d$", s):
+                raise ValueError(f"Неверный формат времени '{item}'. Ожидается ЧЧ:ММ (00:00–23:59)")
+            parts = s.split(":")
+            cleaned.append(f"{int(parts[0]):02d}:{int(parts[1]):02d}")
+        return sorted(list(set(cleaned)))
+
+    @field_validator("timezone", "digest_timezone")
     @classmethod
     def validate_timezone(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
@@ -120,7 +207,10 @@ class SellerResponse(SellerBase):
     digest_enabled: bool = True
     digest_hour: int = 8
     digest_minute: int = 0
-    digest_timezone: str = "Europe/Moscow"
+    digest_timezone: Optional[str] = "Europe/Moscow"
+    notification_mode: Optional[str] = "instant"
+    notification_schedule: Optional[List[str]] = Field(default_factory=lambda: ["10:00", "14:00", "18:00"])
+    timezone: Optional[str] = "Europe/Moscow"
     last_polled_at: Optional[datetime] = None
     archive_reminder_enabled: Optional[bool] = True
     archive_reminder_days: Optional[int] = 2
@@ -138,6 +228,18 @@ class SellerResponse(SellerBase):
         # Compute human-friendly minutes from stored seconds
         instance.polling_interval_minutes = max(1, instance.polling_interval_seconds // 60)
         
+        sched = getattr(obj, "notification_schedule", None)
+        if isinstance(sched, list) and sched:
+            instance.notification_schedule = sched
+        else:
+            instance.notification_schedule = ["10:00", "14:00", "18:00"]
+
+        mode = getattr(obj, "notification_mode", None)
+        instance.notification_mode = mode or "instant"
+
+        tz = getattr(obj, "timezone", None) or getattr(obj, "digest_timezone", None)
+        instance.timezone = tz or "Europe/Moscow"
+
         wb_enc = getattr(obj, "wb_api_token_encrypted", None)
         cz_enc = getattr(obj, "cz_token_encrypted", None)
         tg_enc = getattr(obj, "telegram_bot_token_encrypted", None)
@@ -168,7 +270,9 @@ class SellerListItem(BaseModel):
     polling_interval_minutes: int = 1
     digest_enabled: bool = True
     digest_hour: int = 8
-    digest_timezone: str = "Europe/Moscow"
+    digest_timezone: Optional[str] = "Europe/Moscow"
+    notification_mode: Optional[str] = "instant"
+    timezone: Optional[str] = "Europe/Moscow"
     last_polled_at: Optional[datetime] = None
     archive_reminder_enabled: Optional[bool] = True
     archive_reminder_days: Optional[int] = 2
@@ -176,9 +280,22 @@ class SellerListItem(BaseModel):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 
+    @field_validator("notification_mode", mode="before")
+    @classmethod
+    def default_item_mode(cls, v):
+        return v or "instant"
+
+    @field_validator("timezone", mode="before")
+    @classmethod
+    def default_item_tz(cls, v):
+        return v or "Europe/Moscow"
+
     @classmethod
     def model_validate(cls, obj, **kwargs):
         instance = super().model_validate(obj, **kwargs)
         interval_sec = getattr(obj, "polling_interval_seconds", 60) or 60
         instance.polling_interval_minutes = max(1, interval_sec // 60)
+        instance.notification_mode = getattr(obj, "notification_mode", "instant") or "instant"
+        tz = getattr(obj, "timezone", None) or getattr(obj, "digest_timezone", None)
+        instance.timezone = tz or "Europe/Moscow"
         return instance

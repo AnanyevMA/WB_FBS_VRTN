@@ -52,6 +52,9 @@ except (ImportError, ModuleNotFoundError):
         name = Column(String, nullable=True)
         wb_api_token = Column(String, nullable=True)
         is_active = Column(Boolean, default=True, index=True)
+        notification_mode = Column(String, default="instant")
+        notification_schedule = Column(JSON, default=list)
+        timezone = Column(String, default="Europe/Moscow")
         created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     class Order(Base):  # type: ignore[no-redef]
@@ -61,6 +64,7 @@ except (ImportError, ModuleNotFoundError):
         wb_order_id = Column(Integer, index=True, nullable=True)
         seller_id = Column(String, ForeignKey("sellers.id"), nullable=False, index=True)
         status = Column(String, default="NEW", index=True)
+        notified_at = Column(DateTime(timezone=True), nullable=True)
         chrt_id = Column(Integer, nullable=True)
         nm_id = Column(Integer, nullable=True)
         article = Column(String, nullable=True)
@@ -188,27 +192,57 @@ def _check_kiz_required(
     """
     Determine if KIZ / SGTIN marking is required for an order.
 
-    По документации WB API единственный достоверный источник —
-    поле requiredMeta из ответа GET /api/v3/orders/new.
-    Делегирует в is_kiz_required (wb_client), который при наличии
-    requiredMeta использует его как определяющий источник,
-    а при отсутствии — применяет эвристики по ТН ВЭД и категориям.
+    Делегирует в is_kiz_required (wb_client), который проверяет:
+    1. Наличие "sgtin" или "kiz" в requiredMeta.
+    2. При отсутствии "sgtin" в requiredMeta (включая пустой список requiredMeta: []) —
+       проверяет код ТН ВЭД и категорию/название товара по перечню маркируемых товаров.
     """
     try:
         from app.services.wb_client import is_kiz_required
-        subj = subject or order_raw.get("subject") or order_raw.get("name")
+        subj = subject or (order_raw.get("subject") if isinstance(order_raw, dict) else None) or (order_raw.get("name") if isinstance(order_raw, dict) else None)
         return is_kiz_required(
             subject=subj,
             tnved=tnved,
             order_raw=order_raw,
         )
-    except Exception:
-        # Минимальный fallback: только requiredMeta
-        required_meta = order_raw.get("requiredMeta", [])
-        if isinstance(required_meta, list):
-            return any(str(item).lower() in ("sgtin", "kiz") for item in required_meta)
-        elif isinstance(required_meta, str):
-            return "sgtin" in required_meta.lower()
+    except Exception as exc:
+        logger.warning(f"Error in is_kiz_required, applying resilient fallback: {exc}")
+        if order_raw and isinstance(order_raw, dict):
+            required_meta = order_raw.get("requiredMeta")
+            if required_meta:
+                if isinstance(required_meta, list):
+                    if any(str(item).lower() in ("sgtin", "kiz") for item in required_meta):
+                        return True
+                elif isinstance(required_meta, str):
+                    if "sgtin" in required_meta.lower() or "kiz" in required_meta.lower():
+                        return True
+
+        clean_tnved = str(tnved or (order_raw.get("tnved") if isinstance(order_raw, dict) else "") or "").replace(" ", "").replace(".", "").replace("-", "").strip()
+        marked_tnved_prefixes = (
+            "61", "62", "64",
+            "6301", "6302", "6303", "6304",
+            "6504", "6505",
+            "4203", "4303",
+            "3303",
+            "4011",
+            "9004", "9006",
+        )
+        if clean_tnved and any(clean_tnved.startswith(p) for p in marked_tnved_prefixes):
+            return True
+
+        subj = str(subject or (order_raw.get("subject") if isinstance(order_raw, dict) else "") or (order_raw.get("name") if isinstance(order_raw, dict) else "") or "").lower().strip()
+        marked_subjects = (
+            "капор", "капоры", "юбк", "брюк", "джинс", "худи", "свитшот", "толстовк", "свитер",
+            "кофт", "кардиган", "рубашк", "блузк", "футболк", "поло", "топ", "лонгслив", "куртк",
+            "пальто", "пуховик", "ветровк", "плащ", "жакет", "пиджак", "костюм", "плать",
+            "сарафан", "комбинезон", "шорт", "пижам", "халат", "варежк", "перчатк", "шарф",
+            "манишк", "платок", "панам", "кепк", "шапк", "головн", "одежд", "трикотаж", "обув",
+            "ботинк", "туфл", "кроссовк", "сапог", "сандал", "белье постельн", "постельн", "полотенц",
+            "текстиль", "духи", "туалетная вода", "парфюм", "парфюмер",
+        )
+        if subj and any(kw in subj for kw in marked_subjects):
+            return True
+
         return False
 
 
@@ -301,7 +335,20 @@ def _resolve_order_metadata(
                 if inspect.isawaitable(cat_res):
                     cat_res = asyncio.run(cat_res)
                 if isinstance(cat_res, dict):
-                    catalog_cache.update(cat_res)
+                    if "by_vendor_code" in cat_res or "by_nm_id" in cat_res or "by_chrt_id" in cat_res:
+                        catalog_cache.update(cat_res)
+                    else:
+                        catalog_cache.setdefault("by_vendor_code", {})
+                        catalog_cache.setdefault("by_nm_id", {})
+                        catalog_cache.setdefault("by_chrt_id", {})
+                        for k, v in cat_res.items():
+                            if isinstance(v, dict):
+                                if isinstance(k, int) or str(k).isdigit():
+                                    catalog_cache["by_nm_id"][int(k)] = v
+                                    catalog_cache["by_chrt_id"][int(k)] = v
+                                if isinstance(k, str):
+                                    catalog_cache["by_vendor_code"][k] = v
+                                    catalog_cache["by_vendor_code"][k.lower()] = v
                 else:
                     catalog_cache.update({"by_vendor_code": {}, "by_nm_id": {}, "by_chrt_id": {}})
             except Exception as exc:
@@ -478,7 +525,7 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
 
         kiz_required = _check_kiz_required(
             order_raw=order_raw,
-            subject=meta.get("subject"),
+            subject=meta.get("subject") or meta.get("name"),
             tnved=meta.get("tnved"),
         )
 
@@ -518,6 +565,7 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
             price=price_dec,
             kiz_required=kiz_required,
             kiz_status=KizStatus.PENDING if kiz_required else KizStatus.NOT_REQUIRED,
+            notified_at=None,
             created_at=datetime.now(timezone.utc),
         )
         session.add(new_order)
@@ -699,16 +747,26 @@ def poll_all_sellers(self: Any) -> dict:
                 if not new_ids:
                     continue
 
-                if len(new_ids) == 1:
-                    # 1 заказ: немедленно отправляем уведомление в Telegram и фоном качаем стикер
-                    order_payload = new_payloads[0] if new_payloads else None
-                    _notify_new_order.delay(seller_id_str, new_ids[0], order_payload)
-                    get_stickers.delay(seller_id_str, new_ids[0])
-                else:
-                    # Несколько заказов: немедленный пакетный алерт в Telegram и фоновое скачивание стикеров
-                    notify_batch_orders.delay(seller_id_str, new_payloads)
+                notification_mode = getattr(seller, "notification_mode", "instant") or "instant"
+                if notification_mode == "scheduled":
+                    logger.info(
+                        f"Seller {seller_id_str} is in 'scheduled' notification mode. "
+                        f"Suppressing instant Telegram push for {len(new_ids)} order(s). "
+                        f"Pre-generating stickers in background."
+                    )
                     for oid in new_ids:
                         get_stickers.delay(seller_id_str, oid)
+                else:
+                    if len(new_ids) == 1:
+                        # 1 заказ: немедленно отправляем уведомление в Telegram и фоном качаем стикер
+                        order_payload = new_payloads[0] if new_payloads else None
+                        _notify_new_order.delay(seller_id_str, new_ids[0], order_payload)
+                        get_stickers.delay(seller_id_str, new_ids[0])
+                    else:
+                        # Несколько заказов: немедленный пакетный алерт в Telegram и фоновое скачивание стикеров
+                        notify_batch_orders.delay(seller_id_str, new_payloads)
+                        for oid in new_ids:
+                            get_stickers.delay(seller_id_str, oid)
 
             except WBUnauthorizedError as exc:
                 session.rollback()

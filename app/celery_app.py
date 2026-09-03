@@ -101,6 +101,12 @@ celery_app.conf.update(
             "schedule": 60.0,  # every 60 seconds for precise on-minute delivery
             "options": {"queue": "notifications"},
         },
+        # Runs every 60s to check sellers with notification_mode='scheduled' against their schedule
+        "scheduled-orders-digest-check": {
+            "task": "app.agents.notifier.send_scheduled_orders_digest",
+            "schedule": 60.0,  # every 60 seconds for scheduled batch delivery
+            "options": {"queue": "notifications"},
+        },
         # Runs every 6 hours to maintain and validate knowledge base docs and indexes
         "sync-knowledge-base": {
             "task": "app.agents.kb_sync_agent.sync_knowledge_base",

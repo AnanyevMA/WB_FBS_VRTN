@@ -14,6 +14,9 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
+
 from app.config import settings
 from app.models.seller import Seller
 from app.services.encryption import decrypt

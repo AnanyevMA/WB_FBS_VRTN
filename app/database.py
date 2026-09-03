@@ -86,13 +86,27 @@ async def init_db() -> None:
                         sync_conn.exec_driver_sql("UPDATE sellers SET timezone = 'Europe/Moscow' WHERE timezone IS NULL")
             await conn.run_sync(sync_sqlite_columns)
 
-        # PostgreSQL auto-migration for TIMESTAMP WITH TIME ZONE
+        # PostgreSQL auto-migration for missing columns and TIMESTAMP WITH TIME ZONE
         elif "postgres" in str(engine.url):
             def sync_postgres_columns(sync_conn):
                 from sqlalchemy import inspect
                 inspector = inspect(sync_conn)
                 for table_name in Base.metadata.tables:
                     if table_name in inspector.get_table_names():
+                        existing_cols = {col["name"] for col in inspector.get_columns(table_name)}
+                        table = Base.metadata.tables[table_name]
+                        for col in table.columns:
+                            if col.name not in existing_cols:
+                                col_type = col.type.compile(sync_conn.dialect)
+                                default_clause = ""
+                                if col.server_default is not None and getattr(col.server_default, "arg", None):
+                                    default_clause = f" DEFAULT {col.server_default.arg}"
+                                try:
+                                    sync_conn.exec_driver_sql(
+                                        f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col.name} {col_type}{default_clause}"
+                                    )
+                                except Exception:
+                                    pass
                         cols = inspector.get_columns(table_name)
                         for col in cols:
                             col_type_str = str(col["type"]).lower()
@@ -104,6 +118,14 @@ async def init_db() -> None:
                                     )
                                 except Exception:
                                     pass
+                if "sellers" in inspector.get_table_names():
+                    seller_cols = {c["name"] for c in inspector.get_columns("sellers")}
+                    if "notification_mode" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET notification_mode = 'instant' WHERE notification_mode IS NULL")
+                    if "notification_schedule" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET notification_schedule = '[\"10:00\", \"14:00\", \"18:00\"]'::json WHERE notification_schedule IS NULL")
+                    if "timezone" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET timezone = 'Europe/Moscow' WHERE timezone IS NULL")
             await conn.run_sync(sync_postgres_columns)
 
     # Bootstrap default admin user if database has no users

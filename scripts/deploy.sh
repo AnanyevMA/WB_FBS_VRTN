@@ -67,6 +67,8 @@ done
 
 if [ "$API_READY" = true ]; then
     echo "✅ API сервер запущен и отвечает! (за ${ELAPSED} сек)"
+    echo "📦 Проверка и применение миграций БД (Alembic)..."
+    docker compose -f docker-compose.prod.yml exec -T api alembic upgrade head || true
 else
     echo "⚠️ API не ответил за ${MAX_WAIT} сек. Проверьте логи:"
     echo "  docker compose -f docker-compose.prod.yml logs --tail=30 api"

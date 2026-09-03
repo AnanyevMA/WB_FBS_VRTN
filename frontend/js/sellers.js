@@ -199,16 +199,23 @@ function onSellerCertChanged() {
 
 async function loadSellers() {
     let sellers = [];
+    let loadFailed = false;
     try {
         const data = await apiFetch('/sellers');
         if (Array.isArray(data)) sellers = data;
         else if (data && Array.isArray(data.items)) sellers = data.items;
     } catch(e) {
         console.error("Ошибка загрузки продавцов:", e);
+        loadFailed = true;
     }
 
     const tbody = document.getElementById('sellers-table-body');
     if (!tbody) return;
+
+    if (loadFailed) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--status-cancelled, #ef4444); padding: 24px;">⚠️ Ошибка загрузки списка продавцов с сервера. Пожалуйста, обновите страницу или проверьте логи API.</td></tr>`;
+        return;
+    }
 
     if (sellers.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Продавцы не найдены. Нажмите "Добавить продавца" или "Demo Data".</td></tr>`;

@@ -415,24 +415,39 @@ async def retry_order_cz_withdrawal(
     await db.commit()
     await db.refresh(order)
 
-    # 4. Отправка Celery-задачи на вывод из оборота
+    # 4. Отправка Celery-задачи на вывод из оборота (только при наличии КриптоПро на сервере)
+    from app.services.crypto_service import is_cryptopro_available
+    has_server_crypto = is_cryptopro_available() or settings.mock_cz
     price_kopecks = int((order.price or Decimal("0.00")) * 100)
-    try:
-        from app.agents.cz_withdrawal import withdraw_order_kiz
-        withdraw_order_kiz.delay(
-            seller_id=str(seller_id),
-            order_id=order.id,
-            kiz_code=order.kiz_code,
-            price_kopecks=price_kopecks,
+
+    if has_server_crypto:
+        try:
+            from app.agents.cz_withdrawal import withdraw_order_kiz
+            withdraw_order_kiz.delay(
+                seller_id=str(seller_id),
+                order_id=order.id,
+                kiz_code=order.kiz_code,
+                price_kopecks=price_kopecks,
+            )
+            msg = "Код КИЗ нормализован до 31 символа. Вывод из оборота повторно поставлен в очередь."
+        except Exception as e:
+            logger.warning(f"Could not dispatch withdraw_order_kiz for order {order.id}: {e}")
+            msg = "Код КИЗ нормализован до 31 символа."
+    else:
+        order.cz_doc_status = "AWAITING_SIGNATURE"
+        await db.commit()
+        await db.refresh(order)
+        msg = (
+            "Код КИЗ нормализован до 31 символа. "
+            "КриптоПро CSP не установлен на сервере — подпишите документ через кнопку 'Вывести КИЗ (ЭЦП)' "
+            "с использованием браузерного плагина КриптоПро."
         )
-    except Exception as e:
-        logger.warning(f"Could not dispatch withdraw_order_kiz for order {order.id}: {e}")
 
     is_arch, arch_reason = check_is_archived(order)
 
     return {
         "status": "ok",
-        "message": "Вывод из оборота повторно поставлен в очередь",
+        "message": msg,
         "order": {
             "id": order.id,
             "seller_id": str(order.seller_id),
@@ -551,8 +566,17 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
         ogvs = cis_data.get("ogvs") or []
         if ogvs:
             order.kiz_status = KizStatus.ERROR
-        elif is_withdrawn:
-            if order.kiz_status != KizStatus.WITHDRAWN and order.status != OrderStatus.DELIVERED:
+        elif is_withdrawn or cz_status in ("RETIRED", "WITHDRAWN", "OUT_OF_CIRCULATION", "LOAN_RETIRED"):
+            if (
+                order.status in (OrderStatus.DELIVERED, OrderStatus.DELIVERING, OrderStatus.SORTED)
+                or order.cz_withdrawal_doc_id
+                or order.kiz_status == KizStatus.WITHDRAWN
+            ):
+                order.kiz_status = KizStatus.WITHDRAWN
+                order.kiz_cz_status = "RETIRED"
+                order.cz_doc_status = "CHECKED_OK"
+                order.cz_rejection_reason = None
+            else:
                 order.kiz_status = KizStatus.ERROR
         elif cz_status in CZ_NOT_INTRODUCED_STATUSES:
             order.kiz_status = KizStatus.ERROR
@@ -569,7 +593,16 @@ async def check_order_kiz_status(seller_id: str, order_id: int, db: AsyncSession
     else:
         # If status was not returned by CZ, check kiz_info validation or existing status
         if is_withdrawn:
-            if order.kiz_status != KizStatus.WITHDRAWN and order.status != OrderStatus.DELIVERED:
+            if (
+                order.status in (OrderStatus.DELIVERED, OrderStatus.DELIVERING, OrderStatus.SORTED)
+                or order.cz_withdrawal_doc_id
+                or order.kiz_status == KizStatus.WITHDRAWN
+            ):
+                order.kiz_status = KizStatus.WITHDRAWN
+                order.kiz_cz_status = "RETIRED"
+                order.cz_doc_status = "CHECKED_OK"
+                order.cz_rejection_reason = None
+            else:
                 order.kiz_status = KizStatus.ERROR
         elif kiz_info and not kiz_info.is_valid:
             order.kiz_status = KizStatus.ERROR

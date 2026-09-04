@@ -61,11 +61,21 @@ async def sign_document(
     cryptopro_bin = _find_cryptopro_bin()
 
     if not thumbprint:
-        logger.warning("No certificate thumbprint configured — skipping real signature")
+        if not settings.mock_cz:
+            raise CryptoSignatureError(
+                "Не настроен отпечаток сертификата УКЭП (cert_thumbprint) для продавца. "
+                "Подписание на сервере невозможно — выполните подписание через браузерный плагин КриптоПро ЭЦП."
+            )
+        logger.warning("No certificate thumbprint configured — skipping real signature (mock_cz mode)")
         return _mock_signature(data)
 
     if not cryptopro_bin:
-        logger.warning("КриптоПро binary not found — using mock signature")
+        if not settings.mock_cz:
+            raise CryptoSignatureError(
+                "КриптоПро CSP не найден на сервере. "
+                "Подписание документов на сервере невозможно — выполните подписание через браузерный плагин КриптоПро ЭЦП."
+            )
+        logger.warning("КриптоПро binary not found — using mock signature (mock_cz mode)")
         return _mock_signature(data)
 
     # Write data to temp file

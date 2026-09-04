@@ -103,6 +103,21 @@ def withdraw_order_kiz(
         cz_token = decrypt(seller.cz_token_encrypted)
         cz_inn = seller.cz_inn
 
+        # Guard: In production, server must not attempt withdrawal if CryptoPro is not installed on host
+        from app.services.crypto_service import is_cryptopro_available
+        if not is_cryptopro_available() and not settings.mock_cz:
+            msg = (
+                "Серверная электронная подпись недоступна (КриптоПро CSP не установлен на сервере). "
+                "Вывод КИЗ из оборота должен выполняться в дашборде через браузерный плагин КриптоПро (КЭП)."
+            )
+            logger.info(f"[CZ Withdrawal] Skipped background withdrawal for order {order_id}: {msg}")
+            kiz_op.status = "AWAITING_SIGNATURE"
+            kiz_op.error_message = msg
+            order.kiz_status = KizStatus.ATTACHED
+            order.cz_doc_status = "AWAITING_SIGNATURE"
+            db.commit()
+            return
+
         # Run async code safely in both sync and async environments
         try:
             try:

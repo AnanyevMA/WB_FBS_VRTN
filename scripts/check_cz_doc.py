@@ -58,14 +58,12 @@ async def check_document_status(doc_id: str, seller_id: str = None):
         "https://markirovka.crpt.ru",
     ]
     candidate_paths = [
+        f"/api/v4/true-api/doc/{doc_id}/info?pg=lp",
+        f"/api/v4/true-api/doc/{doc_id}/info",
+        f"/api/v3/true-api/doc/{doc_id}/info",
         f"/api/v3/facade/doc/{doc_id}/status",
         f"/api/v3/facade/doc/{doc_id}/info",
         f"/api/v3/facade/doc/{doc_id}",
-        f"/api/v3/true-api/documents/receipts/{doc_id}",
-        f"/api/v3/true-api/doc/{doc_id}/status",
-        f"/api/v3/true-api/doc/{doc_id}",
-        f"/api/v3/lk/documents/{doc_id}/status",
-        f"/api/v3/lk/documents/{doc_id}",
     ]
 
     found = False
@@ -74,7 +72,8 @@ async def check_document_status(doc_id: str, seller_id: str = None):
             for path in candidate_paths:
                 try:
                     res = await client.get(path)
-                    if res.status_code in (200, 201):
+                    content_type = res.headers.get("content-type", "")
+                    if res.status_code in (200, 201) and "json" in content_type:
                         print(f"\n✅ Успешный ответ от {host}{path} (код {res.status_code}):")
                         try:
                             data = res.json()

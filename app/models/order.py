@@ -67,6 +67,8 @@ class Order(Base):
     
     cz_withdrawal_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
     cz_return_doc_id: Mapped[Optional[str]] = mapped_column(String(255))
+    cz_rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    cz_doc_status: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     
     deadline_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

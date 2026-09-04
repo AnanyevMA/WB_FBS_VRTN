@@ -221,7 +221,7 @@ def test_order_poller_enriches_and_persists_kiz_required_with_empty_required_met
     - Verify notification payload contains kiz_required: True
     """
     seller_id = test_seller
-    order_id = random.randint(7000000, 8000000)
+    order_id = random.randint(890000000, 999000000)
 
     raw_order = {
         "id": order_id,

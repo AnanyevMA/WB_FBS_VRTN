@@ -85,8 +85,10 @@ async def test_prepare_and_submit_kiz_document_endpoints():
         # 3. Test submit signed document for withdrawal
         fake_sig = "MOCK_BASE64_CMS_SIGNATURE_DATA"
         with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit, \
+             patch("app.services.cz_client.CZClient.wait_for_document", new_callable=AsyncMock) as mock_wait, \
              patch("app.agents.notifier.send_cz_status_notification.delay") as mock_notify:
             mock_submit.return_value = "doc-uuid-12345-withdrawal"
+            mock_wait.return_value = {"status": "CHECKED_OK", "documentId": "doc-uuid-12345-withdrawal"}
 
             res_submit = await ac.post(
                 f"/api/v1/sellers/{seller_id}/kiz/submit-signed-document",
@@ -102,6 +104,7 @@ async def test_prepare_and_submit_kiz_document_endpoints():
             submit_data = res_submit.json()
             assert submit_data["success"] is True
             assert submit_data["doc_id"] == "doc-uuid-12345-withdrawal"
+            assert submit_data["status"] == "CHECKED_OK"
 
         async with AsyncSessionLocal() as session:
             o_updated = await session.get(Order, order_id)
@@ -111,8 +114,10 @@ async def test_prepare_and_submit_kiz_document_endpoints():
 
         # 4. Test submit signed document for return
         with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit, \
+             patch("app.services.cz_client.CZClient.wait_for_document", new_callable=AsyncMock) as mock_wait, \
              patch("app.agents.notifier.send_cz_status_notification.delay") as mock_notify:
             mock_submit.return_value = "doc-uuid-67890-return"
+            mock_wait.return_value = {"status": "CHECKED_OK", "documentId": "doc-uuid-67890-return"}
 
             res_submit_ret = await ac.post(
                 f"/api/v1/sellers/{seller_id}/kiz/submit-signed-document",
@@ -128,6 +133,7 @@ async def test_prepare_and_submit_kiz_document_endpoints():
             ret_data = res_submit_ret.json()
             assert ret_data["success"] is True
             assert ret_data["doc_id"] == "doc-uuid-67890-return"
+            assert ret_data["status"] == "CHECKED_OK"
 
         async with AsyncSessionLocal() as session:
             o_ret = await session.get(Order, order_id)

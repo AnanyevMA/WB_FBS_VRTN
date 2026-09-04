@@ -214,7 +214,7 @@ async def submit_signed_kiz_document(
     if not doc_base64 or not sig_base64:
         raise HTTPException(status_code=400, detail="Отсутствует документ или подпись Base64")
 
-    from app.services.cz_client import CZClient
+    from app.services.cz_client import CZClient, CZDocumentError
     from app.services.encryption import decrypt
 
     cz_token = decrypt(seller.cz_token_encrypted) if seller.cz_token_encrypted else ""
@@ -242,71 +242,204 @@ async def submit_signed_kiz_document(
         await db.commit()
         raise HTTPException(status_code=500, detail=f"Ошибка отправки в ГИС МТ: {e}")
 
-    now = datetime.now(timezone.utc)
-    target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
-
-    for oid in order_ids:
-        o = await db.get(Order, oid)
-        if o and str(o.seller_id) == str(seller_id):
-            if action == "WITHDRAWAL":
-                o.kiz_status = KizStatus.WITHDRAWN
-                o.kiz_cz_status = "RETIRED"
-                o.cz_withdrawal_doc_id = doc_id
-            elif action == "RETURN":
-                o.kiz_status = KizStatus.RETURNED
-                o.kiz_cz_status = "INTRODUCED"
-            o.kiz_cz_status_updated_at = now
-            o.updated_at = now
-
-            kiz_op = KizOperation(
-                seller_id=seller_id,
-                order_id=o.id,
-                kiz_code=o.kiz_code or "",
-                operation=KizOperationType.WITHDRAWAL if action == "WITHDRAWAL" else KizOperationType.RETURN,
-                status="SUCCESS",
-                cz_doc_id=doc_id,
-            )
-            db.add(kiz_op)
-
-            if o.kiz_code:
-                await sync_kiz_status_record(
-                    db=db,
-                    kiz_code=o.kiz_code,
-                    cz_status=target_cz_status,
-                    seller_id=str(seller.id),
-                    doc_id=doc_id if action == "WITHDRAWAL" else None,
-                )
-
-    audit = AuditLog(
-        seller_id=seller_id,
-        agent="web_cades_signer",
-        action="SUBMIT_SIGNED_DOC_SUCCESS",
-        entity_type="kiz",
-        entity_id=str(doc_id),
-        payload={"doc_id": doc_id, "order_ids": order_ids, "action": action, "count": len(order_ids)},
-    )
-    db.add(audit)
-    await db.commit()
+    # Bounded polling for GIS MT verification
+    is_confirmed = False
+    doc_status = "SUBMITTED"
+    error_reason: Optional[str] = None
 
     try:
-        from app.agents.notifier import send_cz_status_notification
-        for oid in order_ids:
-            send_cz_status_notification.delay(
-                seller_id=seller_id,
-                order_id=oid,
-                success=True,
-                doc_id=doc_id,
-            )
-    except Exception as exc:
-        logger.warning(f"Could not dispatch telegram notification: {exc}")
+        status_data = await client.wait_for_document(doc_id, max_attempts=12, interval_seconds=1.5)
+        doc_status = str(status_data.get("status") or "CHECKED_OK")
+        is_confirmed = True
+    except CZDocumentError as doc_err:
+        doc_status = "CHECKED_NOT_OK"
+        error_reason = getattr(doc_err, "message", str(doc_err)) or "Документ отклонен ГИС МТ"
+        is_confirmed = False
+    except TimeoutError as timeout_err:
+        logger.warning(f"Polling document {doc_id} timed out: {timeout_err}")
+        doc_status = "IN_PROGRESS"
+        is_confirmed = None
+    except Exception as poll_err:
+        logger.warning(f"Polling document {doc_id} ended with error: {poll_err}")
+        doc_status = "IN_PROGRESS"
+        is_confirmed = None
 
+    now = datetime.now(timezone.utc)
     action_label = "вывода из оборота" if action == "WITHDRAWAL" else "возврата в оборот"
-    return {
-        "success": True,
-        "doc_id": doc_id,
-        "order_ids": order_ids,
-        "message": f"Документ {action_label} успешно подписан и принят ГИС МТ (ID: {doc_id})",
-    }
+
+    if is_confirmed is True:
+        target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
+        for oid in order_ids:
+            o = await db.get(Order, oid)
+            if o and str(o.seller_id) == str(seller_id):
+                if action == "WITHDRAWAL":
+                    o.kiz_status = KizStatus.WITHDRAWN
+                    o.kiz_cz_status = "RETIRED"
+                    o.cz_withdrawal_doc_id = doc_id
+                elif action == "RETURN":
+                    o.kiz_status = KizStatus.RETURNED
+                    o.kiz_cz_status = "INTRODUCED"
+                    o.cz_return_doc_id = doc_id
+                o.cz_doc_status = doc_status or "CHECKED_OK"
+                o.cz_rejection_reason = None
+                o.kiz_cz_status_updated_at = now
+                o.updated_at = now
+
+                kiz_op = KizOperation(
+                    seller_id=seller_id,
+                    order_id=o.id,
+                    kiz_code=o.kiz_code or "",
+                    operation=KizOperationType.WITHDRAWAL if action == "WITHDRAWAL" else KizOperationType.RETURN,
+                    status="SUCCESS",
+                    cz_doc_id=doc_id,
+                    cz_doc_status=doc_status,
+                )
+                db.add(kiz_op)
+
+                if o.kiz_code:
+                    await sync_kiz_status_record(
+                        db=db,
+                        kiz_code=o.kiz_code,
+                        cz_status=target_cz_status,
+                        seller_id=str(seller.id),
+                        doc_id=doc_id if action == "WITHDRAWAL" else None,
+                    )
+
+        audit = AuditLog(
+            seller_id=seller_id,
+            agent="web_cades_signer",
+            action="SUBMIT_SIGNED_DOC_SUCCESS",
+            entity_type="kiz",
+            entity_id=str(doc_id),
+            payload={"doc_id": doc_id, "order_ids": order_ids, "action": action, "count": len(order_ids)},
+        )
+        db.add(audit)
+        await db.commit()
+
+        try:
+            from app.agents.notifier import send_cz_status_notification
+            for oid in order_ids:
+                send_cz_status_notification.delay(
+                    seller_id=seller_id,
+                    order_id=oid,
+                    success=True,
+                    doc_id=doc_id,
+                )
+        except Exception as exc:
+            logger.warning(f"Could not dispatch telegram notification: {exc}")
+
+        return {
+            "success": True,
+            "status": doc_status,
+            "doc_id": doc_id,
+            "order_ids": order_ids,
+            "message": f"Документ {action_label} успешно подтвержден ГИС МТ (ID: {doc_id})",
+        }
+
+    elif is_confirmed is False:
+        # Rejection by GIS MT
+        for oid in order_ids:
+            o = await db.get(Order, oid)
+            if o and str(o.seller_id) == str(seller_id):
+                o.kiz_status = KizStatus.ERROR
+                o.kiz_cz_status = "CHECKED_NOT_OK"
+                o.cz_doc_status = "CHECKED_NOT_OK"
+                o.cz_rejection_reason = error_reason
+                if action == "WITHDRAWAL":
+                    o.cz_withdrawal_doc_id = doc_id
+                else:
+                    o.cz_return_doc_id = doc_id
+                o.kiz_cz_status_updated_at = now
+                o.updated_at = now
+
+                kiz_op = KizOperation(
+                    seller_id=seller_id,
+                    order_id=o.id,
+                    kiz_code=o.kiz_code or "",
+                    operation=KizOperationType.WITHDRAWAL if action == "WITHDRAWAL" else KizOperationType.RETURN,
+                    status="FAILED",
+                    cz_doc_id=doc_id,
+                    cz_doc_status="CHECKED_NOT_OK",
+                    error_message=error_reason,
+                )
+                db.add(kiz_op)
+
+        audit = AuditLog(
+            seller_id=seller_id,
+            agent="web_cades_signer",
+            action="SUBMIT_SIGNED_DOC_REJECTED",
+            entity_type="kiz",
+            entity_id=str(doc_id),
+            error=error_reason,
+            payload={"doc_id": doc_id, "order_ids": order_ids, "action": action, "error": error_reason},
+        )
+        db.add(audit)
+        await db.commit()
+
+        try:
+            from app.agents.notifier import send_cz_status_notification
+            for oid in order_ids:
+                send_cz_status_notification.delay(
+                    seller_id=seller_id,
+                    order_id=oid,
+                    success=False,
+                    error=error_reason,
+                    doc_id=doc_id,
+                )
+        except Exception as exc:
+            logger.warning(f"Could not dispatch telegram notification: {exc}")
+
+        return {
+            "success": False,
+            "status": "CHECKED_NOT_OK",
+            "doc_id": doc_id,
+            "order_ids": order_ids,
+            "error": error_reason,
+            "message": f"Документ {action_label} отклонен ГИС МТ: {error_reason}",
+        }
+
+    else:
+        # Document still processing (timeout)
+        for oid in order_ids:
+            o = await db.get(Order, oid)
+            if o and str(o.seller_id) == str(seller_id):
+                o.kiz_cz_status = "IN_PROGRESS"
+                if action == "WITHDRAWAL":
+                    o.cz_withdrawal_doc_id = doc_id
+                else:
+                    o.cz_return_doc_id = doc_id
+                o.kiz_cz_status_updated_at = now
+                o.updated_at = now
+
+                kiz_op = KizOperation(
+                    seller_id=seller_id,
+                    order_id=o.id,
+                    kiz_code=o.kiz_code or "",
+                    operation=KizOperationType.WITHDRAWAL if action == "WITHDRAWAL" else KizOperationType.RETURN,
+                    status="PENDING",
+                    cz_doc_id=doc_id,
+                    cz_doc_status="IN_PROGRESS",
+                )
+                db.add(kiz_op)
+
+        audit = AuditLog(
+            seller_id=seller_id,
+            agent="web_cades_signer",
+            action="SUBMIT_SIGNED_DOC_PENDING",
+            entity_type="kiz",
+            entity_id=str(doc_id),
+            payload={"doc_id": doc_id, "order_ids": order_ids, "action": action},
+        )
+        db.add(audit)
+        await db.commit()
+
+        return {
+            "success": True,
+            "status": "IN_PROGRESS",
+            "doc_id": doc_id,
+            "order_ids": order_ids,
+            "message": f"Документ {action_label} передан в ГИС МТ и обрабатывается (ID: {doc_id})",
+        }
 
 
 @router.get("/kiz/documents/{doc_id}/status")
@@ -316,7 +449,7 @@ async def get_cz_document_status(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Проверка статуса обработки документа в ГИС МТ (True API).
+    Проверка статуса обработки документа в ГИС МТ (True API v4).
     """
     seller = await db.get(Seller, seller_id)
     if not seller:
@@ -332,11 +465,16 @@ async def get_cz_document_status(
 
     async with CZClient(inn=inn, token=token) as client:
         try:
-            status_data = await client.get_document_status(doc_id)
+            status_data = await client.get_document_info(doc_id, pg="lp")
+            status = str(status_data.get("status") or "")
+            error_text = client.extract_document_error_text(status_data) if status.upper() in ("CHECKED_NOT_OK", "FAILED", "PARSE_ERROR") else None
             return {
                 "success": True,
                 "doc_id": doc_id,
-                "status": status_data.get("status", ""),
+                "status": status,
+                "errors": status_data.get("errors", []),
+                "common_errors": status_data.get("commonErrors", []),
+                "error_text": error_text,
                 "data": status_data,
             }
         except Exception as exc:

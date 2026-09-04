@@ -153,6 +153,93 @@ def extract_cz_item_info(cises_info: Any) -> Optional[dict]:
     return None
 
 
+def normalize_kiz_light_industry(raw_code: str) -> str:
+    """
+    Гарантированная нормализация КИЗ (Кода идентификации) для Честного Знака
+    по ТГ «Лёгкая промышленность» (одежда, обувь, текстиль, постельное белье).
+
+    Обязательный формат True API: ровно 31 символ вида 01{gtin:14}21{serial:13}.
+
+    Гарантированно отсекает криптохвосты (91...92...) независимо от типа разделителей:
+    - пробелы: '...VK 91EE12 92...' или '...VK 91EE1292...'
+    - непечатаемые GS-символы: \\x1d, \\x1e, \\x1f, \\u001d, \\u001e, \\u001f
+    - скобки AI: '(01)...(21)...(91)...(92)...'
+    - слитное написание: '...VK91EE1292...'
+    - различные длины крипто-ключей (3-6 символов, например 91ffd92...)
+    """
+    if not raw_code:
+        return ""
+
+    code = str(raw_code).strip()
+    if not code:
+        return ""
+
+    # 0. Снятие префиксов 2D-сканеров AIM (ISO/IEC 15424, например: ]d2, ]d1, ]Q3, ]C1, ]e0)
+    code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]*\][a-zA-Z0-9]{2}[\x1d\x1e\x1f\u001d\u001e\u001f\s]*', '', code)
+
+    # 1. Снимаем скобки идентификаторов применения GS1: (01), (21), (91), (92)
+    code = re.sub(r'\((01|21|91|92)\)', r'\1', code)
+    # Убираем ведущие и хвостовые GS-символы и пробелы
+    code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]+|[\x1d\x1e\x1f\u001d\u001e\u001f\s]+$', '', code)
+
+    gtin = None
+    rest = None
+
+    # 2. Определение GTIN (14 цифр)
+    if code.startswith("01") and len(code) >= 16 and code[2:16].isdigit():
+        gtin = code[2:16]
+        rest = code[16:]
+    elif len(code) >= 14 and code[:14].isdigit() and (len(code) == 14 or code[14:16] == "21" or not code.startswith("01")):
+        gtin = code[:14]
+        rest = code[14:]
+    else:
+        # Поиск по регулярному выражению (если перед GTIN присутствуют сторонние символы)
+        m = re.search(r'(?:01)?(\d{14})(?:21)?(.*)$', code)
+        if m:
+            gtin = m.group(1)
+            rest = m.group(2)
+        else:
+            return code
+
+    if not gtin:
+        return code
+
+    # 3. Очистка префикса 21
+    if rest:
+        rest = rest.lstrip()
+        if rest.startswith("21"):
+            rest = rest[2:]
+
+    # 4. Разделение по GS-символам (\\x1d, \\x1e, \\x1f, \\u001d, \\u001e, \\u001f)
+    parts = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f]', rest if rest else "")
+    serial_raw = parts[0] if parts else ""
+
+    # 5. Обработка пробельных разделителей
+    # В GS1 серийный номер не содержит пробелов. Пробел означает границу между полями
+    if " " in serial_raw or "\t" in serial_raw:
+        serial_raw = re.split(r'\s+', serial_raw)[0]
+
+    # 6. Определение серийного номера:
+    # Согласно ПП РФ № 1956 (легпром) и ГОСТ/GS1, серийный номер состоит ровно из 13 символов.
+    # Если serial_raw >= 13, первые 13 символов гарантированно являются серийным номером,
+    # а любые '91...92' внутри них — это легитимная часть серийного номера (не криптохвост).
+    # Любой слитный криптохвост начинается с позиции >= 13 и безопасно отсекается с помощью [:13].
+    if len(serial_raw) >= 13:
+        serial = serial_raw[:13]
+    else:
+        # Для коротких кодов (например, синтетические mock-коды в тестах len < 13)
+        match_crypto = re.search(r'91[A-Za-z0-9]{2,6}92[A-Za-z0-9+/=]+$', serial_raw)
+        if match_crypto:
+            serial_raw = serial_raw[:match_crypto.start()]
+        else:
+            match_91_tail = re.search(r'91[A-Za-z0-9]{3,6}$', serial_raw)
+            if match_91_tail:
+                serial_raw = serial_raw[:match_91_tail.start()]
+        serial = serial_raw.strip()
+
+    return f"01{gtin}21{serial}"
+
+
 def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
     """
     Разбирает код маркировки GS1 DataMatrix / SGTIN / КИЗ.
@@ -160,7 +247,9 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
     Поддерживает форматы:
     - Стандартный с разделителями GS1: 0104630199251318215QTSRh>4sVc+.
     - Со скобками: (01)04630199251318(21)5QTSRh>4sVc+.
-    - С символами-разделителями FNC1 / GS (\x1d / \u001d / \x1e)
+    - С символами-разделителями FNC1 / GS (\\x1d / \\u001d / \\x1e)
+    - С пробелами перед криптохвостами и внутри них
+    - Со слитными криптохвостами и переменной длиной ключей
     - Короткий с GTIN
 
     Returns:
@@ -183,39 +272,41 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
             "clean_cis": None,
         }
 
-    code = raw_code.strip()
-
-    normalized = re.sub(r'\(01\)', '01', code)
-    normalized = re.sub(r'\(21\)', '21', normalized)
-    normalized = re.sub(r'\(91\)', '91', normalized)
-    normalized = re.sub(r'\(92\)', '92', normalized)
+    code = str(raw_code).strip()
+    # 0. Снятие префиксов 2D-сканеров AIM (ISO/IEC 15424, например: ]d2, ]d1, ]Q3, ]C1, ]e0)
+    code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]*\][a-zA-Z0-9]{2}[\x1d\x1e\x1f\u001d\u001e\u001f\s]*', '', code)
+    normalized = re.sub(r'\((01|21|91|92)\)', r'\1', code)
+    normalized = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]+|[\x1d\x1e\x1f\u001d\u001e\u001f\s]+$', '', normalized)
 
     gtin = ""
-    serial = ""
+    serial = None
     crypto_key = None
     crypto_tail = None
 
-    if normalized.startswith("01") and len(normalized) >= 16:
-        gtin = normalized[2:16]
-        rest = normalized[16:]
+    # Извлечение крипто-хвоста (91...92...)
+    # Важно: криптохвост может быть отделен разделителем (GS или пробел)
+    # либо идти слитно после полного 31-символьного КИ (индекс >= 31 для 01...21..., либо >= 29 без 01)
+    m_crypto = re.search(
+        r'([\x1d\x1e\x1f\u001d\u001e\u001f\s]+)?91([A-Za-z0-9]{2,6})[\x1d\x1e\x1f\u001d\u001e\u001f\s]*92([^\x1d\x1e\x1f\u001d\u001e\u001f\s]+)$',
+        normalized,
+    )
+    base_code = normalized
+    if m_crypto:
+        has_delim = bool(m_crypto.group(1))
+        is_after_cis = m_crypto.start() >= 31 or (not normalized.startswith("01") and m_crypto.start() >= 29)
+        if has_delim or is_after_cis:
+            crypto_key = m_crypto.group(2)
+            crypto_tail = m_crypto.group(3)
+            base_code = normalized[:m_crypto.start()].strip()
 
-        if rest.startswith("21"):
-            rest = rest[2:]
-
-        parts = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f]', rest)
-        serial_raw = parts[0]
-
-        match_crypto = re.search(r'91(.{4})92(.+)$', serial_raw)
-        if match_crypto:
-            crypto_key = match_crypto.group(1)
-            crypto_tail = match_crypto.group(2)
-            serial = serial_raw[:match_crypto.start()]
-        else:
-            serial = serial_raw
-
-        if len(parts) > 1:
-            for p in parts[1:]:
-                m_cr = re.search(r'^91(.{4})92(.+)$', p)
+    if not crypto_key:
+        # Проверяем хвостовые части при разделении по GS
+        parts_all = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f]', normalized)
+        base_code = parts_all[0].strip()
+        if len(parts_all) > 1:
+            for p in parts_all[1:]:
+                p = p.strip()
+                m_cr = re.search(r'^91([A-Za-z0-9]{2,6})92(.+)$', p)
                 if m_cr:
                     crypto_key = m_cr.group(1)
                     crypto_tail = m_cr.group(2)
@@ -226,18 +317,36 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
                 elif p.startswith("92"):
                     crypto_tail = p[2:]
 
-    elif len(normalized) >= 14 and normalized[:14].isdigit():
-        gtin = normalized[:14]
-        serial = normalized[14:] if len(normalized) > 14 else None
+    # Извлекаем gtin и serial из base_code
+    if base_code.startswith("01") and len(base_code) >= 16 and base_code[2:16].isdigit():
+        gtin = base_code[2:16]
+        rest = base_code[16:]
+        if rest.startswith("21"):
+            rest = rest[2:]
+        parts = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f\s]', rest)
+        serial_raw = parts[0] if parts else ""
+        serial = serial_raw[:13] if len(serial_raw) >= 13 else serial_raw
+    elif len(base_code) >= 14 and base_code[:14].isdigit():
+        gtin = base_code[:14]
+        rest = base_code[14:]
+        if rest.startswith("21"):
+            rest = rest[2:]
+        parts = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f\s]', rest)
+        serial_raw = parts[0] if parts else ""
+        serial = serial_raw[:13] if len(serial_raw) >= 13 else (serial_raw if serial_raw else None)
     else:
-        m = re.search(r'(01)?(\d{14})21([^\x1d\x1e\s]+)', normalized)
+        m = re.search(r'(?:01)?(\d{14})(?:21)?([^\x1d\x1e\x1f\u001d\u001e\u001f\s]+)', base_code)
         if m:
-            gtin = m.group(2)
-            serial = m.group(3)
+            gtin = m.group(1)
+            serial_raw = m.group(2)
+            serial = serial_raw[:13] if len(serial_raw) >= 13 else serial_raw
         else:
-            gtin = normalized[:14] if len(normalized) >= 14 else normalized
+            gtin = base_code[:14] if len(base_code) >= 14 else base_code
+            serial = None
 
-    clean_cis = f"01{gtin}21{serial}" if (gtin and serial) else (normalized if len(normalized) >= 20 else None)
+    # Гарантированная нормализация через normalize_kiz_light_industry
+    normalized_cis = normalize_kiz_light_industry(raw_code)
+    clean_cis = normalized_cis if normalized_cis else (f"01{gtin}21{serial}" if (gtin and serial) else None)
 
     return {
         "raw_code": code,
@@ -247,6 +356,97 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
         "crypto_tail": crypto_tail,
         "clean_cis": clean_cis,
     }
+
+
+async def normalize_existing_orders_kiz(
+    db: Optional[AsyncSession] = None,
+    target_order_id: Optional[int] = 5647931541,
+) -> Dict[str, Any]:
+    """
+    Нормализует все сохраненные в базе данных заказы с КИЗ, устраняя криптохвосты,
+    разделители и некорректную длину до строго 31 символа.
+    Гарантирует нормализацию для указанного target_order_id (#5647931541).
+    Также синхронизирует записи в таблице KizProductInfo.
+    """
+    from app.database import AsyncSessionLocal
+
+    async def _normalize_session(session: AsyncSession) -> Dict[str, Any]:
+        target_id = None
+        if target_order_id is not None:
+            try:
+                target_id = int(target_order_id)
+            except (ValueError, TypeError):
+                target_id = target_order_id
+
+        res = await session.execute(
+            select(Order).where(Order.kiz_code.isnot(None), Order.kiz_code != "")
+        )
+        orders = res.scalars().all()
+
+        orders_updated = 0
+        target_found = False
+        target_normalized = False
+
+        for o in orders:
+            is_target = bool(target_id is not None and o.id == target_id)
+            if is_target:
+                target_found = True
+
+            current = o.kiz_code
+            clean = normalize_kiz_light_industry(current)
+            if clean and clean != current:
+                o.kiz_code = clean
+                orders_updated += 1
+
+            if is_target and clean and len(clean) == 31:
+                target_normalized = True
+
+        # Если target_order_id еще не был в выборке (например, по прямому запросу или kiz_code был пуст)
+        if target_id is not None and not target_found:
+            target_order = await session.get(Order, target_id)
+            if target_order:
+                target_found = True
+                if target_order.kiz_code:
+                    cl = normalize_kiz_light_industry(target_order.kiz_code)
+                    if cl and cl != target_order.kiz_code:
+                        target_order.kiz_code = cl
+                        orders_updated += 1
+                    if cl and len(cl) == 31:
+                        target_normalized = True
+
+        # Синхронизация KizProductInfo
+        kpi_updated = 0
+        res_kpi = await session.execute(
+            select(KizProductInfo).where(
+                (KizProductInfo.clean_cis.isnot(None) & (KizProductInfo.clean_cis != ""))
+                | (KizProductInfo.kiz_code.isnot(None) & (KizProductInfo.kiz_code != ""))
+            )
+        )
+        kpi_records = res_kpi.scalars().all()
+        for kpi in kpi_records:
+            src = kpi.clean_cis if (kpi.clean_cis and kpi.clean_cis.strip()) else kpi.kiz_code
+            clean_kpi = normalize_kiz_light_industry(src)
+            if clean_kpi and clean_kpi != kpi.clean_cis:
+                kpi.clean_cis = clean_kpi
+                kpi_updated += 1
+
+        await session.commit()
+
+        return {
+            "total_scanned": len(orders),
+            "orders_updated": orders_updated,
+            "kpi_updated": kpi_updated,
+            "target_order_id": target_order_id,
+            "target_found": target_found,
+            "target_normalized": target_normalized,
+        }
+
+    if db is not None:
+        return await _normalize_session(db)
+    else:
+        async with AsyncSessionLocal() as session:
+            return await _normalize_session(session)
+
 
 
 async def resolve_kiz_product_info(

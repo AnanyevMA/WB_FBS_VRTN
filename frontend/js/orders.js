@@ -106,8 +106,14 @@ async function loadOrders(silent = false) {
 
         tbody.innerHTML = orders.map(o => {
             const sizeBadge = o.tech_size ? `<span style="background: rgba(99,102,241,0.18); color: #a5b4fc; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(99,102,241,0.3);">Размер: ${o.tech_size}${o.wb_size && o.wb_size !== o.tech_size ? ` (RU: ${o.wb_size})` : ''}</span>` : '';
-            const czStatusBadge = getCzStatusBadge(o.kiz_cz_status, o.kiz_status, !!o.kiz_code);
+            const isCzRejected = o.kiz_status === 'ERROR' || o.cz_doc_status === 'CHECKED_NOT_OK' || !!o.cz_rejection_reason;
+            const czStatusBadge = isCzRejected
+                ? `<span class="badge kiz-error" title="Документ отклонен ГИС МТ">ЧЗ: Отклонен</span>`
+                : getCzStatusBadge(o.kiz_cz_status, o.kiz_status, !!o.kiz_code);
             const archiveBadge = o.is_archived ? `<span class="badge bg-archived" style="font-size: 10px; padding: 1px 6px;" title="${o.archive_reason === 'sold_and_withdrawn' ? 'Заказ выкуплен, КИЗ выведен из оборота' : 'Отказ от товара, КИЗ возвращен/введен в оборот'}">📁 В архиве</span>` : '';
+            const rejectionReasonHtml = (o.cz_rejection_reason || (isCzRejected && o.kiz_status === 'ERROR'))
+                ? `<div class="kiz-rejection-box" title="${o.cz_rejection_reason || 'Документ отклонен ГИС МТ'}">⚠️ Причина отклонения: ${o.cz_rejection_reason || 'Отклонен ГИС МТ'}</div>`
+                : '';
 
             return `
             <tr style="${o.is_archived ? 'opacity: 0.82;' : ''}">
@@ -137,6 +143,7 @@ async function loadOrders(silent = false) {
                         ${czStatusBadge}
                     </div>
                     ${o.kiz_code ? `<div style="font-size:11px; font-family:monospace; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:4px;"><span>${o.kiz_code.substring(0, 18)}...</span><button class="icon-btn" style="padding:1px 4px; font-size:11px;" title="Проверить статус в Честном Знаке" onclick="checkKizLiveStatus('${o.id}')">🔍</button></div>` : ''}
+                    ${rejectionReasonHtml}
                 </td>
                 <td style="color: var(--text-muted); font-size:13px;" title="Дата и время заказа на Wildberries">${(o.wb_created_at || o.created_at) ? new Date(o.wb_created_at || o.created_at).toLocaleString('ru-RU') : '-'}</td>
                 <td>
@@ -144,7 +151,8 @@ async function loadOrders(silent = false) {
                         <button class="icon-btn" title="Просмотр и этикетка" onclick="viewOrderDetail('${o.id}')">👁️</button>
                         ${o.status === 'NEW' ? `<button class="icon-btn" title="Перевести на сборку" onclick="markOrderAssembling('${o.id}')">📦</button>` : ''}
                         <button class="icon-btn" title="Привязать КИЗ" onclick="openAttachKizModal('${o.id}', '${o.name || o.article}')">🏷️</button>
-                        ${o.kiz_code && o.kiz_status !== 'WITHDRAWN' && o.kiz_cz_status !== 'RETIRED' && o.kiz_cz_status !== 'WITHDRAWN' ? `<button class="icon-btn" style="color:#10b981;" title="Вывести КИЗ из оборота в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'WITHDRAWAL')">✍️</button>` : ''}
+                        ${o.kiz_code && (isCzRejected || o.kiz_status === 'ERROR' || o.cz_rejection_reason) ? `<button class="icon-btn" title="Повторить вывод в ЧЗ" style="color:var(--primary);" onclick="retryCzWithdrawal('${o.id}')">🔄</button>` : ''}
+                        ${o.kiz_code && o.kiz_status !== 'WITHDRAWN' && o.kiz_cz_status !== 'RETIRED' && o.kiz_cz_status !== 'WITHDRAWN' && !isCzRejected ? `<button class="icon-btn" style="color:#10b981;" title="Вывести КИЗ из оборота в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'WITHDRAWAL')">✍️</button>` : ''}
                         ${o.kiz_code && (o.kiz_status === 'WITHDRAWN' || o.kiz_cz_status === 'RETIRED' || o.kiz_cz_status === 'WITHDRAWN' || o.status === 'CANCELLED') ? `<button class="icon-btn" style="color:#f59e0b;" title="Вернуть КИЗ в оборот в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'RETURN')">🔄</button>` : ''}
                         ${o.status !== 'CANCELLED' ? `<button class="icon-btn" title="Отменить заказ" style="color:var(--status-cancelled)" onclick="cancelOrder('${o.id}')">❌</button>` : ''}
                     </div>
@@ -247,6 +255,20 @@ async function viewOrderDetail(orderId) {
                 </div>
             </div>
 
+            ${(order.cz_rejection_reason || order.kiz_status === 'ERROR' || order.cz_doc_status === 'CHECKED_NOT_OK') ? `
+            <div class="kiz-rejection-banner">
+                <span style="font-size: 20px;">⚠️</span>
+                <div style="flex:1;">
+                    <div style="font-weight: 600; font-size: 13px; color: #f87171;">Документ вывода из оборота отклонен ГИС МТ (Честный Знак)</div>
+                    ${order.cz_doc_status ? `<div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Статус документа: <span style="color:#cbd5e1; font-weight:600;">${order.cz_doc_status}</span></div>` : ''}
+                    ${order.cz_withdrawal_doc_id ? `<div style="font-size:12px; color:var(--text-muted); margin-top:2px;">ID документа в ГИС МТ: <span style="font-family:monospace; color:#93c5fd;">${order.cz_withdrawal_doc_id}</span></div>` : ''}
+                    <div style="font-size: 12px; color: #fca5a5; margin-top: 4px; line-height: 1.4;">
+                        <strong>Причина отклонения:</strong> ${order.cz_rejection_reason || 'Документ не прошел валидацию в True API ГИС МТ'}
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+
             <div style="margin-bottom: 20px; padding: 14px; background: rgba(15,23,42,0.6); border: 1px solid var(--border-color); border-radius: 8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="color: var(--text-muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Маркировка Честный Знак (КИЗ)</span>
@@ -257,7 +279,9 @@ async function viewOrderDetail(orderId) {
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                     <div><span style="color:var(--text-muted); font-size:11px;">Локальный статус:</span> ${getStatusBadge(order.kiz_status, 'kiz')}</div>
-                    <div><span style="color:var(--text-muted); font-size:11px;">Статус в ГИС МТ:</span> ${getCzStatusBadge(order.kiz_cz_status, order.kiz_status, !!order.kiz_code)}</div>
+                    <div><span style="color:var(--text-muted); font-size:11px;">Статус в ГИС МТ:</span> ${(order.kiz_status === 'ERROR' || order.cz_doc_status === 'CHECKED_NOT_OK' || order.cz_rejection_reason) ? '<span class="badge kiz-error" title="Документ отклонен ГИС МТ">ЧЗ: Отклонен</span>' : getCzStatusBadge(order.kiz_cz_status, order.kiz_status, !!order.kiz_code)}</div>
+                    ${order.cz_doc_status ? `<div><span style="color:var(--text-muted); font-size:11px;">Статус документа:</span> <span style="font-weight:600; font-size:11px; color:#cbd5e1;">${order.cz_doc_status}</span></div>` : ''}
+                    ${order.cz_withdrawal_doc_id ? `<div><span style="color:var(--text-muted); font-size:11px;">ID документа:</span> <span style="font-family:monospace; font-size:11px; color:#93c5fd;">${order.cz_withdrawal_doc_id}</span></div>` : ''}
                     ${order.kiz_cz_status_updated_at ? `<div style="font-size:11px; color:var(--text-muted);">Обновлено: ${new Date(order.kiz_cz_status_updated_at).toLocaleString('ru-RU')}</div>` : ''}
                 </div>
             </div>
@@ -271,7 +295,8 @@ async function viewOrderDetail(orderId) {
         `;
 
         document.getElementById('orderDetailFooter').innerHTML = `
-            ${order.kiz_code && order.kiz_status !== 'WITHDRAWN' && order.kiz_cz_status !== 'RETIRED' && order.kiz_cz_status !== 'WITHDRAWN' ? `<button class="btn btn-success" style="background:#10b981; border:none; display:flex; align-items:center; gap:6px;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'WITHDRAWAL');"><span>✍️</span> Вывести КИЗ (ЭЦП)</button>` : ''}
+            ${order.kiz_code && (order.kiz_status === 'ERROR' || order.cz_rejection_reason || order.cz_doc_status === 'CHECKED_NOT_OK') ? `<button class="btn btn-warning" style="background:#0284c7; border:none; display:flex; align-items:center; gap:6px; color:#fff;" onclick="closeModal('orderDetailModal'); retryCzWithdrawal('${order.id}');"><span>🔄</span> Повторить вывод в ЧЗ</button>` : ''}
+            ${order.kiz_code && order.kiz_status !== 'WITHDRAWN' && order.kiz_cz_status !== 'RETIRED' && order.kiz_cz_status !== 'WITHDRAWN' && order.kiz_status !== 'ERROR' ? `<button class="btn btn-success" style="background:#10b981; border:none; display:flex; align-items:center; gap:6px;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'WITHDRAWAL');"><span>✍️</span> Вывести КИЗ (ЭЦП)</button>` : ''}
             ${order.kiz_code && (order.kiz_status === 'WITHDRAWN' || order.kiz_cz_status === 'RETIRED' || order.kiz_cz_status === 'WITHDRAWN' || order.status === 'CANCELLED') ? `<button class="btn btn-warning" style="background:#f59e0b; border:none; display:flex; align-items:center; gap:6px; color:#000;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'RETURN');"><span>🔄</span> Вернуть КИЗ (ЭЦП)</button>` : ''}
             ${order.status === 'NEW' ? `<button class="btn btn-success" onclick="markOrderAssembling('${order.id}'); closeModal('orderDetailModal');">На сборку</button>` : ''}
             <button class="btn btn-primary" onclick="window.print()">Печать этикетки</button>
@@ -375,6 +400,26 @@ async function syncOrdersFromWB() {
     }
 }
 
+async function retryCzWithdrawal(orderId) {
+    if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
+    try {
+        showToast('Честный Знак', 'Повторная отправка на вывод из оборота (с нормализацией КИЗ)...', 'info');
+        const res = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/retry-withdrawal`, {
+            method: 'POST',
+        });
+        if (res.status === 'ok' || res.success) {
+            showToast('Успешно', res.message || 'Вывод из оборота повторно поставлен в очередь', 'success');
+            await loadOrders(true);
+            await loadDashboard();
+        } else {
+            showToast('Ошибка', res.message || 'Не удалось повторить вывод в Честный Знак', 'error');
+        }
+    } catch (e) {
+        showToast('Ошибка', 'Не удалось повторить вывод в ЧЗ: ' + e.message, 'error');
+    }
+}
+
+window.retryCzWithdrawal = retryCzWithdrawal;
 window.syncAllOrdersCzStatus = syncAllOrdersCzStatus;
 window.syncOrdersFromWB = syncOrdersFromWB;
 

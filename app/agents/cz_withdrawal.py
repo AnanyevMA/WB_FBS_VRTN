@@ -55,7 +55,7 @@ def withdraw_order_kiz(
         wb_order_data: дополнительные данные заказа из WB
     """
     import asyncio
-    from app.services.cz_client import CZClient, CZAPIError
+    from app.services.cz_client import CZClient, CZAPIError, CZDocumentError
 
     logger.info(f"[CZ Withdrawal] Starting for order {order_id}, KIZ: {kiz_code[:20]}..., Receipt: {receipt_number}")
 
@@ -149,11 +149,14 @@ def withdraw_order_kiz(
             order.kiz_cz_status = "RETIRED"
             order.kiz_cz_status_updated_at = datetime.now(timezone.utc)
             order.cz_withdrawal_doc_id = doc_id
+            order.cz_doc_status = "CHECKED_OK"
+            order.cz_rejection_reason = None
             order.updated_at = datetime.now(timezone.utc)
 
             # Update KIZ operation
             kiz_op.status = "SUCCESS"
             kiz_op.cz_doc_id = doc_id
+            kiz_op.cz_doc_status = "CHECKED_OK"
             kiz_op.updated_at = datetime.now(timezone.utc)
 
             # Sync KizProductInfo (Single Source of Truth)
@@ -182,6 +185,8 @@ def withdraw_order_kiz(
                 )
 
         except Exception as exc:
+            is_cz_doc_error = isinstance(exc, CZDocumentError)
+            doc_id_from_exc = getattr(exc, "doc_id", None)
             error_msg = str(exc)
             logger.error(f"[CZ Withdrawal] FAILED for order {order_id}: {error_msg}")
 
@@ -189,16 +194,40 @@ def withdraw_order_kiz(
             kiz_op.error_message = error_msg
             kiz_op.retries = self.request.retries
             kiz_op.updated_at = datetime.now(timezone.utc)
+            if doc_id_from_exc:
+                kiz_op.cz_doc_id = doc_id_from_exc
+                kiz_op.cz_doc_status = "CHECKED_NOT_OK"
 
             order.kiz_status = KizStatus.ERROR
+            order.kiz_cz_status = "CHECKED_NOT_OK"
+            order.cz_doc_status = "CHECKED_NOT_OK"
+            order.cz_rejection_reason = error_msg
+            if doc_id_from_exc:
+                order.cz_withdrawal_doc_id = doc_id_from_exc
             order.updated_at = datetime.now(timezone.utc)
 
-            _log_audit(db, seller_id, "cz_withdrawal", "FAILED",
-                       "order", str(order_id), error=error_msg)
+            _log_audit(
+                db, seller_id, "cz_withdrawal", "FAILED",
+                "order", str(order_id), error=error_msg,
+                payload={"doc_id": doc_id_from_exc, "kiz_code": kiz_code[:20] if kiz_code else None},
+            )
 
             db.commit()
 
-            # Retry if possible
+            # If it's a deterministic CZDocumentError rejection, do NOT retry futilely
+            if is_cz_doc_error:
+                logger.info(f"[CZ Withdrawal] Deterministic GIS MT rejection for order {order_id}, skipping Celery retries")
+                if seller.telegram_bot_token_encrypted and seller.telegram_chat_ids:
+                    send_cz_status_notification.delay(
+                        seller_id=seller_id,
+                        order_id=order_id,
+                        success=False,
+                        error=error_msg,
+                        doc_id=doc_id_from_exc,
+                    )
+                return
+
+            # Retry if possible (for transient network/server errors)
             if self.request.retries < self.max_retries:
                 raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
@@ -209,6 +238,7 @@ def withdraw_order_kiz(
                     order_id=order_id,
                     success=False,
                     error=error_msg,
+                    doc_id=doc_id_from_exc,
                 )
 
 

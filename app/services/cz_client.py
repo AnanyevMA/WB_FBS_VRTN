@@ -44,6 +44,7 @@ class CZAPIError(Exception):
     """Base error for Честный Знак / СУЗ API."""
     def __init__(self, message: str, status_code: int = 0, response_body: str = ""):
         super().__init__(message)
+        self.message = message
         self.status_code = status_code
         self.response_body = response_body
 
@@ -55,7 +56,19 @@ class CZUnauthorizedError(CZAPIError):
 
 class CZDocumentError(CZAPIError):
     """Document creation/processing error."""
-    pass
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 0,
+        response_body: str = "",
+        errors: Optional[list] = None,
+        common_errors: Optional[list] = None,
+        doc_id: Optional[str] = None,
+    ):
+        super().__init__(message, status_code=status_code, response_body=response_body)
+        self.errors = errors or []
+        self.common_errors = common_errors or []
+        self.doc_id = doc_id
 
 
 class CZClient:
@@ -372,8 +385,8 @@ class CZClient:
 
     def _build_withdrawal_document(
         self,
-        kiz_codes: list[str],
-        price_kopecks: int,
+        kiz_codes: Optional[list[str]] = None,
+        price_kopecks: int = 0,
         mod_fias: Optional[str] = None,
         mod_kpp: Optional[str] = None,
         document_date: Optional[Union[datetime, str]] = None,
@@ -470,7 +483,7 @@ class CZClient:
 
     def _build_return_document(
         self,
-        kiz_codes: list[str],
+        kiz_codes: Optional[list[str]] = None,
         document_date: Optional[Union[datetime, str]] = None,
         primary_document_number: str = "",
         primary_document_type: Optional[str] = None,
@@ -624,44 +637,159 @@ class CZClient:
         logger.info(f"ГИС МТ Document created: {doc_id}")
         return doc_id
 
-    async def get_document_status(self, doc_id: str) -> dict:
-        """Check document processing status in True API."""
-        path = f"/api/v3/true-api/doc/{doc_id}/status"
-        return await self._request("GET", path, sign_request=False)
+    async def get_document_info(self, doc_id: str, pg: str = "lp") -> dict:
+        """
+        Получение статуса и информации о документе в ГИС МТ True API (v4).
+        GET /api/v4/true-api/doc/{doc_id}/info?pg=lp
+        """
+        path = f"/api/v4/true-api/doc/{doc_id}/info"
+        params = {"pg": pg} if pg else None
+        res = await self._request("GET", path, params=params, sign_request=False)
+        doc_info = {}
+        if isinstance(res, list) and len(res) > 0:
+            doc_info = res[0]
+        elif isinstance(res, dict):
+            doc_info = res
+        if isinstance(doc_info, dict):
+            doc_info.setdefault("documentId", doc_info.get("number") or doc_id)
+        return doc_info
+
+    async def get_document_status(self, doc_id: str, pg: str = "lp") -> dict:
+        """Check document processing status in True API v4."""
+        return await self.get_document_info(doc_id, pg=pg)
+
+    @staticmethod
+    def extract_document_error_text(doc_info: dict) -> str:
+        """
+        Извлекает и форматирует точный текст ошибки из полей errors и commonErrors ответа True API.
+        """
+        if not doc_info or not isinstance(doc_info, dict):
+            return "Неизвестная ошибка ГИС МТ"
+
+        messages = []
+
+        # 1. Извлечение из errors (список строк или словарей)
+        raw_errors = doc_info.get("errors")
+        if isinstance(raw_errors, list):
+            for err in raw_errors:
+                if isinstance(err, str) and err.strip():
+                    messages.append(err.strip())
+                elif isinstance(err, dict):
+                    msg = err.get("errorMessage") or err.get("message") or err.get("text") or err.get("error")
+                    code = err.get("errorCode") or err.get("code")
+                    if code and msg and not str(msg).startswith(str(code)):
+                        messages.append(f"{code}: {msg}".strip())
+                    elif msg:
+                        messages.append(str(msg).strip())
+                    elif code:
+                        messages.append(str(code).strip())
+        elif isinstance(raw_errors, str) and raw_errors.strip():
+            messages.append(raw_errors.strip())
+
+        # 2. Извлечение из commonErrors (список объектов {errorCode, errorMessage, errorObject})
+        raw_common = doc_info.get("commonErrors")
+        if isinstance(raw_common, list):
+            for item in raw_common:
+                if isinstance(item, dict):
+                    code = item.get("errorCode") or item.get("code")
+                    msg = item.get("errorMessage") or item.get("message") or item.get("text")
+                    obj = item.get("errorObject")
+                    parts = []
+                    if code and msg and not str(msg).startswith(str(code)):
+                        parts.append(f"{code}: {msg}")
+                    elif msg:
+                        parts.append(str(msg))
+                    elif code:
+                        parts.append(str(code))
+                    if obj and str(obj) not in str(msg):
+                        parts.append(f"(объект: {obj})")
+                    if parts:
+                        combined = " ".join(parts).strip()
+                        if combined:
+                            messages.append(combined)
+                elif isinstance(item, str) and item.strip():
+                    messages.append(item.strip())
+        elif isinstance(raw_common, str) and raw_common.strip():
+            messages.append(raw_common.strip())
+
+        # 3. Fallback поля
+        if not messages:
+            for fallback_field in ("statusComment", "comment", "error", "errorMessage", "message"):
+                val = doc_info.get(fallback_field)
+                if isinstance(val, str) and val.strip():
+                    messages.append(val.strip())
+                    break
+
+        if not messages:
+            status = doc_info.get("status", "FAILED")
+            return f"Отказ ГИС МТ со статусом {status}"
+
+        # Дедупликация с сохранением порядка
+        seen = set()
+        deduped = []
+        for m in messages:
+            if m not in seen:
+                seen.add(m)
+                deduped.append(m)
+        return "; ".join(deduped)
 
     async def wait_for_document(
         self,
         doc_id: str,
-        max_attempts: int = 15,
-        interval_seconds: float = 3.0,
+        max_attempts: int = 20,
+        interval_seconds: float = 2.0,
+        pg: str = "lp",
     ) -> dict:
-        """Poll document status until completion."""
+        """
+        Асинхронный опрос статуса документа в True API через GET /api/v4/true-api/doc/{doc_id}/info
+        до получения терминального статуса с интервалом и таймаутом.
+        """
         for attempt in range(max_attempts):
             try:
-                status_data = await self.get_document_status(doc_id)
-            except Exception as e:
-                # If document status endpoint is not active on gateway, return early
-                logger.debug(f"Document status query note for {doc_id}: {e}")
-                return {"documentId": doc_id, "status": "CHECKED_OK"}
+                status_data = await self.get_document_status(doc_id, pg=pg)
+            except CZAPIError as api_err:
+                # Grace period для задержки репликации шлюза (до 3 попыток при 404)
+                if api_err.status_code == 404 and attempt < 3:
+                    logger.debug(
+                        f"Документ {doc_id} еще не зарегистрирован в True API (попытка {attempt + 1}), "
+                        f"повтор через {interval_seconds}с..."
+                    )
+                    await asyncio.sleep(interval_seconds)
+                    continue
+                raise api_err
 
-            status = status_data.get("status", "")
+            status = str(status_data.get("status") or "").upper()
 
+            # Терминальный успех
             if status in ("CHECKED_OK", "ACCEPTED", "SUCCESS", "COMPLETED"):
-                logger.info(f"Document {doc_id} processed successfully (status={status})")
+                logger.info(f"Документ {doc_id} успешно подтвержден ГИС МТ (status={status})")
                 return status_data
-            elif status in ("CHECKED_NOT_OK", "PROCESSING_ERROR", "PARSE_ERROR", "FAILED"):
-                errors = status_data.get("errors", [])
+
+            # Терминальное отклонение
+            if status in ("CHECKED_NOT_OK", "PROCESSING_ERROR", "PARSE_ERROR", "FAILED", "CANCELLED"):
+                err_text = self.extract_document_error_text(status_data)
+                logger.error(f"Документ {doc_id} отклонен ГИС МТ ({status}): {err_text}")
                 raise CZDocumentError(
-                    f"Document {doc_id} failed with status {status}: {errors}",
-                    response_body=str(errors),
+                    message=f"Документ {doc_id} отклонен ГИС МТ: {err_text}",
+                    status_code=422,
+                    response_body=json.dumps(status_data, ensure_ascii=False) if isinstance(status_data, dict) else str(status_data),
+                    errors=status_data.get("errors") or [],
+                    common_errors=status_data.get("commonErrors") or [],
+                    doc_id=doc_id,
                 )
-            elif status in ("IN_PROGRESS", "PROCESSING", "PENDING"):
-                logger.debug(f"Document {doc_id} processing (attempt {attempt + 1})")
+
+            # Промежуточный статус
+            if status in ("IN_PROGRESS", "PROCESSING", "PENDING", "WAIT_FOR_CONTINUATION", ""):
+                logger.debug(f"Документ {doc_id} обрабатывается (попытка {attempt + 1}/{max_attempts}, status={status})")
                 await asyncio.sleep(interval_seconds)
             else:
+                logger.warning(f"Неизвестный промежуточный статус документа {doc_id}: {status}")
                 await asyncio.sleep(interval_seconds)
 
-        return {"documentId": doc_id, "status": "SUBMITTED"}
+        raise TimeoutError(
+            f"Превышен таймаут ожидания обработки документа {doc_id} в ГИС МТ "
+            f"({max_attempts * interval_seconds:.0f} сек)"
+        )
 
     async def withdraw_from_circulation(
         self,
@@ -834,25 +962,16 @@ class CZClient:
         return doc_id
 
     def _clean_cis_for_true_api(self, raw_code: str) -> str:
-        """Нормализует код маркировки для передачи в True API (убирает скобки и криптохвосты)."""
+        """
+        Нормализует код маркировки для передачи в True API (убирает скобки и криптохвосты,
+        гарантируя 31-символьный чистый КИ 01{gtin}21{serial} для легпрома).
+        """
         if not raw_code:
             return ""
-        code = raw_code.strip()
-        code = re.sub(r'\(01\)', '01', code)
-        code = re.sub(r'\(21\)', '21', code)
-        code = re.sub(r'\(91\)', '91', code)
-        code = re.sub(r'\(92\)', '92', code)
-        if code.startswith("01") and len(code) >= 16:
-            gtin = code[2:16]
-            rest = code[16:]
-            if rest.startswith("21"):
-                rest = rest[2:]
-            parts = re.split(r'[\x1d\x1e\x1f\u001d\u001e\u001f]', rest)
-            serial_raw = parts[0]
-            match_crypto = re.search(r'91(.{4})92(.+)$', serial_raw)
-            serial = serial_raw[:match_crypto.start()] if match_crypto else serial_raw
-            return f"01{gtin}21{serial}"
-        return code
+        from app.services.kiz_service import normalize_kiz_light_industry
+        cleaned = normalize_kiz_light_industry(raw_code)
+        return cleaned if cleaned else raw_code.strip()
+
 
     async def get_cises_info(self, cises: list[str]) -> list[dict]:
         """

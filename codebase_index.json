@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-03T13:38:29.804856+00:00",
+  "updated_at": "2026-09-04T15:19:26.755136+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 100,
+  "total_files": 109,
   "files": [
     {
       "file": "alembic/env.py",
@@ -194,6 +194,37 @@
       "layer": "migrations",
       "hash": "4f15479a292a",
       "docstring": "add_kiz_signature_batches_and_reminders",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/b2c3d4e5f6a7_add_notification_schedule_to_sellers.py",
+      "layer": "migrations",
+      "hash": "d7dfd9da70b1",
+      "docstring": "add_notification_schedule_to_sellers",
       "classes": [],
       "functions": [
         {
@@ -623,7 +654,7 @@
     {
       "file": "app/agents/cz_withdrawal.py",
       "layer": "agents",
-      "hash": "86a31b85ae1d",
+      "hash": "d54d380867ca",
       "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -1740,7 +1771,7 @@
     {
       "file": "app/api/kiz/attach.py",
       "layer": "api",
-      "hash": "1ef4c671f33e",
+      "hash": "dc99441f54f6",
       "docstring": "FastAPI KIZ Attach, Lookup & Validation Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1869,7 +1900,7 @@
     {
       "file": "app/api/kiz/documents.py",
       "layer": "api",
-      "hash": "bf96684cb77f",
+      "hash": "b0a9752c3f3a",
       "docstring": "FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1925,6 +1956,19 @@
             "router.post('/kiz/submit-signed-document')"
           ],
           "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
+        },
+        {
+          "name": "get_cz_document_status",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "doc_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/kiz/documents/{doc_id}/status')"
+          ],
+          "docstring": "Проверка статуса обработки документа в ГИС МТ (True API v4)."
         }
       ],
       "endpoints": [
@@ -1951,6 +1995,12 @@
           "path": "/kiz/submit-signed-document",
           "handler": "submit_signed_kiz_document",
           "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
+        },
+        {
+          "method": "GET",
+          "path": "/kiz/documents/{doc_id}/status",
+          "handler": "get_cz_document_status",
+          "docstring": "Проверка статуса обработки документа в ГИС МТ (True API v4)."
         }
       ],
       "celery_tasks": [],
@@ -2128,7 +2178,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "de7caa0f5e25",
+      "hash": "6a90aa507156",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2194,6 +2244,19 @@
             "router.get('/{order_id}')"
           ],
           "docstring": ""
+        },
+        {
+          "name": "retry_order_cz_withdrawal",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "order_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{order_id}/retry-withdrawal')"
+          ],
+          "docstring": "Повторный вывод КИЗ из оборота в ГИС МТ (Честный Знак) после отклонения."
         },
         {
           "name": "check_order_kiz_status",
@@ -2292,6 +2355,12 @@
           "path": "/{order_id}",
           "handler": "get_order",
           "docstring": ""
+        },
+        {
+          "method": "POST",
+          "path": "/{order_id}/retry-withdrawal",
+          "handler": "retry_order_cz_withdrawal",
+          "docstring": "Повторный вывод КИЗ из оборота в ГИС МТ (Честный Знак) после отклонения."
         },
         {
           "method": "POST",
@@ -3321,7 +3390,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "3b1946247a54",
+      "hash": "50e74075d5fc",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -3549,7 +3618,7 @@
     {
       "file": "app/models/order.py",
       "layer": "models",
-      "hash": "fee9705f8ef5",
+      "hash": "383f2755120e",
       "docstring": "",
       "classes": [
         {
@@ -3804,7 +3873,7 @@
     {
       "file": "app/schemas/order.py",
       "layer": "schemas",
-      "hash": "a26d02e824e5",
+      "hash": "34922d6d0833",
       "docstring": "",
       "classes": [
         {
@@ -4236,7 +4305,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "611c736da28a",
+      "hash": "a08011354e49",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -4263,7 +4332,9 @@
             "CZAPIError"
           ],
           "docstring": "Document creation/processing error.",
-          "methods": []
+          "methods": [
+            "__init__"
+          ]
         },
         {
           "name": "CZClient",
@@ -4286,7 +4357,9 @@
             "_build_withdrawal_document",
             "_build_return_document",
             "_create_document",
+            "get_document_info",
             "get_document_status",
+            "extract_document_error_text",
             "wait_for_document",
             "withdraw_from_circulation",
             "build_withdrawal_payload",
@@ -4311,6 +4384,7 @@
       "imports": [
         "app.config",
         "app.services.crypto_service",
+        "app.services.kiz_service",
         "asyncio",
         "base64",
         "datetime",
@@ -4412,7 +4486,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "0ae6dd9e3dc2",
+      "hash": "d36a13475929",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4437,6 +4511,15 @@
           "docstring": "Извлекает валидный объект информации о КИЗ из ответа True API (/cises/info или /cises/short/list)."
         },
         {
+          "name": "normalize_kiz_light_industry",
+          "is_async": false,
+          "args": [
+            "raw_code"
+          ],
+          "decorators": [],
+          "docstring": "Гарантированная нормализация КИЗ (Кода идентификации) для Честного Знака"
+        },
+        {
           "name": "parse_kiz_code",
           "is_async": false,
           "args": [
@@ -4444,6 +4527,16 @@
           ],
           "decorators": [],
           "docstring": "Разбирает код маркировки GS1 DataMatrix / SGTIN / КИЗ."
+        },
+        {
+          "name": "normalize_existing_orders_kiz",
+          "is_async": true,
+          "args": [
+            "db",
+            "target_order_id"
+          ],
+          "decorators": [],
+          "docstring": "Нормализует все сохраненные в базе данных заказы с КИЗ, устраняя криптохвосты,"
         },
         {
           "name": "resolve_kiz_product_info",
@@ -4492,6 +4585,7 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "app.database",
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
@@ -4808,6 +4902,43 @@
         "sqlalchemy.orm",
         "sys",
         "typing"
+      ]
+    },
+    {
+      "file": "scripts/check_cz_doc.py",
+      "layer": "config",
+      "hash": "5bf8a286410b",
+      "docstring": "CLI Utility to check Chestny Znak (GIS MT / True API) document status",
+      "classes": [],
+      "functions": [
+        {
+          "name": "check_document_status",
+          "is_async": true,
+          "args": [
+            "doc_id",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "argparse",
+        "asyncio",
+        "httpx",
+        "json",
+        "os",
+        "pathlib",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sys"
       ]
     },
     {
@@ -5647,6 +5778,289 @@
       ]
     },
     {
+      "file": "tests/test_challenger_r3_m1_1_adversarial.py",
+      "layer": "tests",
+      "hash": "b294f571aea9",
+      "docstring": "Adversarial Challenge & Empirical Bug Reproduction Test Suite.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_clean_31_kiz_with_91_92_in_serial_must_stay_31_chars",
+          "is_async": false,
+          "args": [
+            "serial"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('serial', VALID_SERIALS_WITH_91_92)"
+          ],
+          "docstring": "CRITICAL CHALLENGE:"
+        },
+        {
+          "name": "test_concatenated_barcode_with_91_92_in_serial",
+          "is_async": false,
+          "args": [
+            "serial"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('serial', VALID_SERIALS_WITH_91_92)"
+          ],
+          "docstring": "Concatenated raw barcode without delimiters:"
+        },
+        {
+          "name": "test_space_delimited_barcode_with_91_92_in_serial",
+          "is_async": false,
+          "args": [
+            "serial"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('serial', VALID_SERIALS_WITH_91_92)"
+          ],
+          "docstring": "Space-delimited raw barcode:"
+        },
+        {
+          "name": "test_gs_delimited_barcode_with_91_92_in_serial",
+          "is_async": false,
+          "args": [
+            "serial"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('serial', VALID_SERIALS_WITH_91_92)"
+          ],
+          "docstring": "GS-delimited raw barcode:"
+        },
+        {
+          "name": "test_parse_kiz_code_with_91_92_in_serial",
+          "is_async": false,
+          "args": [
+            "serial"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('serial', VALID_SERIALS_WITH_91_92)"
+          ],
+          "docstring": "parse_kiz_code must extract full 13-char serial and clean_cis of 31 chars."
+        },
+        {
+          "name": "test_withdrawal_document_with_91_92_serial",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "_build_withdrawal_document (LK_RECEIPT) must produce strictly 31 chars in products[].cis"
+        },
+        {
+          "name": "test_return_document_with_91_92_serial",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "_build_return_document (LP_RETURN) must produce strictly 31 chars in products_list[].ki"
+        },
+        {
+          "name": "test_randomized_valid_barcodes_stress_harness",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Generates 500 valid randomized light industry barcodes with varied delimiters,"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "json",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_challenger_r3_m2_1_adversarial.py",
+      "layer": "tests",
+      "hash": "f06de1840fe9",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_extract_error_corrupted_and_non_dict_inputs",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify extract_document_error_text handles non-dict and malformed root inputs safely."
+        },
+        {
+          "name": "test_extract_error_deeply_nested_and_heterogeneous_errors_field",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stress-test extraction from errors array with nested, missing, and unexpected types."
+        },
+        {
+          "name": "test_extract_error_complex_common_errors_structures",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stress-test commonErrors with missing keys, complex errorObjects, and object deduplication."
+        },
+        {
+          "name": "test_extract_error_unicode_emojis_and_control_chars",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify unicode characters, control symbols, and non-ASCII text don't corrupt extraction."
+        },
+        {
+          "name": "test_extract_error_deduplication_and_order_preservation",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify deduplication works across identical errors in errors and commonErrors without losing order."
+        },
+        {
+          "name": "test_extract_error_fallback_hierarchy",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify fallback sequence: statusComment -> comment -> error -> errorMessage -> message -> default status."
+        },
+        {
+          "name": "test_extract_error_raw_strings_and_empty_elements",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify errors and commonErrors as raw strings or containing empty/blank values."
+        },
+        {
+          "name": "test_extract_error_high_volume_stress",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify high-volume error arrays (10,000 items) do not cause O(n^2) degradation or crashes."
+        },
+        {
+          "name": "test_wait_for_document_flapping_404_to_in_progress_to_checked_not_ok",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress-test realistic True API flapping sequence:"
+        },
+        {
+          "name": "test_wait_for_document_flapping_404_to_in_progress_to_checked_ok",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress-test True API flapping sequence ending in success:"
+        },
+        {
+          "name": "test_wait_for_document_persistent_404_raises_after_grace_period",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify persistent 404 errors beyond the 3-attempt grace period raise CZAPIError(404),"
+        },
+        {
+          "name": "test_wait_for_document_network_failure_bubbles_immediately",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify low-level network failures (ConnectTimeout, ReadTimeout) are not masked."
+        },
+        {
+          "name": "test_wait_for_document_server_error_raises_immediately",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 5xx server errors do not consume grace period and fail immediately."
+        },
+        {
+          "name": "test_wait_for_document_all_rejection_terminal_statuses",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify all rejection statuses ('CHECKED_NOT_OK', 'PROCESSING_ERROR', 'PARSE_ERROR', 'FAILED', 'CANCELLED') raise CZDocumentError."
+        },
+        {
+          "name": "test_wait_for_document_all_success_terminal_statuses",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify all success statuses ('CHECKED_OK', 'ACCEPTED', 'SUCCESS', 'COMPLETED', case-insensitive) return data."
+        },
+        {
+          "name": "test_wait_for_document_empty_response_handling",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify get_document_info handling when True API returns empty list or empty dict."
+        },
+        {
+          "name": "test_e2e_celery_task_deterministic_error_preserves_exact_rejection_reason",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify withdraw_order_kiz propagates exact GIS MT rejection reason to DB, Audit, and Telegram without retry."
+        },
+        {
+          "name": "test_e2e_web_signing_rejection_reason_preserved_in_audit_and_response",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify submit-signed-document endpoint preserves exact GIS MT rejection reason in audit and response."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_withdrawal",
+        "app.database",
+        "app.main",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "httpx",
+        "json",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "time",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_codebase_indexer.py",
       "layer": "tests",
       "hash": "6ca4dfaecd6d",
@@ -5793,6 +6207,126 @@
       ]
     },
     {
+      "file": "tests/test_cz_true_api_v4_polling.py",
+      "layer": "tests",
+      "hash": "3cd38ca6cf45",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_cz_client_get_document_info_v4_endpoint",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify CZClient.get_document_info queries /api/v4/true-api/doc/{doc_id}/info?pg=lp."
+        },
+        {
+          "name": "test_cz_client_extract_document_error_text",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify error parsing from both errors (strings) and commonErrors (objects)."
+        },
+        {
+          "name": "test_wait_for_document_polling_progression_to_checked_ok",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify wait_for_document loops through IN_PROGRESS and completes on CHECKED_OK."
+        },
+        {
+          "name": "test_wait_for_document_checked_not_ok_raises_cz_document_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify wait_for_document raises CZDocumentError on CHECKED_NOT_OK with extracted message."
+        },
+        {
+          "name": "test_wait_for_document_timeout_raises_timeout_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify wait_for_document raises TimeoutError when max_attempts is exceeded."
+        },
+        {
+          "name": "test_wait_for_document_no_404_masking_and_grace_period",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 404 is not masked to CHECKED_OK, and raises CZAPIError if persistent."
+        },
+        {
+          "name": "test_celery_withdraw_order_kiz_checked_ok",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Celery task handles CHECKED_OK: WITHDRAWN, RETIRED, SUCCESS, Telegram notify."
+        },
+        {
+          "name": "test_celery_withdraw_order_kiz_checked_not_ok_no_futile_retries",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Celery task handles CZDocumentError: ERROR, CHECKED_NOT_OK, FAILED, immediate alert, no retry."
+        },
+        {
+          "name": "test_web_signing_submit_signed_document_rejection",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify submit_signed_kiz_document handles GIS MT rejection correctly."
+        },
+        {
+          "name": "test_get_cz_document_status_endpoint_v4_info",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify GET /api/v1/sellers/{id}/kiz/documents/{doc_id}/status queries True API v4 and returns error_text."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_withdrawal",
+        "app.database",
+        "app.main",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "datetime",
+        "httpx",
+        "json",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_kb_agent.py",
       "layer": "tests",
       "hash": "06eae830732a",
@@ -5858,6 +6392,365 @@
         "app.services.kb_service",
         "pathlib",
         "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_adversarial_challenge_m1_2.py",
+      "layer": "tests",
+      "hash": "2d16af8b26c2",
+      "docstring": "Adversarial Challenge & Empirical Boundary Test Suite for Milestone M1.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_order_5647931541_dirty_variants",
+          "is_async": true,
+          "args": [
+            "dirty_variant",
+            "expected_serial"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('dirty_variant,expected_serial', List(elts=[Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+. 91EE12 92'), FormattedValue(value=Subscript(value=Attribute(value=Call(func=Attribute(value=Name(id='uuid', ctx=Load()), attr='uuid4', ctx=Load())), attr='hex', ctx=Load()), slice=Slice(upper=Constant(value=12)), ctx=Load()), conversion=-1)]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+.\\x1d91EE12\\x1d92'), FormattedValue(value=Subscript(value=Attribute(value=Call(func=Attribute(value=Name(id='uuid', ctx=Load()), attr='uuid4', ctx=Load())), attr='hex', ctx=Load()), slice=Slice(upper=Constant(value=12)), ctx=Load()), conversion=-1)]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+.\\x1d91EE12\\x1d92'), FormattedValue(value=Subscript(value=Attribute(value=Call(func=Attribute(value=Name(id='uuid', ctx=Load()), attr='uuid4', ctx=Load())), attr='hex', ctx=Load()), slice=Slice(upper=Constant(value=12)), ctx=Load()), conversion=-1)]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+.91ffd92'), FormattedValue(value=Subscript(value=Attribute(value=Call(func=Attribute(value=Name(id='uuid', ctx=Load()), attr='uuid4', ctx=Load())), attr='hex', ctx=Load()), slice=Slice(upper=Constant(value=8)), ctx=Load()), conversion=-1)]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+.91ABCD92'), FormattedValue(value=Subscript(value=Attribute(value=Call(func=Attribute(value=Name(id='uuid', ctx=Load()), attr='uuid4', ctx=Load())), attr='hex', ctx=Load()), slice=Slice(upper=Constant(value=16)), ctx=Load()), conversion=-1)]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='(01)04630199251318(21)5QTSRh>4sVc+.(91)EE12(92)xyz123')]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='04630199251318215QTSRh>4sVc+. 91EE12 92xyz123')]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='\\x1d0104630199251318215QTSRh>4sVc+.\\x1d91EE12\\x1d92xyz   ')]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+.\\t91EE12\\t92xyz')]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[Constant(value='0104630199251332215ZEdKVT_00e737'), Constant(value='5ZEdKVT_00e73')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='0104630199251318215QTSRh>4sVc+. 91EE1292xyz')]), Constant(value='5QTSRh>4sVc+.')], ctx=Load()), Tuple(elts=[JoinedStr(values=[Constant(value='  0104630199251318215QTSRh>4sVc+.91ABCD  ')]), Constant(value='5QTSRh>4sVc+.')], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": "Empirically creates order #5647931541 in the DB with dirty KIZ,"
+        },
+        {
+          "name": "test_lp_return_document_ki_formatting_kiz_codes",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Tests _build_return_document using kiz_codes argument with diverse dirty inputs."
+        },
+        {
+          "name": "test_lp_return_document_ki_formatting_items_parameter",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Tests _build_return_document using items argument with both 'ki' and 'kiz_code' keys."
+        },
+        {
+          "name": "test_database_normalization_batch_stress",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Creates 40 dirty orders with varying lengths (32, 39, 45, 53) and executes"
+        },
+        {
+          "name": "test_extreme_boundaries_empty_and_whitespace",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify handling of empty, whitespace, and control character inputs."
+        },
+        {
+          "name": "test_extreme_boundaries_corrupt_gtin",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Non-digit inputs without 14 digits should not crash and degrade gracefully."
+        },
+        {
+          "name": "test_extreme_boundaries_massive_strings_redos_resistance",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Stress-test with very large strings (up to 50,000 characters) to ensure"
+        },
+        {
+          "name": "test_extreme_boundaries_injection_attacks",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Test SQL injection, HTML/script injection, and shell meta-characters."
+        },
+        {
+          "name": "test_extreme_boundaries_special_gs1_characters_in_serial",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "GS1 specifications permit punctuation in serials: ! % & ' * + - . / : ; < = > ? _"
+        },
+        {
+          "name": "test_api_attach_kiz_short_code_rejection",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Inputs shorter than 10 characters must be rejected with 400."
+        },
+        {
+          "name": "test_api_validate_kiz_heals_unnormalized_order",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "If an order exists in the DB with an unnormalized dirty KIZ,"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz",
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.schemas.order",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "fastapi",
+        "json",
+        "pytest",
+        "random",
+        "sqlalchemy",
+        "time",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_adversarial_challenge_m2_2.py",
+      "layer": "tests",
+      "hash": "b1a7053e7c4c",
+      "docstring": "Adversarial Challenge & Empirical Verification Suite for Milestone M2.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_celery_withdraw_order_kiz_e2e_checked_not_ok_error_07",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial verification of withdraw_order_kiz without mocking _do_withdrawal."
+        },
+        {
+          "name": "test_celery_withdraw_order_kiz_array_response_with_error_07",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify True API returning array format [ { status: CHECKED_NOT_OK, ... } ] works cleanly."
+        },
+        {
+          "name": "test_celery_withdraw_order_kiz_transient_error_triggers_retry",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress-test the retry logic:"
+        },
+        {
+          "name": "test_submit_signed_kiz_document_slow_response_timeout",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Empirically test submit_signed_kiz_document when True API is slow and wait_for_document times out."
+        },
+        {
+          "name": "test_submit_signed_kiz_document_batch_rejection_multi_order",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify multi-order batch rejection via submit_signed_kiz_document:"
+        },
+        {
+          "name": "test_submit_signed_kiz_document_return_action_rejection",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify submit_signed_kiz_document handles RETURN action rejection properly."
+        },
+        {
+          "name": "test_submit_signed_kiz_document_invalid_inputs",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify input validation: missing base64 doc/sig gives 400, missing seller gives 404."
+        },
+        {
+          "name": "test_withdraw_order_kiz_grace_period_404_then_checked_not_ok_error_07",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 404 grace period in wait_for_document:"
+        },
+        {
+          "name": "test_withdraw_order_kiz_no_telegram_configured_handles_cleanly",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify withdraw_order_kiz completes cleanly when seller has no Telegram credentials."
+        },
+        {
+          "name": "test_withdraw_order_kiz_already_withdrawn_idempotent",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify withdraw_order_kiz skips execution idempotently if order is already WITHDRAWN."
+        },
+        {
+          "name": "test_status_endpoint_after_timeout_reveals_error_07",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify complete lifecycle:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_withdrawal",
+        "app.database",
+        "app.main",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "asyncio",
+        "celery.exceptions",
+        "datetime",
+        "httpx",
+        "json",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_dashboard_retry_r3.py",
+      "layer": "tests",
+      "hash": "40bbb3883e42",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "mock_celery_apply",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_model_cz_columns",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_serialization_in_list_and_get_orders",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_retry_withdrawal_endpoint_cleans_cis_and_resets_status",
+          "is_async": true,
+          "args": [
+            "mock_celery_apply"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_retry_withdrawal_various_dirty_kiz_formats",
+          "is_async": true,
+          "args": [
+            "mock_celery_apply"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_retry_withdrawal_error_handling",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_retry_withdrawal_with_none_price_and_kiz_product_info_sync",
+          "is_async": true,
+          "args": [
+            "mock_celery_apply"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify retry handles None price without error and syncs KizProductInfo record."
+        },
+        {
+          "name": "test_frontend_dashboard_retry_ui_contract",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.main",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "decimal",
+        "httpx",
+        "pathlib",
+        "pytest",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -6010,6 +6903,222 @@
         "pytest",
         "random",
         "sys",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_normalization_m1.py",
+      "layer": "tests",
+      "hash": "ef8526e22a69",
+      "docstring": "Milestone M1 Test Suite: Guaranteed KIZ Normalization & Ingestion Integrity.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_normalize_kiz_light_industry_clean_31",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_spaces_tail",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_space_key_no_space_sig",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_gs_delimiters",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_gs_unicode",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_concatenated_tails",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_parentheses",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_no_01_prefix",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_14_char_serial_truncated_to_31",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_scanner_fnc1_prefix",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_scanner_aim_symbology_prefix",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_internal_91_92_serial",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_empty_and_whitespace",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_kiz_light_industry_short_synthetic_mock_compatibility",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_with_space_and_crypto_tail",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_with_gs_delimiter",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_concatenated_3key",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_aim_prefix",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_internal_91_92_serial",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_cz_client_clean_cis_for_true_api",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_document_guarantees_31_char_cis",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_document_items_guarantees_31_char_cis",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_return_document_guarantees_31_char_ki",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_return_document_items_guarantees_31_char_ki",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_attach_kiz_normalizes_dirty_code_before_saving",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_normalize_existing_orders_kiz_and_target_order_5647931541",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz",
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.schemas.order",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "datetime",
+        "json",
+        "pytest",
+        "random",
+        "sqlalchemy",
         "unittest.mock",
         "uuid"
       ]
@@ -6198,7 +7307,7 @@
     {
       "file": "tests/test_kiz_signing_endpoints.py",
       "layer": "tests",
-      "hash": "106528b0840d",
+      "hash": "d4e82dcd6837",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -7295,7 +8404,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "8cc85bc848bd",
+      "hash": "cdf30abc4fcb",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

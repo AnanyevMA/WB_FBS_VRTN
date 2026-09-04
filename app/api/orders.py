@@ -287,6 +287,9 @@ async def list_orders(
             "kiz_cz_status": o.kiz_cz_status,
             "kiz_cz_status_updated_at": o.kiz_cz_status_updated_at.isoformat() if o.kiz_cz_status_updated_at else None,
             "kiz_attached_at": o.kiz_attached_at.isoformat() if o.kiz_attached_at else None,
+            "cz_withdrawal_doc_id": o.cz_withdrawal_doc_id,
+            "cz_doc_status": o.cz_doc_status,
+            "cz_rejection_reason": o.cz_rejection_reason,
             "created_at": o.created_at.isoformat() if o.created_at else None,
             "is_archived": is_arch,
             "archive_reason": arch_reason,
@@ -336,9 +339,126 @@ async def get_order(seller_id: str, order_id: int, db: AsyncSession = Depends(ge
         "kiz_cz_status": order.kiz_cz_status,
         "kiz_cz_status_updated_at": order.kiz_cz_status_updated_at.isoformat() if order.kiz_cz_status_updated_at else None,
         "kiz_attached_at": order.kiz_attached_at.isoformat() if order.kiz_attached_at else None,
+        "cz_withdrawal_doc_id": order.cz_withdrawal_doc_id,
+        "cz_doc_status": order.cz_doc_status,
+        "cz_rejection_reason": order.cz_rejection_reason,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "is_archived": is_arch,
         "archive_reason": arch_reason,
+    }
+
+
+@router.post("/{order_id}/retry-withdrawal")
+async def retry_order_cz_withdrawal(
+    seller_id: str,
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Повторный вывод КИЗ из оборота в ГИС МТ (Честный Знак) после отклонения.
+    Автоматически нормализует КИЗ до чистого 31-значного КИ (normalize_kiz_light_industry),
+    сбрасывает статус в ATTACHED, очищает cz_rejection_reason и cz_doc_status,
+    и повторно ставит Celery-задачу withdraw_order_kiz в очередь.
+    """
+    order = await db.get(Order, order_id)
+    if not order or str(order.seller_id) != str(seller_id):
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if not order.kiz_code:
+        raise HTTPException(status_code=400, detail="У заказа отсутствует код маркировки (КИЗ)")
+
+    # 1. Автоматическая очистка / нормализация КИЗ до 31-значного КИ лёгкой промышленности
+    from app.services.kiz_service import normalize_kiz_light_industry, KizProductInfo
+    raw_code = order.kiz_code
+    clean_cis = normalize_kiz_light_industry(raw_code)
+    if clean_cis:
+        order.kiz_code = clean_cis
+    else:
+        clean_cis = raw_code
+
+    # Синхронизация KizProductInfo (Single Source of Truth), если запись уже существует
+    kiz_info_row = (await db.execute(
+        select(KizProductInfo).filter(
+            or_(
+                KizProductInfo.kiz_code == raw_code,
+                KizProductInfo.clean_cis == raw_code,
+                KizProductInfo.order_id == order.id,
+            )
+        )
+    )).scalars().first()
+    if kiz_info_row:
+        kiz_info_row.clean_cis = clean_cis
+        if kiz_info_row.kiz_code != clean_cis:
+            existing_kpi = (await db.execute(
+                select(KizProductInfo).filter(KizProductInfo.kiz_code == clean_cis)
+            )).scalars().first()
+            if not existing_kpi or existing_kpi.id == kiz_info_row.id:
+                kiz_info_row.kiz_code = clean_cis
+
+    # 2. Сброс статуса ошибки в ATTACHED и очистка причины отклонения
+    now = datetime.now(timezone.utc)
+    order.kiz_status = KizStatus.ATTACHED
+    order.cz_rejection_reason = None
+    order.cz_doc_status = None
+    order.updated_at = now
+
+    # 3. Аудит лог
+    audit = AuditLog(
+        seller_id=seller_id,
+        agent="orders_api",
+        action="RETRY_WITHDRAW_CZ",
+        entity_type="order",
+        entity_id=str(order_id),
+        payload={"kiz_code": clean_cis, "price": str(order.price) if order.price is not None else "0.00"},
+    )
+    db.add(audit)
+    await db.commit()
+    await db.refresh(order)
+
+    # 4. Отправка Celery-задачи на вывод из оборота
+    price_kopecks = int((order.price or Decimal("0.00")) * 100)
+    try:
+        from app.agents.cz_withdrawal import withdraw_order_kiz
+        withdraw_order_kiz.delay(
+            seller_id=str(seller_id),
+            order_id=order.id,
+            kiz_code=order.kiz_code,
+            price_kopecks=price_kopecks,
+        )
+    except Exception as e:
+        logger.warning(f"Could not dispatch withdraw_order_kiz for order {order.id}: {e}")
+
+    is_arch, arch_reason = check_is_archived(order)
+
+    return {
+        "status": "ok",
+        "message": "Вывод из оборота повторно поставлен в очередь",
+        "order": {
+            "id": order.id,
+            "seller_id": str(order.seller_id),
+            "status": order.status.value,
+            "wb_status": order.wb_status,
+            "supplier_status": order.supplier_status,
+            "wb_created_at": order.wb_created_at.isoformat() if order.wb_created_at else None,
+            "article": order.article or f"ART-{order.id}",
+            "brand": order.brand or "WB",
+            "subject": order.subject or "Товар",
+            "name": order.name or f"Заказ #{order.id}",
+            "tech_size": order.tech_size,
+            "wb_size": order.wb_size,
+            "price": str(order.price) if order.price is not None else "0.00",
+            "sticker_id": order.sticker_id,
+            "kiz_required": order.kiz_required,
+            "kiz_code": order.kiz_code,
+            "kiz_status": order.kiz_status.value,
+            "kiz_cz_status": order.kiz_cz_status,
+            "cz_withdrawal_doc_id": order.cz_withdrawal_doc_id,
+            "cz_doc_status": order.cz_doc_status,
+            "cz_rejection_reason": order.cz_rejection_reason,
+            "created_at": order.created_at.isoformat() if order.created_at else None,
+            "is_archived": is_arch,
+            "archive_reason": arch_reason,
+        },
     }
 
 

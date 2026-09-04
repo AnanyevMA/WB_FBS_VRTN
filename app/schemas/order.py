@@ -10,6 +10,9 @@ class OrderBase(BaseModel):
     supplier_status: Optional[str] = None
     kiz_status: str
     price_kopecks: Optional[int] = None
+    cz_withdrawal_doc_id: Optional[str] = None
+    cz_doc_status: Optional[str] = None
+    cz_rejection_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     

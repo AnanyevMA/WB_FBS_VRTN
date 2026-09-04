@@ -29,9 +29,13 @@ async def attach_kiz(
     if not seller:
         raise HTTPException(status_code=404, detail="Продавец не найден")
         
-    kiz_code = req.kiz_code.strip()
-    if len(kiz_code) < 10:
+    raw_kiz_code = req.kiz_code.strip()
+    if len(raw_kiz_code) < 10:
         raise HTTPException(status_code=400, detail="Неверный формат КИЗ / SGTIN")
+
+    from app.services.kiz_service import normalize_kiz_light_industry, resolve_kiz_product_info
+    normalized_kiz = normalize_kiz_light_industry(raw_kiz_code) or raw_kiz_code
+    kiz_code = normalized_kiz
         
     # If order_id not specified or 0, auto-find active order needing KIZ
     target_order = None
@@ -62,20 +66,20 @@ async def attach_kiz(
     if not target_order:
         raise HTTPException(status_code=404, detail="Не найден подходящий заказ для привязки КИЗ")
 
-    # Update order
-    target_order.kiz_code = kiz_code
+    # Update order with guaranteed normalized KIZ
+    target_order.kiz_code = normalized_kiz
     target_order.kiz_status = KizStatus.ATTACHED
     target_order.kiz_attached_at = datetime.now(timezone.utc)
     
     # Resolve product info and cross-check
-    from app.services.kiz_service import resolve_kiz_product_info
     kiz_info = await resolve_kiz_product_info(
-        kiz_code=kiz_code,
+        kiz_code=normalized_kiz,
         seller=seller,
         order=target_order,
         db=db,
         force_refresh=True
     )
+
 
     # Synchronize CZ status and error checking
     target_order.kiz_cz_status = kiz_info.cz_status
@@ -211,15 +215,27 @@ async def validate_kiz(seller_id: str, order_id: int, db: AsyncSession = Depends
         raise HTTPException(status_code=404, detail="Заказ не найден")
         
     code = order.kiz_code or ""
-    is_valid = len(code) >= 25 and (code.startswith("01") or code.startswith("046"))
+    from app.services.kiz_service import normalize_kiz_light_industry
+    normalized = normalize_kiz_light_industry(code) if code else ""
+    if normalized and normalized != code:
+        order.kiz_code = normalized
+        await db.commit()
+
+    active_code = normalized if normalized else code
+    is_valid = len(active_code) == 31 and active_code.startswith("01")
+    if not is_valid and len(active_code) >= 20 and (active_code.startswith("01") or active_code.startswith("046")):
+        is_valid = True
+
     return {
         "valid": is_valid,
         "details": {
-            "kiz_code": code,
-            "length": len(code),
+            "kiz_code": active_code,
+            "raw_kiz_code": code,
+            "length": len(active_code),
             "format": "GS1 DataMatrix (SGTIN)" if is_valid else "Неизвестный формат"
         }
     }
+
 
 
 @router.get("/kiz/operations")

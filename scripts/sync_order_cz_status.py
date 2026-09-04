@@ -17,7 +17,7 @@ from app.models.order import Order, KizStatus
 from app.models.seller import Seller
 from app.models.kiz import KizOperation
 from app.services.encryption import decrypt
-from app.services.cz_client import CZClient, extract_document_error_text
+from app.services.cz_client import CZClient
 
 
 async def sync_order(order_id: int):
@@ -52,7 +52,7 @@ async def sync_order(order_id: int):
             order.kiz_cz_status = "RETIRED"
             print("✅ Документ подтвержден ГИС МТ! Статус заказа обновлен в WITHDRAWN.")
         elif status == "CHECKED_NOT_OK" or status == "FAILED":
-            error_reason = extract_document_error_text(doc_info) or "Документ отклонен ГИС МТ"
+            error_reason = client.extract_document_error_text(doc_info) or "Документ отклонен ГИС МТ"
             order.cz_doc_status = "CHECKED_NOT_OK"
             order.cz_rejection_reason = error_reason
             order.kiz_status = KizStatus.ERROR

@@ -50,6 +50,16 @@ function openAddSellerModal() {
     if (tzSelect) tzSelect.value = 'Europe/Moscow';
     onNotificationModeChanged();
 
+    // Archive reminder defaults (every 2 days at 14:00)
+    const arcEnabled = document.getElementById('seller_archive_reminder_enabled');
+    if (arcEnabled) arcEnabled.checked = true;
+    const arcDays = document.getElementById('seller_archive_reminder_days');
+    if (arcDays) arcDays.value = 2;
+    const arcHour = document.getElementById('seller_archive_reminder_hour');
+    if (arcHour) arcHour.value = 14;
+    const arcMinute = document.getElementById('seller_archive_reminder_minute');
+    if (arcMinute) arcMinute.value = 0;
+
     // Populate crypto certificates
     safePopulateCertificatesDropdown();
     openModal('sellerModal');
@@ -90,6 +100,16 @@ async function editSeller(sellerId) {
         const tzVal = seller.digest_timezone || 'Europe/Moscow';
         const tzOption = Array.from(tzSelect.options).find(o => o.value === tzVal);
         tzSelect.value = tzOption ? tzVal : 'Europe/Moscow';
+
+        // Archive reminder settings
+        const arcEnabled = document.getElementById('seller_archive_reminder_enabled');
+        if (arcEnabled) arcEnabled.checked = seller.archive_reminder_enabled !== false;
+        const arcDays = document.getElementById('seller_archive_reminder_days');
+        if (arcDays) arcDays.value = seller.archive_reminder_days ?? 2;
+        const arcHour = document.getElementById('seller_archive_reminder_hour');
+        if (arcHour) arcHour.value = seller.archive_reminder_hour ?? 14;
+        const arcMinute = document.getElementById('seller_archive_reminder_minute');
+        if (arcMinute) arcMinute.value = seller.archive_reminder_minute ?? 0;
         
         // Token inputs & persistent status indicators
         const wbInput = document.getElementById('seller_wb_token');
@@ -307,6 +327,10 @@ async function saveSeller() {
                     minute: parseInt(document.getElementById('seller_digest_minute').value) || 0,
                     timezone: document.getElementById('seller_digest_timezone').value || sellerTimezone || 'Europe/Moscow',
                 },
+                archive_reminder_enabled: document.getElementById('seller_archive_reminder_enabled')?.checked ?? true,
+                archive_reminder_days: parseInt(document.getElementById('seller_archive_reminder_days')?.value) || 2,
+                archive_reminder_hour: parseInt(document.getElementById('seller_archive_reminder_hour')?.value) ?? 14,
+                archive_reminder_minute: parseInt(document.getElementById('seller_archive_reminder_minute')?.value) ?? 0,
             };
             await apiFetch('/sellers', {
                 method: 'POST',
@@ -331,6 +355,10 @@ async function saveSeller() {
                 digest_hour: parseInt(document.getElementById('seller_digest_hour').value) || 8,
                 digest_minute: parseInt(document.getElementById('seller_digest_minute').value) || 0,
                 digest_timezone: document.getElementById('seller_digest_timezone').value || sellerTimezone || 'Europe/Moscow',
+                archive_reminder_enabled: document.getElementById('seller_archive_reminder_enabled')?.checked ?? true,
+                archive_reminder_days: parseInt(document.getElementById('seller_archive_reminder_days')?.value) || 2,
+                archive_reminder_hour: parseInt(document.getElementById('seller_archive_reminder_hour')?.value) ?? 14,
+                archive_reminder_minute: parseInt(document.getElementById('seller_archive_reminder_minute')?.value) ?? 0,
             };
             // Only send tokens if user typed new values (prevent resetting encrypted secrets)
             if (wbToken) payload.wb_api_token = wbToken;

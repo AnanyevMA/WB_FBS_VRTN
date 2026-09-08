@@ -48,6 +48,8 @@ class Seller(Base):
     # Archive reminder settings
     archive_reminder_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     archive_reminder_days: Mapped[int] = mapped_column(Integer, default=2, server_default="2")
+    archive_reminder_hour: Mapped[int] = mapped_column(Integer, default=14, server_default="14")
+    archive_reminder_minute: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     last_archive_uploaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_archive_reminder_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 

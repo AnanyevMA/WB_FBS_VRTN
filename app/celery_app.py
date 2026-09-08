@@ -119,10 +119,10 @@ celery_app.conf.update(
             "schedule": crontab(minute=15, hour="*/6"),
             "options": {"queue": "maintenance"},
         },
-        # Runs to check sellers requiring archive upload reminder (every 2 days)
+        # Runs every 60s to check sellers requiring archive upload reminder (every 2 days at configured time, e.g. 14:00)
         "check-archive-reminders": {
             "task": "app.agents.archive_processor.check_archive_reminders",
-            "schedule": crontab(minute=0, hour="10,14,18"),
+            "schedule": 60.0,  # every 60 seconds for on-minute delivery
             "options": {"queue": "notifications"},
         },
     },

@@ -226,15 +226,17 @@ def sync_order_statuses(seller_id: str):
     bind=True,
     max_retries=1,
 )
-def check_archive_reminders(self):
+def check_archive_reminders(*args, ignore_time_window: bool = False, **kwargs):
     """
-    Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней, по умолчанию 2).
+    Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней в ЧЧ:ММ).
+    По умолчанию: раз в 2 дня в 14:00 по часовому поясу продавца.
     Запускается по расписанию Celery Beat.
     """
     import asyncio
     from app.services.telegram_service import TelegramService
+    from app.services.time_service import resolve_timezone
 
-    now = datetime.now(timezone.utc)
+    now_utc = datetime.now(timezone.utc)
     with Session(sync_engine) as db:
         sellers = db.execute(
             select(Seller).where(
@@ -249,28 +251,69 @@ def check_archive_reminders(self):
             if not seller.telegram_chat_ids:
                 continue
 
-            interval_days = seller.archive_reminder_days or 2
-            last_upload = seller.last_archive_uploaded_at
-            last_sent = seller.last_archive_reminder_sent_at
+            # 1. Resolve seller local time
+            tz_str = getattr(seller, "timezone", None) or getattr(seller, "digest_timezone", None) or "Europe/Moscow"
+            seller_tz = resolve_timezone(tz_str)
+            seller_local_now = now_utc.astimezone(seller_tz)
 
+            # 2. Check time window (unless ignored for tests / manual calls)
+            target_hour = int(getattr(seller, "archive_reminder_hour", 14) if getattr(seller, "archive_reminder_hour", None) is not None else 14)
+            target_minute = int(getattr(seller, "archive_reminder_minute", 0) if getattr(seller, "archive_reminder_minute", None) is not None else 0)
+
+            if not ignore_time_window:
+                target_dt = datetime(
+                    year=seller_local_now.year,
+                    month=seller_local_now.month,
+                    day=seller_local_now.day,
+                    hour=target_hour,
+                    minute=target_minute,
+                    tzinfo=seller_tz,
+                )
+                # Not yet reached target time today in seller's local timezone
+                if seller_local_now < target_dt:
+                    continue
+                # Past delivery window (grace window: 2 hours)
+                if seller_local_now >= target_dt + timedelta(hours=2):
+                    continue
+
+            # 3. Check if already sent today in seller's local timezone
+            last_sent = seller.last_archive_reminder_sent_at
+            if last_sent:
+                if last_sent.tzinfo is None:
+                    last_sent = last_sent.replace(tzinfo=timezone.utc)
+                last_sent_local = last_sent.astimezone(seller_tz)
+                if last_sent_local.date() == seller_local_now.date():
+                    # Already sent today
+                    continue
+
+            # 4. Interval check (e.g. every 2 days)
+            interval_days = int(getattr(seller, "archive_reminder_days", 2) or 2)
+            last_upload = seller.last_archive_uploaded_at
             if last_upload and last_upload.tzinfo is None:
                 last_upload = last_upload.replace(tzinfo=timezone.utc)
-            if last_sent and last_sent.tzinfo is None:
-                last_sent = last_sent.replace(tzinfo=timezone.utc)
 
-            # Don't send more than once in 20 hours to prevent duplicate spam
-            if last_sent and (now - last_sent).total_seconds() < 20 * 3600:
-                continue
+            # Reference point: latest of last_upload and last_sent
+            reference_time = None
+            if last_upload and last_sent:
+                reference_time = max(last_upload, last_sent)
+            elif last_upload:
+                reference_time = last_upload
+            elif last_sent:
+                reference_time = last_sent
 
             should_send = False
             days_since = None
-            if last_upload is None:
-                # Never uploaded
+            if last_upload:
+                last_upload_local = last_upload.astimezone(seller_tz)
+                days_since = (seller_local_now.date() - last_upload_local.date()).days
+
+            if reference_time is None:
+                # Never uploaded and never sent reminder
                 should_send = True
             else:
-                diff = now - last_upload
-                days_since = int(diff.total_seconds() // 86400)
-                if diff.total_seconds() >= interval_days * 86400:
+                ref_local = reference_time.astimezone(seller_tz)
+                days_passed = (seller_local_now.date() - ref_local.date()).days
+                if days_passed >= interval_days:
                     should_send = True
 
             if should_send:
@@ -284,7 +327,7 @@ def check_archive_reminders(self):
                             days_since_last=days_since,
                         )
                     )
-                    seller.last_archive_reminder_sent_at = now
+                    seller.last_archive_reminder_sent_at = now_utc
                     reminders_sent += 1
                     logger.info(f"[Archive Reminder] Sent reminder for seller {seller.name} (ID: {seller.id})")
                 except Exception as e:

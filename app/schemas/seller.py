@@ -116,6 +116,10 @@ class SellerCreate(SellerBase):
         None,
         description="Настройки утреннего дайджеста",
     )
+    archive_reminder_enabled: Optional[bool] = True
+    archive_reminder_days: Optional[int] = Field(2, ge=1, le=30)
+    archive_reminder_hour: Optional[int] = Field(14, ge=0, le=23)
+    archive_reminder_minute: Optional[int] = Field(0, ge=0, le=59)
 
 
 class SellerUpdate(BaseModel):
@@ -140,6 +144,8 @@ class SellerUpdate(BaseModel):
     # Archive reminder settings
     archive_reminder_enabled: Optional[bool] = None
     archive_reminder_days: Optional[int] = Field(None, ge=1, le=30, description="Интервал напоминания о загрузке архива в днях")
+    archive_reminder_hour: Optional[int] = Field(None, ge=0, le=23, description="Час напоминания (0–23)")
+    archive_reminder_minute: Optional[int] = Field(None, ge=0, le=59, description="Минута напоминания (0–59)")
     # Digest settings (flat for simple PATCH, or nested via digest object)
     digest_enabled: Optional[bool] = None
     digest_hour: Optional[int] = Field(None, ge=0, le=23)
@@ -214,6 +220,8 @@ class SellerResponse(SellerBase):
     last_polled_at: Optional[datetime] = None
     archive_reminder_enabled: Optional[bool] = True
     archive_reminder_days: Optional[int] = 2
+    archive_reminder_hour: Optional[int] = 14
+    archive_reminder_minute: Optional[int] = 0
     last_archive_uploaded_at: Optional[datetime] = None
     created_at: datetime
     has_wb_token: bool = False
@@ -276,6 +284,8 @@ class SellerListItem(BaseModel):
     last_polled_at: Optional[datetime] = None
     archive_reminder_enabled: Optional[bool] = True
     archive_reminder_days: Optional[int] = 2
+    archive_reminder_hour: Optional[int] = 14
+    archive_reminder_minute: Optional[int] = 0
     last_archive_uploaded_at: Optional[datetime] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)

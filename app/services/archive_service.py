@@ -211,7 +211,7 @@ async def analyze_archive_data(
             order_id = None
 
         sticker = str(k.get("Стикер") or "").strip()
-        kiz_code = str(k.get("КИЗ") or "").strip()
+        kiz_code = str(k.get("КИЗ") or "").strip().replace("''", '"')
         parsed_kiz = parse_kiz_code(kiz_code)
         clean_cis = parsed_kiz.get("clean_cis") or kiz_code
 
@@ -273,6 +273,8 @@ async def analyze_archive_data(
             effective_cz_status or ("Выбыл" if is_already_withdrawn else "Не проверен")
         )
 
+        effective_kiz = clean_cis if parsed_kiz.get("crypto_tail") else (kiz_code or clean_cis)
+
         if is_sale:
             # Check if needs withdrawal: not yet WITHDRAWN / RETIRED
             needs_withdrawal = not is_already_withdrawn
@@ -280,7 +282,7 @@ async def analyze_archive_data(
             withdrawals.append({
                 "order_id": order_id,
                 "sticker_id": sticker,
-                "kiz_code": kiz_code,
+                "kiz_code": effective_kiz,
                 "receipt_number": receipt_num,
                 "fn_number": fn_num,
                 "receipt_date": date_formatted,
@@ -295,7 +297,7 @@ async def analyze_archive_data(
                 "cz_status_desc": cz_status_desc,
                 "is_already_withdrawn": is_already_withdrawn,
                 "needs_withdrawal": needs_withdrawal,
-                "selected": needs_withdrawal and bool(kiz_code),
+                "selected": needs_withdrawal and bool(effective_kiz),
             })
         elif is_return:
             # For returns: needs CZ return only if it was previously withdrawn and not yet returned
@@ -304,7 +306,7 @@ async def analyze_archive_data(
             returns.append({
                 "order_id": order_id,
                 "sticker_id": sticker,
-                "kiz_code": kiz_code,
+                "kiz_code": effective_kiz,
                 "receipt_number": receipt_num,
                 "fn_number": fn_num,
                 "receipt_date": date_formatted,
@@ -320,7 +322,7 @@ async def analyze_archive_data(
                 "cz_status_desc": cz_status_desc,
                 "needs_cz_return": needs_cz_return,
                 "action_recommended": "⚠️ Требует возврата в оборот" if needs_cz_return else "✅ Уже в обороте (готов к привязке)",
-                "selected": needs_cz_return and bool(kiz_code),
+                "selected": needs_cz_return and bool(effective_kiz),
             })
 
     sales_needing = sum(1 for w in withdrawals if w.get("needs_withdrawal"))

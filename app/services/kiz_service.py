@@ -174,6 +174,9 @@ def normalize_kiz_light_industry(raw_code: str) -> str:
     if not code:
         return ""
 
+    # Деэкранирование сдвоенных одинарных кавычек от Wildberries / SQL выгрузок ('' -> ")
+    code = code.replace("''", '"')
+
     # 0. Снятие префиксов 2D-сканеров AIM (ISO/IEC 15424, например: ]d2, ]d1, ]Q3, ]C1, ]e0)
     code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]*\][a-zA-Z0-9]{2}[\x1d\x1e\x1f\u001d\u001e\u001f\s]*', '', code)
 
@@ -273,6 +276,8 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
         }
 
     code = str(raw_code).strip()
+    # Деэкранирование сдвоенных одинарных кавычек от Wildberries / SQL выгрузок ('' -> ")
+    code = code.replace("''", '"')
     # 0. Снятие префиксов 2D-сканеров AIM (ISO/IEC 15424, например: ]d2, ]d1, ]Q3, ]C1, ]e0)
     code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]*\][a-zA-Z0-9]{2}[\x1d\x1e\x1f\u001d\u001e\u001f\s]*', '', code)
     normalized = re.sub(r'\((01|21|91|92)\)', r'\1', code)

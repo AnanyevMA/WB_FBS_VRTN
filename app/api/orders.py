@@ -15,6 +15,7 @@ from app.models.audit import AuditLog
 from app.schemas.order import OrderResponse, OrderListItem
 from app.services.encryption import decrypt
 from app.services.wb_client import WBClient, is_kiz_required
+from app.services.kiz_service import normalize_kiz_light_industry
 
 logger = logging.getLogger(__name__)
 
@@ -892,7 +893,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                                 sgtin_val = md.get("value")
                                 break
                     if om_id and sgtin_val:
-                        meta_by_id[om_id] = sgtin_val
+                        meta_by_id[om_id] = normalize_kiz_light_industry(sgtin_val) or str(sgtin_val).strip()
             except Exception as e:
                 logger.warning(f"Error fetching orders meta for seller {seller_id}: {e}")
 

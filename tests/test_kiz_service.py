@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timezone
 
 from app.database import AsyncSessionLocal, init_db
-from app.services.kiz_service import parse_kiz_code, resolve_kiz_product_info
+from app.services.kiz_service import parse_kiz_code, resolve_kiz_product_info, normalize_kiz_light_industry
 from app.models.kiz import KizProductInfo
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
@@ -34,6 +34,20 @@ def test_parse_kiz_code_with_crypto_tail():
     assert res["crypto_key"] == "ABCD"
     assert res["crypto_tail"] == "xyz123456789"
     assert res["clean_cis"] == "0104630199251318215QTSRh"
+
+
+def test_parse_kiz_code_with_double_single_quotes_from_wb():
+    # Wildberries serializes double quote " as ''
+    raw = "0104630199251318215''qTBg=..;p=M"
+    res = parse_kiz_code(raw)
+    assert res["gtin"] == "04630199251318"
+    assert res["serial_number"] == '5"qTBg=..;p=M'
+    assert res["clean_cis"] == '0104630199251318215"qTBg=..;p=M'
+    assert len(res["clean_cis"]) == 31
+
+    norm = normalize_kiz_light_industry(raw)
+    assert norm == '0104630199251318215"qTBg=..;p=M'
+    assert len(norm) == 31
 
 
 @pytest.mark.asyncio

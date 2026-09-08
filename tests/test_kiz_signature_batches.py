@@ -114,8 +114,10 @@ async def test_signature_batches_api_flow():
         assert doc["document_base64"] is not None
 
         # 4. Submit signed batch (mock ГИС МТ True API)
-        with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit:
+        with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit, \
+             patch("app.services.cz_client.CZClient.wait_for_document", new_callable=AsyncMock) as mock_wait:
             mock_submit.return_value = "doc-uuid-12345"
+            mock_wait.return_value = {"status": "CHECKED_OK"}
 
             res_submit = await ac.post(
                 f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/submit-signed",
@@ -283,4 +285,114 @@ async def test_signature_batch_cz_status_filtering_and_sync():
         res_prep2 = await ac.post(f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/prepare-documents")
         assert res_prep2.status_code == 200
         assert res_prep2.json()["total_documents"] == 0
+
+
+@pytest.mark.asyncio
+async def test_signature_batch_rejection_handling():
+    """
+    Проверяет корректную обработку отказа ГИС МТ (CHECKED_NOT_OK / CZDocumentError)
+    при отправке подписанного пакета: заказ помечается KizStatus.ERROR, причина отказа
+    сохраняется, а пакет получает статус FAILED.
+    """
+    await init_db()
+
+    async with AsyncSessionLocal() as session:
+        admin_user = await ensure_initial_admin(session)
+        auth_token = create_access_token(
+            data={"sub": admin_user.id, "username": admin_user.username, "role": "admin", "is_superuser": True}
+        )
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Batch Rejection Test Seller",
+            wb_api_token_encrypted=encrypt("wb_test_token"),
+            cz_token_encrypted=encrypt("cz_test_token"),
+            cz_inn="7700112233",
+            mod_fias="test-fias-uuid",
+            is_active=True,
+        )
+        session.add(seller)
+
+        order_id = int(str(uuid.uuid4().int)[:9])
+        order = Order(
+            id=order_id,
+            seller_id=seller.id,
+            name="Худи",
+            article="vrtn-hood-err",
+            price=2500,
+            status=OrderStatus.DELIVERING,
+            kiz_required=True,
+            kiz_code='0104630199251318215"invalid',
+            kiz_status=KizStatus.ATTACHED,
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(order)
+
+        batch = KizSignatureBatch(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            filename="wb_archive_err.xlsx",
+            source="web",
+            status=BatchStatus.PENDING_SIGNATURE,
+            sales_count=1,
+            returns_count=0,
+            already_withdrawn_count=0,
+            total_count=1,
+            data_payload={
+                "withdrawals": [{
+                    "order_id": order_id,
+                    "sticker_id": "999888",
+                    "kiz_code": '0104630199251318215"invalid',
+                    "receipt_number": "ЧЕК-ERR",
+                    "receipt_date": "2026-08-25",
+                    "price": 2500,
+                    "price_kopecks": 250000,
+                }],
+                "returns": [],
+                "summary": {"sales": 1, "returns": 0, "total_processed": 1}
+            }
+        )
+        session.add(batch)
+        await session.commit()
+        batch_id = batch.id
+
+    from app.services.cz_client import CZDocumentError
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"Authorization": f"Bearer {auth_token}"}) as ac:
+        with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit, \
+             patch("app.services.cz_client.CZClient.wait_for_document", new_callable=AsyncMock) as mock_wait:
+            mock_submit.return_value = "doc-uuid-rejected"
+            mock_wait.side_effect = CZDocumentError("06: Код идентификации не найден в базе данных.")
+
+            res_submit = await ac.post(
+                f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/submit-signed",
+                json={
+                    "sign_mode": "client_cades",
+                    "cert_subject": "ООО ТЕСТ (Иванов И.И.)",
+                    "signed_documents": [{
+                        "action": "WITHDRAWAL",
+                        "type": "LK_RECEIPT",
+                        "order_id": order_id,
+                        "kiz_code": '0104630199251318215"invalid',
+                        "document_base64": "bW9jaw==",
+                        "signature_base64": "mock-sig",
+                    }]
+                }
+            )
+            assert res_submit.status_code == 200
+            submit_data = res_submit.json()
+            assert submit_data["status"] == "FAILED"
+            assert submit_data["failed_submissions"] == 1
+            assert submit_data["successful_submissions"] == 0
+
+        async with AsyncSessionLocal() as session:
+            updated_batch = await session.get(KizSignatureBatch, batch_id)
+            assert updated_batch.status == BatchStatus.FAILED
+
+            updated_order = await session.get(Order, order_id)
+            assert updated_order.kiz_status == KizStatus.ERROR
+            assert updated_order.cz_doc_status == "CHECKED_NOT_OK"
+            assert "06: Код идентификации не найден" in (updated_order.cz_rejection_reason or "")
 

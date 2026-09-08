@@ -13,7 +13,10 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.database import get_db
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus, OrderStatus
-from app.models.kiz import KizSignatureBatch, BatchStatus
+from app.models.kiz import KizSignatureBatch, BatchStatus, KizOperation, KizOperationType
+from app.services.cz_client import CZClient, CZDocumentError
+from app.services.kiz_service import sync_kiz_status_record
+from app.services.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -361,25 +364,114 @@ async def submit_signed_batch(
                     signature_base64=sig_b64,
                     wait_for_result=False,
                 )
-                successful_submissions += 1
-                results.append({"kiz_code": kiz_code, "doc_id": doc_id, "status": "SUCCESS"})
-
-                if order_id:
-                    ord_obj = await db.get(Order, order_id)
-                    if ord_obj:
-                        if action == "WITHDRAWAL":
-                            ord_obj.kiz_status = KizStatus.WITHDRAWN
-                            ord_obj.status = OrderStatus.DELIVERED
-                        elif action == "RETURN":
-                            ord_obj.kiz_status = KizStatus.RETURNED
-                            ord_obj.status = OrderStatus.CANCELLED
-                        ord_obj.kiz_withdrawn_at = now
-                        ord_obj.updated_at = now
-
             except Exception as e:
                 failed_submissions += 1
-                results.append({"kiz_code": kiz_code, "error": str(e), "status": "FAILED"})
+                results.append({"kiz_code": kiz_code, "order_id": order_id, "error": str(e), "status": "FAILED"})
                 logger.error(f"Error submitting batch signed doc for {kiz_code}: {e}")
+                continue
+
+            # Bounded polling for real GIS MT document verification
+            is_confirmed = False
+            doc_status = "SUBMITTED"
+            error_reason: Optional[str] = None
+
+            try:
+                status_data = await client.wait_for_document(doc_id, max_attempts=12, interval_seconds=1.5)
+                doc_status = str(status_data.get("status") or "CHECKED_OK")
+                is_confirmed = True
+            except CZDocumentError as doc_err:
+                doc_status = "CHECKED_NOT_OK"
+                error_reason = getattr(doc_err, "message", str(doc_err)) or "Документ отклонен ГИС МТ"
+                is_confirmed = False
+            except (TimeoutError, Exception) as poll_err:
+                logger.warning(f"Polling document {doc_id} ended with: {poll_err}")
+                doc_status = "IN_PROGRESS"
+                is_confirmed = None
+
+            ord_obj = await db.get(Order, order_id) if order_id else None
+
+            if is_confirmed is True:
+                successful_submissions += 1
+                results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "status": "SUCCESS", "cz_status": doc_status})
+
+                if ord_obj and str(ord_obj.seller_id) == str(seller_id):
+                    target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
+                    if action == "WITHDRAWAL":
+                        ord_obj.kiz_status = KizStatus.WITHDRAWN
+                        ord_obj.kiz_cz_status = target_cz_status
+                        ord_obj.status = OrderStatus.DELIVERED
+                        ord_obj.cz_withdrawal_doc_id = doc_id
+                    elif action == "RETURN":
+                        ord_obj.kiz_status = KizStatus.RETURNED
+                        ord_obj.kiz_cz_status = target_cz_status
+                        ord_obj.status = OrderStatus.CANCELLED
+                        ord_obj.cz_return_doc_id = doc_id
+
+                    ord_obj.cz_doc_status = doc_status
+                    ord_obj.cz_rejection_reason = None
+                    ord_obj.kiz_cz_status_updated_at = now
+                    ord_obj.updated_at = now
+
+                    kiz_op = KizOperation(
+                        seller_id=seller_id,
+                        order_id=ord_obj.id,
+                        kiz_code=ord_obj.kiz_code or kiz_code or "",
+                        operation=KizOperationType.WITHDRAWAL if action == "WITHDRAWAL" else KizOperationType.RETURN,
+                        status="SUCCESS",
+                        cz_doc_id=doc_id,
+                        cz_doc_status=doc_status,
+                    )
+                    db.add(kiz_op)
+
+                    if ord_obj.kiz_code:
+                        await sync_kiz_status_record(
+                            db=db,
+                            kiz_code=ord_obj.kiz_code,
+                            cz_status=target_cz_status,
+                            seller_id=str(seller.id),
+                            doc_id=doc_id if action == "WITHDRAWAL" else None,
+                        )
+
+            elif is_confirmed is False:
+                failed_submissions += 1
+                results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "error": error_reason, "status": "FAILED", "cz_status": doc_status})
+
+                if ord_obj and str(ord_obj.seller_id) == str(seller_id):
+                    ord_obj.kiz_status = KizStatus.ERROR
+                    ord_obj.kiz_cz_status = "CHECKED_NOT_OK"
+                    ord_obj.cz_doc_status = "CHECKED_NOT_OK"
+                    ord_obj.cz_rejection_reason = error_reason
+                    if action == "WITHDRAWAL":
+                        ord_obj.cz_withdrawal_doc_id = doc_id
+                    elif action == "RETURN":
+                        ord_obj.cz_return_doc_id = doc_id
+                    ord_obj.kiz_cz_status_updated_at = now
+                    ord_obj.updated_at = now
+
+                    kiz_op = KizOperation(
+                        seller_id=seller_id,
+                        order_id=ord_obj.id,
+                        kiz_code=ord_obj.kiz_code or kiz_code or "",
+                        operation=KizOperationType.WITHDRAWAL if action == "WITHDRAWAL" else KizOperationType.RETURN,
+                        status="FAILED",
+                        cz_doc_id=doc_id,
+                        cz_doc_status="CHECKED_NOT_OK",
+                        error_message=error_reason,
+                    )
+                    db.add(kiz_op)
+
+            else:
+                # is_confirmed is None (still processing in GIS MT queue)
+                successful_submissions += 1
+                results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "status": "IN_PROGRESS", "cz_status": doc_status})
+
+                if ord_obj and str(ord_obj.seller_id) == str(seller_id):
+                    if action == "WITHDRAWAL":
+                        ord_obj.cz_withdrawal_doc_id = doc_id
+                    elif action == "RETURN":
+                        ord_obj.cz_return_doc_id = doc_id
+                    ord_obj.cz_doc_status = "IN_PROGRESS"
+                    ord_obj.updated_at = now
 
     elif sign_mode == "server":
         from app.agents.cz_withdrawal import withdraw_order_kiz
@@ -432,17 +524,27 @@ async def submit_signed_batch(
             from app.services.telegram_service import TelegramService
             bot_token = decrypt(seller.telegram_bot_token_encrypted)
             tg = TelegramService(bot_token)
+            status_emoji = "✅" if failed_submissions == 0 else ("⚠️" if successful_submissions > 0 else "❌")
             tg_text = (
-                f"🔏 <b>Пакет отчёта №<code>{batch.id[:8]}</code> подписан и отправлен!</b>\n"
+                f"{status_emoji} <b>Пакет отчёта №<code>{batch.id[:8]}</code> обработан!</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"🏪 <b>Магазин:</b> {seller.name}\n"
                 f"👤 <b>Подписал:</b> {batch.signed_by}\n"
-                f"✅ <b>Успешно отправлено в ГИС МТ:</b> {successful_submissions} документов"
             )
+            if successful_submissions > 0:
+                tg_text += f"✅ <b>Успешно подтверждено ГИС МТ:</b> {successful_submissions} документов\n"
             if failed_submissions > 0:
-                tg_text += f"\n⚠️ <b>Ошибок:</b> {failed_submissions}"
+                tg_text += f"❌ <b>Отклонено ГИС МТ:</b> {failed_submissions} документов\n"
+                failed_items = [r for r in results if r.get("status") == "FAILED"]
+                for fi in failed_items[:3]:
+                    f_kiz = fi.get('kiz_code') or 'Без КИЗ'
+                    f_err = fi.get('error') or 'Ошибка валидации ГИС МТ'
+                    tg_text += f"• <code>{f_kiz}</code>: {f_err}\n"
+                if len(failed_items) > 3:
+                    tg_text += f"• ... и ещё {len(failed_items) - 3} ошибок\n"
+
             import asyncio
-            await tg.send_text(seller.telegram_chat_ids, tg_text)
+            await tg.send_text(seller.telegram_chat_ids, tg_text.strip())
             await tg.close()
         except Exception as tg_err:
             logger.error(f"Failed to send telegram confirmation for batch {batch_id}: {tg_err}")

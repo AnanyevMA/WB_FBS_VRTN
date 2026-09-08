@@ -587,9 +587,10 @@ function renderActiveBatch(batch) {
                                     const statusBadge = needsWithdrawal
                                         ? `<span class="badge badge-warning">⚠️ Требует выбытия</span>`
                                         : `<span class="badge badge-delivered">✅ Выведен</span>`;
+                                    const safeKiz = (w.kiz_code || '').replace(/"/g, '&quot;');
                                     return `
                                         <tr>
-                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${w.kiz_code || ''}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
+                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${safeKiz}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
                                             <td style="font-weight:600;">#${w.order_id || '—'}</td>
                                             <td><code>${w.sticker_id || '—'}</code></td>
                                             <td style="font-family: monospace; font-size: 11px;">${w.kiz_code || '—'}</td>
@@ -643,9 +644,10 @@ function renderActiveBatch(batch) {
                                     const statusBadge = needsReturn
                                         ? `<span class="badge badge-warning">⚠️ Требует возврата в оборот</span>`
                                         : `<span class="badge badge-delivered">✅ Уже в обороте</span>`;
+                                    const safeKiz = (r.kiz_code || '').replace(/"/g, '&quot;');
                                     return `
                                         <tr>
-                                            <td><input type="checkbox" class="batch-item-return" data-idx="${idx}" data-kiz="${r.kiz_code || ''}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
+                                            <td><input type="checkbox" class="batch-item-return" data-idx="${idx}" data-kiz="${safeKiz}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
                                             <td style="font-weight:600;">#${r.order_id || '—'}</td>
                                             <td><code>${r.sticker_id || '—'}</code></td>
                                             <td style="font-family: monospace; font-size: 11px;">${r.kiz_code || '—'}</td>
@@ -832,8 +834,16 @@ async function submitBatchSigningAction(batchId) {
     if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
 
     const selectedCodes = [];
-    document.querySelectorAll('.batch-item-withdrawal:checked, .batch-item-return:checked').forEach(cb => {
-        const code = cb.getAttribute('data-kiz');
+    document.querySelectorAll('.batch-item-withdrawal:checked').forEach(cb => {
+        const idx = parseInt(cb.getAttribute('data-idx'));
+        const item = activeBatchDetails?.data_payload?.withdrawals?.[idx];
+        const code = item?.kiz_code || cb.getAttribute('data-kiz');
+        if (code) selectedCodes.push(code);
+    });
+    document.querySelectorAll('.batch-item-return:checked').forEach(cb => {
+        const idx = parseInt(cb.getAttribute('data-idx'));
+        const item = activeBatchDetails?.data_payload?.returns?.[idx];
+        const code = item?.kiz_code || cb.getAttribute('data-kiz');
         if (code) selectedCodes.push(code);
     });
 
@@ -904,7 +914,11 @@ async function submitBatchSigningAction(batchId) {
             })
         });
 
-        showToast('Успешно', `Пакет обработан! Успешно отправлено: ${submitRes.successful_submissions} документов`, 'success');
+        if (submitRes.failed_submissions > 0) {
+            showToast('Внимание', `Отправлено: ${submitRes.successful_submissions}, отклонено ГИС МТ: ${submitRes.failed_submissions}`, 'warning');
+        } else {
+            showToast('Успешно', `Пакет обработан! Успешно подтверждено: ${submitRes.successful_submissions} документов`, 'success');
+        }
         await loadSignatureBatches();
         if (typeof loadDashboard === 'function') await loadDashboard();
         if (typeof loadOrders === 'function') await loadOrders();

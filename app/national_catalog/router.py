@@ -384,8 +384,8 @@ async def sync_products_from_nk(
                     message="В Национальном каталоге не найдено карточек товаров для данного ИНН.",
                 )
 
-            # Получаем детальные описания карточек параллельно (с семафором 15)
-            sem = asyncio.Semaphore(15)
+            # Получаем детальные описания карточек параллельно (с семафором 6 для соблюдения лимитов True API)
+            sem = asyncio.Semaphore(6)
 
             async def fetch_detail(good_item: dict):
                 gid = good_item.get("good_id")

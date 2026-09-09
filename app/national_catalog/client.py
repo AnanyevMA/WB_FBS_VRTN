@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 import httpx
@@ -106,44 +107,56 @@ class NKClient:
         if self.api_key and "apikey" not in query_params and not self.token:
             query_params["apikey"] = self.api_key
 
-        try:
-            resp = await self._client.request(
-                method=method,
-                url=primary_path,
-                params=query_params if query_params else None,
-                json=json_body,
-            )
-
-            # Если 404 на шлюзе v3, пробуем прямой вызов /nk/...
-            if resp.status_code == 404:
-                fallback_path = f"/{clean_endpoint}"
-                resp_fallback = await self._client.request(
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                resp = await self._client.request(
                     method=method,
-                    url=fallback_path,
+                    url=primary_path,
                     params=query_params if query_params else None,
                     json=json_body,
                 )
-                if resp_fallback.status_code != 404:
-                    resp = resp_fallback
 
-            if resp.status_code in (200, 201):
-                if resp.content:
-                    try:
-                        return resp.json()
-                    except Exception:
-                        return resp.text
-                return {}
+                # Если 404 на шлюзе v3, пробуем прямой вызов /nk/...
+                if resp.status_code == 404:
+                    fallback_path = f"/{clean_endpoint}"
+                    resp_fallback = await self._client.request(
+                        method=method,
+                        url=fallback_path,
+                        params=query_params if query_params else None,
+                        json=json_body,
+                    )
+                    if resp_fallback.status_code != 404:
+                        resp = resp_fallback
 
-            err_msg = self._extract_error(resp)
-            raise NKAPIError(
-                message=f"Ошибка Честного Знака ({resp.status_code}): {err_msg}",
-                status_code=resp.status_code,
-                response_body=resp.text,
-            )
+                if resp.status_code in (200, 201):
+                    if resp.content:
+                        try:
+                            return resp.json()
+                        except Exception:
+                            return resp.text
+                    return {}
 
-        except httpx.RequestError as exc:
-            logger.error("Сетевая ошибка при запросе к ЧЗ (%s %s): %s", method, endpoint, exc)
-            raise NKAPIError(f"Сетевая ошибка при подключении к Честному Знаку: {exc}")
+                # Если 429 (Слишком много запросов), повторяем с задержкой
+                if resp.status_code == 429 and attempt < max_retries - 1:
+                    wait_sec = (attempt + 1) * 1.5
+                    logger.warning("Честный Знак 429 (Too Many Requests) на %s, повтор через %.1f сек...", endpoint, wait_sec)
+                    await asyncio.sleep(wait_sec)
+                    continue
+
+                err_msg = self._extract_error(resp)
+                raise NKAPIError(
+                    message=f"Ошибка Честного Знака ({resp.status_code}): {err_msg}",
+                    status_code=resp.status_code,
+                    response_body=resp.text,
+                )
+
+            except httpx.RequestError as exc:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1.0)
+                    continue
+                logger.error("Сетевая ошибка при запросе к ЧЗ (%s %s): %s", method, endpoint, exc)
+                raise NKAPIError(f"Сетевая ошибка при подключении к Честному Знаку: {exc}")
 
     # ================= 1. Создание и обновление фидов =================
 

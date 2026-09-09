@@ -78,3 +78,12 @@ class PrepareSignResponse(BaseModel):
 
 class SubmitSignRequest(BaseModel):
     signature: str = Field(..., description="Открепленная CMS/PKCS#7 подпись в Base64")
+
+
+class SyncNKResponse(BaseModel):
+    success: bool = True
+    total_remote: int
+    synced_count: int
+    created_count: int
+    updated_count: int
+    message: str

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * WB FBS Manager — Национальный Каталог (НКТ) Честного Знака
  * Управление карточками товаров: добавление, редактирование, проверка статуса, подписание и публикация.
  */
@@ -135,7 +135,7 @@ function renderProductCards(cards) {
 }
 
 /**
- * Синхронизация статусов карточек с НКТ
+ * Полная синхронизация карточек товаров с Национальным Каталогом (НКТ)
  */
 async function syncProductCardsFromNK() {
     if (!currentSellerId) {
@@ -144,30 +144,29 @@ async function syncProductCardsFromNK() {
     }
 
     const btn = document.getElementById('nkSyncBtn');
-    if (btn) btn.classList.add('loading');
-    showToast('Синхронизация...', 'Проверка статусов карточек в Национальном Каталоге...', 'info');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.classList.add('loading');
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Синхронизация с НКТ...';
+    }
+    showToast('Синхронизация с НКТ', 'Загрузка и обновление каталога товаров из Честного Знака...', 'info');
 
     try {
-        let updatedCount = 0;
-        // Check status for each card that has feed_id or good_id and is not published
-        for (const card of nkCardsList) {
-            if ((card.feed_id || card.good_id) && card.status !== 'published') {
-                try {
-                    await apiFetch(`/sellers/${currentSellerId}/national-catalog/products/${card.id}/check-status`, {
-                        method: 'POST'
-                    });
-                    updatedCount++;
-                } catch (e) {
-                    console.warn(`Card ${card.id} status sync error:`, e);
-                }
-            }
-        }
-        showToast('НКТ Синхронизация', `Синхронизация завершена. Проверено карточек: ${updatedCount}`, 'success');
+        const res = await apiFetch(`/sellers/${currentSellerId}/national-catalog/sync-nk`, {
+            method: 'POST'
+        });
+        showToast('Синхронизация НКТ', res.message || `Синхронизировано ${res.synced_count} карточек товаров`, 'success');
         await loadProductCards(true);
     } catch (err) {
-        showToast('Ошибка НКТ', err.message, 'error');
+        console.error('Ошибка синхронизации НКТ:', err);
+        showToast('Ошибка синхронизации', err.message, 'error');
     } finally {
-        if (btn) btn.classList.remove('loading');
+        if (btn) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import logging
 from typing import List, Optional
@@ -16,6 +17,7 @@ from app.national_catalog.schemas import (
     ProductCardResponse,
     PrepareSignResponse,
     SubmitSignRequest,
+    SyncNKResponse,
 )
 from app.national_catalog.client import NKClient, NKAPIError
 from app.services.encryption import decrypt
@@ -65,7 +67,7 @@ async def list_products(
     seller_id: str,
     status: Optional[str] = Query(None, description="Фильтр по статусу карточки"),
     search: Optional[str] = Query(None, description="Поиск по GTIN, наименованию или бренду"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(1000, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
@@ -329,6 +331,216 @@ async def delete_product(
     await db.delete(card)
     await db.commit()
     return {"success": True, "message": "Карточка удалена"}
+
+
+# ==================== Синхронизация с НКТ ====================
+
+
+@router.post("/sellers/{seller_id}/national-catalog/sync-nk", response_model=SyncNKResponse)
+async def sync_products_from_nk(
+    seller_id: str,
+    all_pages: bool = Query(True, description="Синхронизировать все страницы товаров из НКТ"),
+    max_limit: int = Query(1000, ge=1, le=5000, description="Максимальное количество товаров"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Полная синхронизация карточек товаров продавца из Национального Каталога (НКТ) True API.
+    Запрашивает список зарегистрированных товаров через GET /nk/etagslist, получает детали каждой
+    карточки и выполняет сохранение (upsert) в локальную базу данных.
+    """
+    seller = await _get_seller_or_404(seller_id, db)
+    client = await _get_seller_nk_client(seller)
+
+    # Загружаем существующие карточки продавца
+    stmt = select(ProductCard).where(ProductCard.seller_id == seller_id)
+    existing_cards = (await db.execute(stmt)).scalars().all()
+    existing_by_good_id = {c.good_id: c for c in existing_cards if c.good_id is not None}
+    existing_by_gtin = {c.gtin: c for c in existing_cards if c.gtin}
+
+    all_remote_goods = []
+    total_remote = 0
+
+    try:
+        async with client:
+            offset = 0
+            while True:
+                etags_resp = await client.get_etags_list(offset=offset)
+                goods = etags_resp.get("goods", [])
+                if not goods:
+                    break
+                all_remote_goods.extend(goods)
+                offset += len(goods)
+                total_remote = etags_resp.get("total", len(all_remote_goods))
+                if not all_pages or offset >= total_remote or len(all_remote_goods) >= max_limit:
+                    break
+
+            if not all_remote_goods:
+                return SyncNKResponse(
+                    success=True,
+                    total_remote=total_remote,
+                    synced_count=0,
+                    created_count=0,
+                    updated_count=0,
+                    message="В Национальном каталоге не найдено карточек товаров для данного ИНН.",
+                )
+
+            # Получаем детальные описания карточек параллельно (с семафором 15)
+            sem = asyncio.Semaphore(15)
+
+            async def fetch_detail(good_item: dict):
+                gid = good_item.get("good_id")
+                if not gid:
+                    return None
+                try:
+                    async with sem:
+                        res = await client.get_feed_product(good_id=gid)
+                        return res[0] if res else None
+                except Exception as exc:
+                    logger.warning("Ошибка получения деталей товара good_id %s: %s", gid, exc)
+                    return None
+
+            details = await asyncio.gather(*(fetch_detail(g) for g in all_remote_goods))
+
+            # Проверяем статусы фидов для локальных карточек без good_id
+            for c in existing_cards:
+                if c.feed_id and c.status not in ("published", "archived") and not c.good_id:
+                    try:
+                        st_data = await client.get_feed_status(c.feed_id)
+                        c.feed_status = st_data.get("status")
+                    except Exception as e:
+                        logger.warning("Ошибка проверки фида %s: %s", c.feed_id, e)
+
+    except NKAPIError as e:
+        logger.error("Ошибка синхронизации с НКТ для продавца %s: %s", seller.id, e)
+        raise HTTPException(status_code=e.status_code or 400, detail=e.message)
+
+    created_count = 0
+    updated_count = 0
+
+    for p in details:
+        if not p or not isinstance(p, dict):
+            continue
+
+        good_id_raw = p.get("good_id")
+        if not good_id_raw:
+            continue
+        try:
+            good_id = int(good_id_raw)
+        except Exception:
+            continue
+
+        # Извлечение GTIN
+        gtin_val = None
+        for id_item in p.get("identified_by", []):
+            if isinstance(id_item, dict) and id_item.get("type") == "gtin":
+                val = str(id_item.get("value", "")).strip()
+                if val:
+                    gtin_val = val
+                    break
+        if not gtin_val and p.get("gtin"):
+            gtin_val = str(p["gtin"]).strip()
+        if gtin_val and len(gtin_val) == 13 and gtin_val.isdigit():
+            gtin_val = f"0{gtin_val}"
+
+        # Извлечение категорий
+        cat_id = None
+        cat_name = None
+        categories = p.get("categories", [])
+        if categories and isinstance(categories, list):
+            first_cat = categories[0]
+            if isinstance(first_cat, dict):
+                cat_id = first_cat.get("cat_id")
+                cat_name = first_cat.get("cat_name")
+
+        # Извлечение торговой марки
+        brand_val = p.get("brand_name") or p.get("brand")
+
+        # Извлечение ТН ВЭД
+        tnved_val = p.get("tnved")
+        attrs = p.get("good_attrs") or []
+        if not tnved_val and attrs:
+            for a in attrs:
+                if isinstance(a, dict):
+                    aid = a.get("attr_id")
+                    if aid in (10609, "10609") or "ТН ВЭД" in str(a.get("attr_name", "")):
+                        tnved_val = a.get("attr_value")
+                        break
+
+        # Нормализация статуса
+        st_raw = str(p.get("good_status") or "draft").lower()
+        valid_statuses = {"draft", "moderation", "notsigned", "published", "errors", "rejected", "archived"}
+        status_val = st_raw if st_raw in valid_statuses else "draft"
+
+        name_val = (p.get("good_name") or "Без названия")[:255]
+        brand_str = str(brand_val)[:255] if brand_val else None
+        tnved_str = str(tnved_val)[:20] if tnved_val else None
+        cat_name_str = str(cat_name)[:255] if cat_name else None
+
+        card = existing_by_good_id.get(good_id)
+        if not card and gtin_val:
+            card = existing_by_gtin.get(gtin_val)
+
+        if card:
+            card.good_id = good_id
+            if gtin_val:
+                card.gtin = gtin_val
+            card.name = name_val
+            card.brand = brand_str
+            card.tnved = tnved_str
+            if cat_id:
+                card.category_id = cat_id
+            if cat_name_str:
+                card.category_name = cat_name_str
+            card.status = status_val
+            if p.get("good_mark_flag") is not None:
+                card.good_mark_flag = bool(p["good_mark_flag"])
+            if p.get("good_turn_flag") is not None:
+                card.good_turn_flag = bool(p["good_turn_flag"])
+            if p.get("is_tech_gtin") is not None:
+                card.is_tech_gtin = bool(p["is_tech_gtin"])
+            if p.get("is_set") is not None:
+                card.is_set = bool(p["is_set"])
+            if attrs:
+                card.attributes = attrs
+            if p.get("good_images"):
+                card.images = p["good_images"]
+            card.updated_at = datetime.now(timezone.utc)
+            updated_count += 1
+        else:
+            card = ProductCard(
+                seller_id=seller.id,
+                good_id=good_id,
+                gtin=gtin_val,
+                name=name_val,
+                brand=brand_str,
+                tnved=tnved_str,
+                category_id=cat_id,
+                category_name=cat_name_str,
+                status=status_val,
+                good_mark_flag=bool(p.get("good_mark_flag", False)),
+                good_turn_flag=bool(p.get("good_turn_flag", False)),
+                is_tech_gtin=bool(p.get("is_tech_gtin", False)),
+                is_set=bool(p.get("is_set", False)),
+                attributes=attrs,
+                images=p.get("good_images") or [],
+            )
+            db.add(card)
+            created_count += 1
+            existing_by_good_id[good_id] = card
+            if gtin_val:
+                existing_by_gtin[gtin_val] = card
+
+    await db.commit()
+
+    total_synced = created_count + updated_count
+    return SyncNKResponse(
+        success=True,
+        total_remote=total_remote,
+        synced_count=total_synced,
+        created_count=created_count,
+        updated_count=updated_count,
+        message=f"Успешно синхронизировано {total_synced} карточек из НКТ (создано: {created_count}, обновлено: {updated_count})"
+    )
 
 
 # ==================== Проверка статуса, модерация, подписание ====================

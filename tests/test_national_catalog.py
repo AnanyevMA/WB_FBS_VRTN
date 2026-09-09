@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for National Catalog (НКТ) module:
 - NKClient requests and error handling
 - ProductCard CRUD API endpoints
@@ -227,3 +227,116 @@ async def test_product_card_api_crud_and_status_cycle():
             headers=headers
         )
         assert not any(c["id"] == draft_id for c in list_after.json())
+
+
+@pytest.mark.asyncio
+async def test_sync_products_from_nk():
+    """Test full synchronization of product cards from National Catalog (НКТ) True API."""
+    await init_db()
+    seller_id = f"test-nk-sync-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="НК Синхронизация Магазин",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="190207495060",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        mock_etags = {
+            "goods_count": 2,
+            "total": 2,
+            "offset": 0,
+            "goods": [
+                {"good_id": 888101, "etag": "etag1"},
+                {"good_id": 888102, "etag": "etag2"}
+            ]
+        }
+
+        mock_feed_prod_1 = [{
+            "good_id": 888101,
+            "good_name": "Жилет утепленный синий",
+            "good_status": "published",
+            "identified_by": [{"type": "gtin", "value": "04603702055000"}],
+            "categories": [{"cat_id": 31326, "cat_name": "Одежда"}],
+            "brand_name": "VRTN",
+            "good_mark_flag": True,
+            "good_turn_flag": True,
+            "good_attrs": [{"attr_id": 10609, "attr_value": "6202401000"}]
+        }]
+
+        mock_feed_prod_2 = [{
+            "good_id": 888102,
+            "good_name": "Бомбер утепленный черный",
+            "good_status": "published",
+            "identified_by": [{"type": "gtin", "value": "04603702055017"}],
+            "categories": [{"cat_id": 234392, "cat_name": "Куртки"}],
+            "brand_name": "VRTN",
+            "good_mark_flag": True,
+            "good_turn_flag": True,
+            "good_attrs": []
+        }]
+
+        async def mock_get_feed_product(good_id=None, gtin=None):
+            if good_id == 888101:
+                return mock_feed_prod_1
+            elif good_id == 888102:
+                return mock_feed_prod_2
+            return []
+
+        with patch.object(NKClient, "get_etags_list", new_callable=AsyncMock) as mock_etags_fn, \
+             patch.object(NKClient, "get_feed_product", side_effect=mock_get_feed_product):
+            
+            mock_etags_fn.return_value = mock_etags
+
+            sync_res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/sync-nk",
+                headers=headers
+            )
+            assert sync_res.status_code == 200, f"Sync failed: {sync_res.text}"
+            data = sync_res.json()
+            assert data["success"] is True
+            assert data["total_remote"] == 2
+            assert data["synced_count"] == 2
+            assert data["created_count"] == 2
+            assert data["updated_count"] == 0
+
+        # Verify cards were created in local DB
+        list_res = await client.get(
+            f"/api/v1/sellers/{seller_id}/national-catalog/products",
+            headers=headers
+        )
+        assert list_res.status_code == 200
+        cards = list_res.json()
+        assert len(cards) == 2
+        card_101 = next(c for c in cards if c["good_id"] == 888101)
+        assert card_101["name"] == "Жилет утепленный синий"
+        assert card_101["gtin"] == "04603702055000"
+        assert card_101["status"] == "published"
+        assert card_101["brand"] == "VRTN"
+        assert card_101["tnved"] == "6202401000"
+
+        # Sync again to test update path
+        mock_feed_prod_1[0]["good_name"] = "Жилет утепленный синий (обновлен)"
+        with patch.object(NKClient, "get_etags_list", new_callable=AsyncMock) as mock_etags_fn, \
+             patch.object(NKClient, "get_feed_product", side_effect=mock_get_feed_product):
+            
+            mock_etags_fn.return_value = mock_etags
+
+            sync_res_2 = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/sync-nk",
+                headers=headers
+            )
+            assert sync_res_2.status_code == 200
+            data2 = sync_res_2.json()
+            assert data2["synced_count"] == 2
+            assert data2["created_count"] == 0
+            assert data2["updated_count"] == 2

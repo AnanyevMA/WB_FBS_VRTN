@@ -62,6 +62,7 @@ class Seller(Base):
     kiz_operations: Mapped[list["KizOperation"]] = relationship("KizOperation", back_populates="seller", cascade="all, delete-orphan")
     signature_batches: Mapped[list["KizSignatureBatch"]] = relationship("KizSignatureBatch", back_populates="seller", cascade="all, delete-orphan")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="seller", cascade="all, delete-orphan")
+    kiz_product_info: Mapped[list["KizProductInfo"]] = relationship("KizProductInfo", back_populates="seller", cascade="all, delete-orphan")
 
     @property
     def has_wb_token(self) -> bool:

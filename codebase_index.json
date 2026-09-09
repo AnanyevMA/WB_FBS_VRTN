@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-09T13:52:39.472311+00:00",
+  "updated_at": "2026-09-09T23:13:45.826633+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 120,
+  "total_files": 121,
   "files": [
     {
       "file": "alembic/env.py",
@@ -316,7 +316,7 @@
     {
       "file": "alembic/versions/e5f6a7b8c9d0_add_product_cards_table.py",
       "layer": "migrations",
-      "hash": "bd4475cb9825",
+      "hash": "6451be94437d",
       "error": "SyntaxError: invalid non-printable character U+FEFF (e5f6a7b8c9d0_add_product_cards_table.py, line 1)",
       "classes": [],
       "functions": [],
@@ -2546,7 +2546,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "ac2199144b99",
+      "hash": "5f1cd57eaba1",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -2619,7 +2619,7 @@
           "docstring": ""
         },
         {
-          "name": "deactivate_seller",
+          "name": "delete_seller",
           "is_async": true,
           "args": [
             "seller_id",
@@ -2628,7 +2628,20 @@
           "decorators": [
             "router.delete('/{seller_id}')"
           ],
-          "docstring": ""
+          "docstring": "Полное удаление продавца и всех связанных с ним записей."
+        },
+        {
+          "name": "toggle_active",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "enabled",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/{seller_id}/toggle-active')"
+          ],
+          "docstring": "Переключение активности магазина (активен / отключен)."
         },
         {
           "name": "test_connection",
@@ -2745,8 +2758,14 @@
         {
           "method": "DELETE",
           "path": "/{seller_id}",
-          "handler": "deactivate_seller",
-          "docstring": ""
+          "handler": "delete_seller",
+          "docstring": "Полное удаление продавца и всех связанных с ним записей."
+        },
+        {
+          "method": "POST",
+          "path": "/{seller_id}/toggle-active",
+          "handler": "toggle_active",
+          "docstring": "Переключение активности магазина (активен / отключен)."
         },
         {
           "method": "POST",
@@ -2796,8 +2815,11 @@
       "imports": [
         "app.database",
         "app.models.audit",
+        "app.models.kiz",
         "app.models.order",
         "app.models.seller",
+        "app.models.supply",
+        "app.national_catalog.models",
         "app.schemas.seller",
         "app.services.cz_client",
         "app.services.encryption",
@@ -3626,7 +3648,7 @@
     {
       "file": "app/models/kiz.py",
       "layer": "models",
-      "hash": "b9f114e817dc",
+      "hash": "b230f6862a81",
       "docstring": "",
       "classes": [
         {
@@ -3742,7 +3764,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "5155b4f8f08c",
+      "hash": "02944e115a91",
       "docstring": "",
       "classes": [
         {
@@ -3872,7 +3894,7 @@
     {
       "file": "app/national_catalog/client.py",
       "layer": "core",
-      "hash": "0a5a7655cc12",
+      "hash": "3fcb7795ac4f",
       "docstring": "",
       "classes": [
         {
@@ -3918,8 +3940,10 @@
       "db_tables": [],
       "imports": [
         "app.config",
+        "asyncio",
         "httpx",
         "logging",
+        "random",
         "typing"
       ]
     },
@@ -3957,7 +3981,7 @@
     {
       "file": "app/national_catalog/router.py",
       "layer": "core",
-      "hash": "f85d9b606a0b",
+      "hash": "5e3360a86dfe",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3997,6 +4021,15 @@
           "docstring": "Получение списка карточек товаров для указанного продавца."
         },
         {
+          "name": "_build_goods_item",
+          "is_async": false,
+          "args": [
+            "payload"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
           "name": "create_product",
           "is_async": true,
           "args": [
@@ -4008,6 +4041,19 @@
             "router.post('/sellers/{seller_id}/national-catalog/products')"
           ],
           "docstring": "Создание новой карточки товара и отправка реального пакета (фида) в Честный Знак."
+        },
+        {
+          "name": "create_products_batch",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/products/batch')"
+          ],
+          "docstring": "Массовое создание серии карточек товаров (размерно-цветовой матрицы) в НКТ."
         },
         {
           "name": "get_product",
@@ -4048,6 +4094,21 @@
             "router.delete('/sellers/{seller_id}/national-catalog/products/{product_id}')"
           ],
           "docstring": "Удаление карточки из базы (если она не опубликована)."
+        },
+        {
+          "name": "sync_products_from_nk",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "all_pages",
+            "max_limit",
+            "force_refresh",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/sync-nk')"
+          ],
+          "docstring": "Полная синхронизация карточек товаров продавца из Национального Каталога (НКТ) True API."
         },
         {
           "name": "check_product_status",
@@ -4155,6 +4216,19 @@
             "router.get('/sellers/{seller_id}/national-catalog/helpers/generate-gtin')"
           ],
           "docstring": "Генерация черновика GTIN по диапазону предприятия в ГС1 РУС."
+        },
+        {
+          "name": "generate_gtins",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "quantity",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/helpers/generate-gtins')"
+          ],
+          "docstring": "Пакетная генерация пула черновиков GTIN в ГС1 РУС через True API."
         }
       ],
       "endpoints": [
@@ -4169,6 +4243,12 @@
           "path": "/sellers/{seller_id}/national-catalog/products",
           "handler": "create_product",
           "docstring": "Создание новой карточки товара и отправка реального пакета (фида) в Честный Знак."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/products/batch",
+          "handler": "create_products_batch",
+          "docstring": "Массовое создание серии карточек товаров (размерно-цветовой матрицы) в НКТ."
         },
         {
           "method": "GET",
@@ -4187,6 +4267,12 @@
           "path": "/sellers/{seller_id}/national-catalog/products/{product_id}",
           "handler": "delete_product",
           "docstring": "Удаление карточки из базы (если она не опубликована)."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/sync-nk",
+          "handler": "sync_products_from_nk",
+          "docstring": "Полная синхронизация карточек товаров продавца из Национального Каталога (НКТ) True API."
         },
         {
           "method": "POST",
@@ -4235,6 +4321,12 @@
           "path": "/sellers/{seller_id}/national-catalog/helpers/generate-gtin",
           "handler": "generate_gtin",
           "docstring": "Генерация черновика GTIN по диапазону предприятия в ГС1 РУС."
+        },
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/helpers/generate-gtins",
+          "handler": "generate_gtins",
+          "docstring": "Пакетная генерация пула черновиков GTIN в ГС1 РУС через True API."
         }
       ],
       "celery_tasks": [],
@@ -4246,6 +4338,7 @@
         "app.national_catalog.models",
         "app.national_catalog.schemas",
         "app.services.encryption",
+        "asyncio",
         "base64",
         "datetime",
         "fastapi",
@@ -4258,7 +4351,7 @@
     {
       "file": "app/national_catalog/schemas.py",
       "layer": "core",
-      "hash": "49c08fc02632",
+      "hash": "2076818f73ca",
       "docstring": "",
       "classes": [
         {
@@ -4311,6 +4404,38 @@
         },
         {
           "name": "SubmitSignRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "SyncNKResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ProductCardBatchCreateRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ProductCardBatchResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "BatchGtinResponse",
           "bases": [
             "BaseModel"
           ],
@@ -4475,7 +4600,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "4bf5439daf94",
+      "hash": "eb446a9b9848",
       "docstring": "",
       "classes": [
         {
@@ -5787,7 +5912,7 @@
     {
       "file": "tests/test_api_sellers.py",
       "layer": "tests",
-      "hash": "6b0c3719e4d9",
+      "hash": "36bee8dc6ed6",
       "docstring": "Tests for Seller API Endpoints (PATCH, POST, GET) & Token/ChatID Preservation.",
       "classes": [],
       "functions": [
@@ -5835,6 +5960,33 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_delete_seller_cascades_and_removes_data",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_delete_nonexistent_seller_returns_404",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_toggle_seller_active",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
         }
       ],
       "endpoints": [],
@@ -5844,9 +5996,15 @@
         "app.config",
         "app.database",
         "app.main",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
         "app.models.seller",
+        "app.models.supply",
+        "app.national_catalog.models",
         "app.services.auth_service",
         "app.services.encryption",
+        "datetime",
         "httpx",
         "pytest",
         "uuid"
@@ -8206,6 +8364,104 @@
       ]
     },
     {
+      "file": "tests/test_national_catalog.py",
+      "layer": "tests",
+      "hash": "69214e9bc7a0",
+      "docstring": "Tests for National Catalog (НКТ) module:",
+      "classes": [],
+      "functions": [
+        {
+          "name": "cleanup_db_engine",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_get_auth_headers",
+          "is_async": true,
+          "args": [
+            "client"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_nk_client_feed_creation_and_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test NKClient feed submission and feed status polling."
+        },
+        {
+          "name": "test_nk_client_document_and_signing",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test NKClient XML document fetching and detached PKCS#7 submission."
+        },
+        {
+          "name": "test_product_card_api_crud_and_status_cycle",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Integration test for product cards REST API endpoints."
+        },
+        {
+          "name": "test_sync_products_from_nk",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test full synchronization of product cards from National Catalog (НКТ) True API."
+        },
+        {
+          "name": "test_batch_generate_gtins",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test batch GTIN generation via True API helper."
+        },
+        {
+          "name": "test_batch_create_product_cards",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test creating a series of product cards with sizes, colors, and declaration of conformity in a single feed."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.seller",
+        "app.national_catalog.client",
+        "app.national_catalog.models",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_order_poller_adversarial.py",
       "layer": "tests",
       "hash": "42c5d355326e",
@@ -9088,7 +9344,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "498f07b44b99",
+      "hash": "598817284f07",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],
@@ -9100,6 +9356,7 @@
         "/audit",
         "/kiz",
         "/orders",
+        "/products",
         "/sellers",
         "/signature-queue",
         "/supplies"
@@ -9116,6 +9373,7 @@
         "barcodeModal",
         "barcodeModalBody",
         "barcodeModalTitle",
+        "deleteSellerModalBtn",
         "firstLoginModal",
         "kizSigningModal",
         "kizSigningModalTitle",
@@ -9123,7 +9381,13 @@
         "modalAttachOrderId",
         "modalAttachOrderInfo",
         "modalKizInput",
+        "nkCardModalTitle",
+        "nkMatrixModalTitle",
+        "nkSignModalContent",
         "orderDetailModal",
+        "productCardModal",
+        "productMatrixModal",
+        "productSignModal",
         "sellerModal",
         "sellerModalTitle",
         "submitModalAttachKizBtn",

@@ -39,6 +39,9 @@ function openAddSellerModal() {
     const testResultBox = document.getElementById('sellerTestResultBox');
     if (testResultBox) testResultBox.style.display = 'none';
 
+    const delModalBtn = document.getElementById('deleteSellerModalBtn');
+    if (delModalBtn) delModalBtn.style.display = 'none';
+
     // Notification schedule defaults
     const notifInstant = document.getElementById('notif_mode_instant');
     if (notifInstant) notifInstant.checked = true;
@@ -71,6 +74,9 @@ async function editSeller(sellerId) {
     document.getElementById('wbTokenRequiredLabel').style.display = 'none';
     const testResultBox = document.getElementById('sellerTestResultBox');
     if (testResultBox) testResultBox.style.display = 'none';
+
+    const delModalBtn = document.getElementById('deleteSellerModalBtn');
+    if (delModalBtn) delModalBtn.style.display = 'inline-flex';
 
     showToast('Загрузка...', 'Получение данных продавца', 'info');
     
@@ -233,13 +239,15 @@ async function loadSellers() {
     const tbody = document.getElementById('sellers-table-body');
     if (!tbody) return;
 
+    window.allSellersList = sellers;
+
     if (loadFailed) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--status-cancelled, #ef4444); padding: 24px;">⚠️ Ошибка загрузки списка продавцов с сервера. Пожалуйста, обновите страницу или проверьте логи API.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--status-cancelled, #ef4444); padding: 24px;">⚠️ Ошибка загрузки списка продавцов с сервера. Пожалуйста, обновите страницу или проверьте логи API.</td></tr>`;
         return;
     }
 
     if (sellers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Продавцы не найдены. Нажмите "Добавить продавца" или "Demo Data".</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Продавцы не найдены. Нажмите "Добавить продавца" или "Demo Data".</td></tr>`;
         return;
     }
 
@@ -248,14 +256,21 @@ async function loadSellers() {
             <td style="font-weight: 600;">${s.name}</td>
             <td style="font-family:monospace;">${s.wb_supplier_id || '-'}</td>
             <td>${s.cz_inn || '-'}</td>
-            <td><span class="badge ${s.is_active ? 'bg-delivered' : 'bg-cancelled'}">${s.is_active ? 'Активен' : 'Отключен'}</span></td>
+            <td>
+                <span class="badge ${s.is_active ? 'bg-delivered' : 'bg-cancelled'}" 
+                      style="cursor: pointer;" 
+                      title="Нажмите, чтобы ${s.is_active ? 'отключить' : 'активировать'} магазин" 
+                      onclick="toggleActiveFor('${s.id}', ${!s.is_active})">
+                    ${s.is_active ? 'Активен' : 'Отключен'}
+                </span>
+            </td>
             <td><span class="badge ${s.polling_enabled ? 'bg-new' : 'kiz-pending'}">${s.polling_enabled ? 'Включен' : 'Выключен'}</span></td>
             <td>
                 <div style="display:flex; gap:6px;">
                     <button class="icon-btn" title="Редактировать" onclick="editSeller('${s.id}')">✏️</button>
                     <button class="icon-btn" title="Проверить все токены и адресатов" onclick="testConnectionFor('${s.id}')">🔌</button>
                     <button class="icon-btn" title="Переключить авто-опрос" onclick="togglePollingFor('${s.id}', ${!s.polling_enabled})">⚡</button>
-                    <button class="icon-btn" title="Отключить продавца" style="color: var(--status-cancelled)" onclick="deleteSeller('${s.id}', '${(s.name || '').replace(/'/g, "\\'")}')">🗑️</button>
+                    <button class="icon-btn" title="Удалить продавца" style="color: var(--status-cancelled)" onclick="deleteSeller('${s.id}')">🗑️</button>
                 </div>
             </td>
         </tr>
@@ -382,17 +397,53 @@ async function saveSeller() {
     }
 }
 
-async function deleteSeller(sellerId, sellerName) {
-    if (!confirm(`Вы действительно хотите отключить продавца "${sellerName}"?`)) return;
+async function deleteSeller(sellerId) {
+    const list = window.allSellersList || (typeof currentSellersList !== 'undefined' ? currentSellersList : []) || [];
+    const seller = list.find(s => s.id === sellerId);
+    const sellerName = seller ? seller.name : 'продавца';
+
+    if (!confirm(`Вы действительно хотите удалить продавца "${sellerName}"?\n\nВнимание: будут безвозвратно удалены все связанные с ним данные (заказы, поставки, маркировки и настройки).`)) {
+        return;
+    }
 
     try {
-        await apiFetch(`/sellers/${sellerId}`, { method: 'DELETE' });
-        showToast('Продавец отключен', `Продавец "${sellerName}" отключен`, 'success');
+        const res = await apiFetch(`/sellers/${sellerId}`, { method: 'DELETE' });
+        showToast('Продавец удален', res.message || `Продавец "${sellerName}" успешно удален`, 'success');
+
+        if (typeof currentSellerId !== 'undefined' && currentSellerId === sellerId) {
+            currentSellerId = null;
+        }
+
         await loadSellers();
-        await loadSellersForDropdown();
+        if (typeof loadSellersForDropdown === 'function') {
+            await loadSellersForDropdown();
+        }
+        if (typeof loadDashboard === 'function') {
+            await loadDashboard();
+        }
     } catch (e) {
-        showToast('Ошибка', 'Не удалось отключить продавца: ' + e.message, 'error');
+        showToast('Ошибка', 'Не удалось удалить продавца: ' + e.message, 'error');
     }
+}
+
+async function toggleActiveFor(sellerId, enable) {
+    try {
+        const res = await apiFetch(`/sellers/${sellerId}/toggle-active?enabled=${enable}`, { method: 'POST' });
+        showToast('Статус продавца', res.message, 'info');
+        await loadSellers();
+        if (typeof loadSellersForDropdown === 'function') {
+            await loadSellersForDropdown();
+        }
+    } catch (e) {
+        showToast('Ошибка', 'Не удалось изменить статус: ' + e.message, 'error');
+    }
+}
+
+async function onDeleteCurrentSellerClick() {
+    if (!currentEditingSellerId) return;
+    const sellerId = currentEditingSellerId;
+    closeModal('sellerModal');
+    await deleteSeller(sellerId);
 }
 
 async function testConnectionFor(sellerId) {

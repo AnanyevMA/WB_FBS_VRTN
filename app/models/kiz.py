@@ -98,7 +98,7 @@ class KizProductInfo(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    seller: Mapped[Optional["Seller"]] = relationship("Seller")
+    seller: Mapped[Optional["Seller"]] = relationship("Seller", back_populates="kiz_product_info")
     order: Mapped[Optional["Order"]] = relationship("Order")
 
 

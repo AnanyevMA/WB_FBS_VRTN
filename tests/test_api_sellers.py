@@ -10,6 +10,7 @@ Ensures:
 - Validates IANA timezone and rejects invalid values with 422.
 """
 import uuid
+from datetime import datetime, timezone
 import pytest
 from httpx import AsyncClient, ASGITransport
 
@@ -217,3 +218,154 @@ async def test_create_seller_with_notification_schedule():
         assert db_seller.notification_mode == "scheduled"
         assert db_seller.notification_schedule == ["11:00", "16:00"]
         assert db_seller.timezone == "Asia/Krasnoyarsk"
+
+
+@pytest.mark.asyncio
+async def test_delete_seller_cascades_and_removes_data():
+    await init_db()
+    seller_id = f"test-del-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="Delete Cascade Shop",
+            wb_api_token_encrypted=encrypt("token-for-delete"),
+            is_active=True,
+        )
+        session.add(seller)
+
+        # Add related child records
+        from app.models.order import Order, OrderStatus
+        from app.models.supply import Supply, SupplyStatus
+        from app.models.audit import AuditLog
+        from app.models.kiz import KizOperation, KizOperationType, KizProductInfo
+        from app.national_catalog.models import ProductCard
+
+        order_id = int(str(uuid.uuid4().int)[:9])
+        order = Order(
+            id=order_id,
+            seller_id=seller_id,
+            name="Delete Test Product",
+            article="del-art-1",
+            price=1000,
+            status=OrderStatus.NEW,
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(order)
+
+        supply = Supply(
+            id=uuid.uuid4(),
+            seller_id=seller_id,
+            wb_supply_id=f"WB-SUP-{uuid.uuid4().hex[:6]}",
+            status=SupplyStatus.CREATED,
+        )
+        session.add(supply)
+
+        audit = AuditLog(
+            seller_id=seller_id,
+            agent="test_agent",
+            action="TEST_ACTION",
+        )
+        session.add(audit)
+
+        kiz_op = KizOperation(
+            id=uuid.uuid4(),
+            seller_id=seller_id,
+            kiz_code=f"010463019925131821{uuid.uuid4().hex[:6]}",
+            operation=KizOperationType.ATTACH,
+            status="SUCCESS",
+        )
+        session.add(kiz_op)
+
+        kiz_info = KizProductInfo(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            kiz_code=f"010463019925131821{uuid.uuid4().hex[:6]}",
+            gtin="04630199251318",
+        )
+        session.add(kiz_info)
+
+        card = ProductCard(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            name="Delete Test Card",
+        )
+        session.add(card)
+
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+        res = await client.delete(f"/api/v1/sellers/{seller_id}", headers=headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["deleted_id"] == seller_id
+
+    # Verify seller and all related items are deleted from DB
+    async with AsyncSessionLocal() as session:
+        from app.models.order import Order
+        from app.models.supply import Supply
+        from app.models.audit import AuditLog
+        from app.models.kiz import KizOperation, KizProductInfo
+        from app.national_catalog.models import ProductCard
+
+        assert await session.get(Seller, seller_id) is None
+        assert await session.get(Order, order_id) is None
+        assert await session.get(Supply, supply.id) is None
+        assert await session.get(AuditLog, audit.id) is None
+        assert await session.get(KizOperation, kiz_op.id) is None
+        assert await session.get(KizProductInfo, kiz_info.id) is None
+        assert await session.get(ProductCard, card.id) is None
+
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent_seller_returns_404():
+    await init_db()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+        res = await client.delete("/api/v1/sellers/nonexistent-seller-id", headers=headers)
+        assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_toggle_seller_active():
+    await init_db()
+    seller_id = f"test-toggle-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="Toggle Active Shop",
+            wb_api_token_encrypted=encrypt("token-toggle"),
+            is_active=True,
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        # Toggle to False
+        res1 = await client.post(f"/api/v1/sellers/{seller_id}/toggle-active?enabled=false", headers=headers)
+        assert res1.status_code == 200
+        assert res1.json()["is_active"] is False
+
+        # Toggle to True
+        res2 = await client.post(f"/api/v1/sellers/{seller_id}/toggle-active?enabled=true", headers=headers)
+        assert res2.status_code == 200
+        assert res2.json()["is_active"] is True
+
+        # Toggle without param (flips)
+        res3 = await client.post(f"/api/v1/sellers/{seller_id}/toggle-active", headers=headers)
+        assert res3.status_code == 200
+        assert res3.json()["is_active"] is False
+
+    # Clean up test seller
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+        await client.delete(f"/api/v1/sellers/{seller_id}", headers=headers)

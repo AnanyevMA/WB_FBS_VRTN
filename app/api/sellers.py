@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone
 
 from app.database import get_db
@@ -184,14 +184,59 @@ async def update_seller(seller_id: str, seller_in: SellerUpdate, db: AsyncSessio
 
 
 @router.delete("/{seller_id}")
-async def deactivate_seller(seller_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_seller(seller_id: str, db: AsyncSession = Depends(get_db)):
+    """Полное удаление продавца и всех связанных с ним записей."""
     seller = await db.get(Seller, seller_id)
     if not seller:
-        raise HTTPException(status_code=404, detail="Seller not found")
+        raise HTTPException(status_code=404, detail="Продавец не найден")
 
-    seller.is_active = False
+    seller_name = seller.name
+
+    from app.models.kiz import KizOperation, KizProductInfo, KizSignatureBatch
+    from app.models.order import Order
+    from app.models.supply import Supply
+    from app.models.audit import AuditLog
+    from app.national_catalog.models import ProductCard
+    from sqlalchemy import delete
+
+    # Явное каскадное удаление дочерних записей для гарантированной целостности внешних ключей
+    await db.execute(delete(KizOperation).where(KizOperation.seller_id == seller_id))
+    await db.execute(delete(KizProductInfo).where(KizProductInfo.seller_id == seller_id))
+    await db.execute(delete(KizSignatureBatch).where(KizSignatureBatch.seller_id == seller_id))
+    await db.execute(delete(Order).where(Order.seller_id == seller_id))
+    await db.execute(delete(Supply).where(Supply.seller_id == seller_id))
+    await db.execute(delete(AuditLog).where(AuditLog.seller_id == seller_id))
+    await db.execute(delete(ProductCard).where(ProductCard.seller_id == seller_id))
+
+    await db.delete(seller)
     await db.commit()
-    return {"message": "Seller deactivated", "is_active": False}
+
+    return {
+        "success": True,
+        "message": f"Продавец «{seller_name}» и все связанные данные успешно удалены",
+        "deleted_id": seller_id,
+    }
+
+
+@router.post("/{seller_id}/toggle-active")
+async def toggle_active(seller_id: str, enabled: Optional[bool] = None, db: AsyncSession = Depends(get_db)):
+    """Переключение активности магазина (активен / отключен)."""
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    if enabled is not None:
+        seller.is_active = enabled
+    else:
+        seller.is_active = not seller.is_active
+
+    await db.commit()
+    status_label = "активирован" if seller.is_active else "отключен"
+    return {
+        "success": True,
+        "message": f"Продавец «{seller.name}» {status_label}",
+        "is_active": seller.is_active,
+    }
 
 
 @router.post("/{seller_id}/test-connection")

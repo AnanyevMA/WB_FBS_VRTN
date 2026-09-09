@@ -135,6 +135,7 @@ class SellerUpdate(BaseModel):
     mod_kpp: Optional[str] = None
     telegram_bot_token: Optional[str] = None
     telegram_chat_ids: Optional[List[str]] = None
+    is_active: Optional[bool] = None
     polling_enabled: Optional[bool] = None
     # Human-friendly: minutes (1–60). API converts to seconds before DB write.
     polling_interval_minutes: Optional[int] = Field(

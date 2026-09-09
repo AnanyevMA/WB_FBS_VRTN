@@ -340,3 +340,137 @@ async def test_sync_products_from_nk():
             assert data2["synced_count"] == 2
             assert data2["created_count"] == 0
             assert data2["updated_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_batch_generate_gtins():
+    """Test batch GTIN generation via True API helper."""
+    await init_db()
+    seller_id = f"test-nk-gtins-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="НК GTIN Магазин",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="190207495060",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        with patch.object(NKClient, "generate_gtin", new_callable=AsyncMock) as mock_gen:
+            mock_gen.return_value = ["04603702055100", "04603702055101", "04603702055102"]
+
+            res = await client.get(
+                f"/api/v1/sellers/{seller_id}/national-catalog/helpers/generate-gtins?quantity=3",
+                headers=headers
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert len(data["gtins"]) == 3
+            assert data["gtins"][0] == "04603702055100"
+            mock_gen.assert_called_once_with(quantity=3)
+
+
+@pytest.mark.asyncio
+async def test_batch_create_product_cards():
+    """Test creating a series of product cards with sizes, colors, and declaration of conformity in a single feed."""
+    await init_db()
+    seller_id = f"test-nk-batch-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="НК Серия Магазин",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="190207495060",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        batch_payload = {
+            "moderation": True,
+            "items": [
+                {
+                    "name": "Жилет утепленный, Черный, р. 44",
+                    "brand": "ADELOVE",
+                    "tnved": "6202401000",
+                    "category_id": 31326,
+                    "category_name": "Одежда",
+                    "gtin": "04603702055201",
+                    "attributes": [
+                        {"attr_id": 35, "attr_value": "44"},
+                        {"attr_id": 36, "attr_value": "Черный"},
+                        {"attr_id": 2483, "attr_value": "100% полиэстер"},
+                        {"attr_id": 13914, "attr_value": "VEST-BLK-44"},
+                        {"attr_id": 23557, "attr_value": "ЕАЭС N RU Д-RU.РА01.В.12345/22"},
+                        {"attr_id": 13836, "attr_value": "ТР ТС 017/2011 \"О безопасности продукции легкой промышленности\""},
+                    ]
+                },
+                {
+                    "name": "Жилет утепленный, Черный, р. 46",
+                    "brand": "ADELOVE",
+                    "tnved": "6202401000",
+                    "category_id": 31326,
+                    "category_name": "Одежда",
+                    "gtin": "04603702055202",
+                    "attributes": [
+                        {"attr_id": 35, "attr_value": "46"},
+                        {"attr_id": 36, "attr_value": "Черный"},
+                        {"attr_id": 2483, "attr_value": "100% полиэстер"},
+                        {"attr_id": 13914, "attr_value": "VEST-BLK-46"},
+                        {"attr_id": 23557, "attr_value": "ЕАЭС N RU Д-RU.РА01.В.12345/22"},
+                        {"attr_id": 13836, "attr_value": "ТР ТС 017/2011 \"О безопасности продукции легкой промышленности\""},
+                    ]
+                }
+            ]
+        }
+
+        with patch.object(NKClient, "create_or_update_feed", new_callable=AsyncMock) as mock_feed:
+            mock_feed.return_value = 555888
+
+            batch_res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products/batch",
+                json=batch_payload,
+                headers=headers
+            )
+            assert batch_res.status_code == 200, f"Batch create failed: {batch_res.text}"
+            data = batch_res.json()
+            assert data["success"] is True
+            assert data["feed_id"] == 555888
+            assert data["created_count"] == 2
+            assert len(data["cards"]) == 2
+
+            # Check goods items sent to True API
+            mock_feed.assert_called_once()
+            goods_sent = mock_feed.call_args[0][0]
+            assert len(goods_sent) == 2
+            assert goods_sent[0]["good_name"] == "Жилет утепленный, Черный, р. 44"
+            assert goods_sent[1]["good_name"] == "Жилет утепленный, Черный, р. 46"
+
+            # Check that declaration attribute was sent
+            attrs_0 = goods_sent[0]["good_attrs"]
+            decl_attr = next(a for a in attrs_0 if a["attr_id"] == 23557)
+            assert decl_attr["attr_value"] == "ЕАЭС N RU Д-RU.РА01.В.12345/22"
+
+        # Verify cards created in local DB
+        list_res = await client.get(
+            f"/api/v1/sellers/{seller_id}/national-catalog/products",
+            headers=headers
+        )
+        assert list_res.status_code == 200
+        cards = list_res.json()
+        assert any(c["gtin"] == "04603702055201" and c["feed_id"] == 555888 for c in cards)
+        assert any(c["gtin"] == "04603702055202" and c["feed_id"] == 555888 for c in cards)

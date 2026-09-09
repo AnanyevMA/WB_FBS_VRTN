@@ -412,6 +412,9 @@
                         <button class="btn btn-secondary" id="nkSyncBtn" onclick="syncProductCardsFromNK()">
                             <span>🔄</span> Синхронизировать с НКТ
                         </button>
+                        <button class="btn btn-secondary" onclick="openMatrixModal()" style="background: rgba(147, 51, 234, 0.15); border-color: rgba(147, 51, 234, 0.4); color: #c084fc;">
+                            <span>⚡</span> Создать серию
+                        </button>
                         <button class="btn btn-primary" onclick="openCreateCardModal()">
                             <span>➕</span> Добавить карточку
                         </button>
@@ -1124,7 +1127,10 @@
 
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border-top: 1px solid var(--border-color); padding: 14px 20px;">
             <button class="btn btn-secondary" onclick="closeModal('productCardModal')">Отмена</button>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" class="btn btn-secondary" onclick="openMatrixModalFromCurrentCard()" style="background: rgba(147, 51, 234, 0.15); border-color: rgba(147, 51, 234, 0.4); color: #c084fc;" title="Создать серию вариаций на основе текущих полей этой карточки">
+                    <span>⚡</span> Создать серию
+                </button>
                 <button type="button" class="btn btn-secondary" onclick="saveProductCard(false)">
                     Сохранить черновик
                 </button>
@@ -1132,6 +1138,237 @@
                     <span>🚀 Передать в НКТ</span>
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- National Catalog Product Matrix (Bulk Variant Generator) Modal -->
+<div class="modal-overlay" id="productMatrixModal">
+    <div class="modal-content" style="max-width: 1120px; width: 96vw; max-height: 92vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px; background: rgba(147, 51, 234, 0.2); padding: 6px 10px; border-radius: 8px;">⚡</span>
+                <div>
+                    <h3 id="nkMatrixModalTitle" style="margin: 0; font-size: 18px;">Генератор серии карточек (Матрица размеров и цветов)</h3>
+                    <div id="nkMatrixDonorSubtitle" style="font-size: 12px; color: var(--text-muted);">
+                        Массовое создание однотипных карточек в Национальном Каталоге (True API)
+                    </div>
+                </div>
+            </div>
+            <button class="icon-btn" onclick="closeModal('productMatrixModal')">✕</button>
+        </div>
+
+        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px;">
+            <!-- Donor Card Badge if loaded from existing -->
+            <div id="matrixDonorInfoBanner" style="display: none; align-items: center; justify-content: space-between; background: rgba(147, 51, 234, 0.1); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 18px;">📋</span>
+                    <div>
+                        <div style="font-weight: 600; font-size: 13px; color: #d8b4fe;" id="matrixDonorTitle">Основано на карточке: ...</div>
+                        <div style="font-size: 11px; color: var(--text-muted);" id="matrixDonorMeta">GTIN: - | Артикул: -</div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clearMatrixDonor()" style="font-size: 11px; padding: 3px 8px;">
+                    ✕ Сбросить донора
+                </button>
+            </div>
+
+            <!-- STEP 1: Base properties -->
+            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px; color: #a78bfa; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+                    <span>1. Базовые характеристики (общие для всей серии)</span>
+                </h4>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Базовое наименование <span style="color:var(--status-cancelled);">*</span></label>
+                        <input type="text" class="form-control" id="matrix_base_name" placeholder="Например: Футболка оверсайз унисекс" oninput="updateMatrixCombinationsPreview()">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Базовый артикул (модель) <span style="color:var(--status-cancelled);">*</span></label>
+                        <input type="text" class="form-control" id="matrix_base_article" placeholder="Например: TSHIRT-OVR" oninput="updateMatrixCombinationsPreview()">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Бренд / Марка</label>
+                        <input type="text" class="form-control" id="matrix_brand" placeholder="Например: MyBrand">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 140px 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">ТН ВЭД (10 зн.)</label>
+                        <input type="text" class="form-control" id="matrix_tnved" placeholder="6109100000" maxlength="10">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">ID Категории НКТ</label>
+                        <input type="number" class="form-control" id="matrix_category_id" value="20000003" placeholder="20000003">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Состав / Материал <span style="color:var(--status-cancelled);">*</span></label>
+                        <input type="text" class="form-control" id="matrix_composition" placeholder="100% хлопок">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Страна производства</label>
+                        <input type="text" class="form-control" id="matrix_country" value="Россия" placeholder="Россия">
+                    </div>
+                </div>
+
+                <!-- Declarations and Tech Regulations -->
+                <div style="background: rgba(30, 41, 59, 0.5); border: 1px dashed rgba(147, 51, 234, 0.35); border-radius: 8px; padding: 12px; margin-top: 10px;">
+                    <div style="font-size: 12px; font-weight: 600; color: #e2e8f0; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span>📜 Декларация о соответствии и Техрегламент</span>
+                            <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">(будут включены во все карточки серии)</span>
+                        </div>
+                        <span style="font-size: 11px; color: #c084fc; background: rgba(147,51,234,0.15); padding: 2px 8px; border-radius: 4px;">Атрибуты 23557 и 13836</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" style="font-size: 11px;">Номер декларации о соответствии (атрибут 23557)</label>
+                            <input type="text" class="form-control" id="matrix_declaration" placeholder="Например: ЕАЭС N RU Д-RU.РА01.В.12345/22" style="font-size: 12px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" style="font-size: 11px;">Номер технического регламента (атрибут 13836)</label>
+                            <select class="form-control" id="matrix_tech_reg" style="font-size: 12px;">
+                                <option value='ТР ТС 017/2011 "О безопасности продукции легкой промышленности"'>ТР ТС 017/2011 "О безопасности продукции легкой промышленности"</option>
+                                <option value='ТР ТС 007/2011 "О безопасности продукции, предназначенной для детей и подростков"'>ТР ТС 007/2011 "О безопасности продукции, предназначенной для детей и подростков"</option>
+                                <option value='ТР ТС 008/2011 "О безопасности игрушек"'>ТР ТС 008/2011 "О безопасности игрушек"</option>
+                                <option value='ТР ТС 019/2011 "О безопасности средств индивидуальной защиты"'>ТР ТС 019/2011 "О безопасности средств индивидуальной защиты"</option>
+                                <option value="">Без указания регламента</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: Variants Generator (Sizes x Colors) -->
+            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px; color: #a78bfa; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">
+                    2. Сетка вариаций (Размеры и Цвета)
+                </h4>
+
+                <!-- SIZES -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                        <label class="form-label" style="margin-bottom: 0; font-weight: 600;">
+                            Размеры изделия <span style="color:var(--status-cancelled);">*</span>
+                        </label>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <span style="font-size: 11px; color: var(--text-muted);">Быстрый выбор:</span>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="applySizePreset('rus')">РФ 42-54</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="applySizePreset('rus_plus')">РФ 56-64</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="applySizePreset('intl')">XS - 3XL</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="applySizePreset('kids')">Детские 86-128</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="applySizePreset('shoes')">Обувь 36-45</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px; color: #f87171;" onclick="clearSizes()">✕ Очистить</button>
+                        </div>
+                    </div>
+                    <input type="text" class="form-control" id="matrix_sizes_input" placeholder="Введите размеры через запятую (например: 44, 46, 48, 50, 52)" oninput="updateMatrixCombinationsPreview()">
+                </div>
+
+                <!-- COLORS -->
+                <div style="margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                        <label class="form-label" style="margin-bottom: 0; font-weight: 600;">
+                            Цвета <span style="color:var(--status-cancelled);">*</span>
+                        </label>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <span style="font-size: 11px; color: var(--text-muted);">Популярные:</span>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="addColorChip('Черный')">Черный</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="addColorChip('Белый')">Белый</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="addColorChip('Серый')">Серый</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="addColorChip('Бежевый')">Бежевый</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="addColorChip('Синий')">Синий</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px;" onclick="addColorChip('Красный')">Красный</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 7px; font-size: 11px; color: #f87171;" onclick="clearColors()">✕ Очистить</button>
+                        </div>
+                    </div>
+                    <input type="text" class="form-control" id="matrix_colors_input" placeholder="Введите цвета через запятую (например: Черный, Белый, Хаки)" oninput="updateMatrixCombinationsPreview()">
+                </div>
+
+                <!-- NAMING & SKU TEMPLATES -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(30, 41, 59, 0.4); padding: 10px 14px; border-radius: 8px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 11px;">Шаблон артикула</label>
+                        <input type="text" class="form-control" id="matrix_sku_template" value="{article}-{color}-{size}" placeholder="{article}-{color}-{size}" style="font-size: 12px;" oninput="updateMatrixCombinationsPreview()">
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Переменные: {article}, {color}, {size}</div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 11px;">Шаблон наименования</label>
+                        <input type="text" class="form-control" id="matrix_name_template" value="{name}, цвет {color}, размер {size}" placeholder="{name}, цвет {color}, размер {size}" style="font-size: 12px;" oninput="updateMatrixCombinationsPreview()">
+                        <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Переменные: {name}, {color}, {size}, {article}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: Preview Table & GTIN generation -->
+            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h4 style="margin: 0; color: #a78bfa; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">
+                            3. Сформированная матрица (<span id="matrix_count_badge">0</span> вариантов)
+                        </h4>
+                        <div style="font-size: 11px; color: var(--text-muted);">
+                            Проверьте строки и заполните GTIN перед пакетной отправкой в True API
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnMatrixGenGtins" onclick="batchGenerateGtinsForMatrix()" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa; font-size: 12px; font-weight: 600;">
+                            <span>🎲</span> Заполнить все GTIN из ГС1 РУС
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllMatrixGtins()" style="font-size: 11px;">
+                            Очистить GTIN
+                        </button>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; background: rgba(30,41,59,0.7); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                            <input type="checkbox" id="matrix_is_tech_gtin" onchange="onToggleMatrixTechGtin(this.checked)" style="accent-color: var(--primary);">
+                            <span>Технические GTIN (029)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="table-container" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: rgba(30, 41, 59, 0.8); position: sticky; top: 0; z-index: 2;">
+                                <th style="width: 36px; padding: 8px; text-align: center;">
+                                    <input type="checkbox" id="matrix_select_all" checked onchange="toggleSelectAllMatrixRows(this.checked)">
+                                </th>
+                                <th style="width: 150px;">Артикул</th>
+                                <th style="width: 70px;">Размер</th>
+                                <th style="width: 100px;">Цвет</th>
+                                <th style="min-width: 220px;">Наименование карточки</th>
+                                <th style="width: 200px;">GTIN (14 цифр)</th>
+                                <th style="width: 40px; text-align: center;">✕</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                    Укажите базовые данные, выберите размеры и цвета выше для генерации матрицы
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="matrixModerationCheck" checked style="accent-color: var(--primary); width: 16px; height: 16px;">
+                        <span style="font-size: 12px;">Сразу отправить пакет на модерацию в ЧЗ (статус <code>moderation</code>)</span>
+                    </label>
+                    <div style="font-size: 12px; color: var(--text-muted);" id="matrixSelectedSummary">
+                        Выбрано к созданию: 0 карточек
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--border-color); padding: 14px 20px;">
+            <button class="btn btn-secondary" onclick="closeModal('productMatrixModal')">Отмена</button>
+            <button type="button" class="btn btn-primary" id="btnSubmitMatrixBatch" onclick="submitMatrixBatch()" style="background: linear-gradient(135deg, #9333ea, #4f46e5); font-weight: 600; padding: 8px 20px;">
+                <span>🚀 Создать серию карточек в НКТ</span>
+            </button>
         </div>
     </div>
 </div>

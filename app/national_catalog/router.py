@@ -18,6 +18,9 @@ from app.national_catalog.schemas import (
     PrepareSignResponse,
     SubmitSignRequest,
     SyncNKResponse,
+    ProductCardBatchCreateRequest,
+    ProductCardBatchResponse,
+    BatchGtinResponse,
 )
 from app.national_catalog.client import NKClient, NKAPIError
 from app.services.encryption import decrypt
@@ -95,27 +98,14 @@ async def list_products(
     return result.scalars().all()
 
 
-@router.post("/sellers/{seller_id}/national-catalog/products", response_model=ProductCardResponse)
-async def create_product(
-    seller_id: str,
-    payload: ProductCardCreateRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Создание новой карточки товара и отправка реального пакета (фида) в Честный Знак.
-    """
-    seller = await _get_seller_or_404(seller_id, db)
-    client = await _get_seller_nk_client(seller)
-
-    # Валидация GTIN
+def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional[str]]:
     gtin_val = payload.gtin.strip() if payload.gtin else None
     if not payload.is_tech_gtin and not gtin_val:
         raise HTTPException(
             status_code=400,
-            detail="Укажите GTIN (14 цифр) или выберите признак технической карточки (029)."
+            detail=f"Для товара '{payload.name}' укажите GTIN (14 цифр) или выберите признак технической карточки (029)."
         )
 
-    # 1. Формируем структуру товара по спецификации True API POST /nk/feed
     goods_item: dict = {
         "good_name": payload.name,
         "moderation": payload.moderation,
@@ -134,7 +124,6 @@ async def create_product(
     if payload.is_tech_gtin:
         goods_item["is_tech_gtin"] = 1
     elif gtin_val:
-        # Нормализация до 14 цифр с лидирующим нулем если передано 13
         if len(gtin_val) == 13 and gtin_val.isdigit():
             gtin_val = f"0{gtin_val}"
         goods_item["gtin"] = gtin_val
@@ -167,7 +156,24 @@ async def create_product(
         }
         goods_item["good_images"].append(img_dict)
 
-    # 2. Отправка реального фида в Национальный каталог
+    return goods_item, gtin_val
+
+
+@router.post("/sellers/{seller_id}/national-catalog/products", response_model=ProductCardResponse)
+async def create_product(
+    seller_id: str,
+    payload: ProductCardCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Создание новой карточки товара и отправка реального пакета (фида) в Честный Знак.
+    """
+    seller = await _get_seller_or_404(seller_id, db)
+    client = await _get_seller_nk_client(seller)
+
+    goods_item, gtin_val = _build_goods_item(payload)
+
+    # Отправка фида в Национальный каталог
     try:
         async with client:
             feed_id = await client.create_or_update_feed([goods_item])
@@ -175,7 +181,6 @@ async def create_product(
         logger.warning("Ошибка отправки фида в НКТ: %s", e)
         raise HTTPException(status_code=e.status_code or 400, detail=e.message)
 
-    # 3. Сохранение карточки в БД
     card = ProductCard(
         seller_id=seller.id,
         gtin=gtin_val,
@@ -196,6 +201,72 @@ async def create_product(
     await db.commit()
     await db.refresh(card)
     return card
+
+
+@router.post("/sellers/{seller_id}/national-catalog/products/batch", response_model=ProductCardBatchResponse)
+async def create_products_batch(
+    seller_id: str,
+    payload: ProductCardBatchCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Массовое создание серии карточек товаров (размерно-цветовой матрицы) в НКТ.
+    Все товары передаются в True API единым пакетом (фидом) через POST /nk/feed.
+    """
+    if not payload.items:
+        raise HTTPException(status_code=400, detail="Список создаваемых карточек не может быть пустым.")
+
+    seller = await _get_seller_or_404(seller_id, db)
+    client = await _get_seller_nk_client(seller)
+
+    goods_items = []
+    normalized_gtins = []
+
+    for item in payload.items:
+        item.moderation = payload.moderation
+        g_dict, gtin_norm = _build_goods_item(item)
+        goods_items.append(g_dict)
+        normalized_gtins.append(gtin_norm)
+
+    try:
+        async with client:
+            feed_id = await client.create_or_update_feed(goods_items)
+    except NKAPIError as e:
+        logger.warning("Ошибка пакетной отправки фида в НКТ: %s", e)
+        raise HTTPException(status_code=e.status_code or 400, detail=e.message)
+
+    created_cards = []
+    for item, gtin_val in zip(payload.items, normalized_gtins):
+        card = ProductCard(
+            seller_id=seller.id,
+            gtin=gtin_val,
+            name=item.name,
+            brand=item.brand,
+            tnved=item.tnved,
+            category_id=item.category_id,
+            category_name=item.category_name,
+            is_tech_gtin=item.is_tech_gtin,
+            is_set=item.is_set,
+            status="moderation" if payload.moderation else "draft",
+            feed_id=feed_id,
+            feed_status="Received",
+            attributes=[a.model_dump() for a in item.attributes],
+            images=[i.model_dump() for i in item.images],
+        )
+        db.add(card)
+        created_cards.append(card)
+
+    await db.commit()
+    for card in created_cards:
+        await db.refresh(card)
+
+    return ProductCardBatchResponse(
+        success=True,
+        feed_id=feed_id,
+        created_count=len(created_cards),
+        cards=created_cards,
+        message=f"Успешно создано {len(created_cards)} карточек товаров (фид #{feed_id})"
+    )
 
 
 @router.get("/sellers/{seller_id}/national-catalog/products/{product_id}", response_model=ProductCardResponse)
@@ -847,5 +918,22 @@ async def generate_gtin(
                     detail="Не удалось сгенерировать GTIN (проверьте членство в ГС1 РУС или месячный лимит)."
                 )
             return {"gtin": gtins[0]}
+    except NKAPIError as e:
+        raise HTTPException(status_code=e.status_code or 400, detail=e.message)
+
+
+@router.get("/sellers/{seller_id}/national-catalog/helpers/generate-gtins", response_model=BatchGtinResponse)
+async def generate_gtins(
+    seller_id: str,
+    quantity: int = Query(1, ge=1, le=100, description="Количество GTIN для генерации (от 1 до 100)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Пакетная генерация пула черновиков GTIN в ГС1 РУС через True API."""
+    seller = await _get_seller_or_404(seller_id, db)
+    client = await _get_seller_nk_client(seller)
+    try:
+        async with client:
+            gtins = await client.generate_gtin(quantity=quantity)
+            return BatchGtinResponse(gtins=gtins)
     except NKAPIError as e:
         raise HTTPException(status_code=e.status_code or 400, detail=e.message)

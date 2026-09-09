@@ -87,3 +87,20 @@ class SyncNKResponse(BaseModel):
     created_count: int
     updated_count: int
     message: str
+
+
+class ProductCardBatchCreateRequest(BaseModel):
+    items: List[ProductCardCreateRequest] = Field(..., min_length=1, max_length=150, description="Список создаваемых карточек")
+    moderation: bool = Field(True, description="Сразу отправить пакет на модерацию в ЧЗ")
+
+
+class ProductCardBatchResponse(BaseModel):
+    success: bool = True
+    feed_id: Optional[int] = None
+    created_count: int
+    cards: List[ProductCardResponse] = Field(default_factory=list)
+    message: str
+
+
+class BatchGtinResponse(BaseModel):
+    gtins: List[str] = Field(default_factory=list)

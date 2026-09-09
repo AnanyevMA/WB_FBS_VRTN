@@ -122,6 +122,9 @@ function renderProductCards(cards) {
                         <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="editProductCard('${c.id}')" title="Редактировать карточку">
                             ✏️ Ред.
                         </button>
+                        <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px; background: rgba(147, 51, 234, 0.15); border-color: rgba(147, 51, 234, 0.4); color: #c084fc;" onclick="openMatrixModal('${c.id}')" title="Создать серию на основе этой карточки (размеры, цвета, декларация)">
+                            ⚡ Серия
+                        </button>
                         ${checkBtn}
                         ${signBtn}
                         <button class="btn btn-danger btn-sm" style="padding: 4px 8px; font-size: 11px;" onclick="deleteProductCard('${c.id}', '${escapeHtml(c.name || '')}')" title="Удалить карточку">
@@ -556,4 +559,686 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+/* ==========================================================================
+   МАССОВОЕ СОЗДАНИЕ КАРТОЧЕК (МАТРИЦА РАЗМЕРОВ, ЦВЕТОВ И ДЕКЛАРАЦИЙ)
+   ========================================================================== */
+
+let matrixDonorCard = null;
+let matrixCombinations = [];
+
+/**
+ * Открытие модального окна генерации серии (матрицы)
+ * @param {string|null} donorCardId - ID карточки-донора или null
+ */
+async function openMatrixModal(donorCardId = null) {
+    if (!currentSellerId) {
+        showToast('Внимание', 'Сначала выберите продавца', 'warning');
+        return;
+    }
+
+    matrixDonorCard = null;
+    matrixCombinations = [];
+
+    // Clear / reset inputs
+    document.getElementById('matrix_base_name').value = '';
+    document.getElementById('matrix_base_article').value = '';
+    document.getElementById('matrix_brand').value = '';
+    document.getElementById('matrix_tnved').value = '';
+    document.getElementById('matrix_category_id').value = '20000003';
+    document.getElementById('matrix_composition').value = '';
+    document.getElementById('matrix_country').value = 'Россия';
+    document.getElementById('matrix_declaration').value = '';
+    document.getElementById('matrix_tech_reg').value = 'ТР ТС 017/2011 "О безопасности продукции легкой промышленности"';
+    document.getElementById('matrix_sizes_input').value = '';
+    document.getElementById('matrix_colors_input').value = '';
+    document.getElementById('matrix_is_tech_gtin').checked = false;
+    document.getElementById('matrixModerationCheck').checked = true;
+
+    const banner = document.getElementById('matrixDonorInfoBanner');
+    if (banner) banner.style.display = 'none';
+
+    if (donorCardId) {
+        let card = nkCardsList.find(c => c.id === donorCardId);
+        if (!card) {
+            try {
+                card = await apiFetch(`/sellers/${currentSellerId}/national-catalog/products/${donorCardId}`);
+            } catch (e) {
+                console.warn('Не удалось загрузить карточку-донор по API:', e);
+            }
+        }
+
+        if (card) {
+            populateMatrixFromDonor(card);
+        }
+    }
+
+    updateMatrixCombinationsPreview();
+    openModal('productMatrixModal');
+}
+
+/**
+ * Открытие модального окна матрицы из текущей открытой одиночной карточки
+ */
+function openMatrixModalFromCurrentCard() {
+    const cardData = {
+        name: document.getElementById('nk_card_name')?.value || '',
+        article: document.getElementById('nk_card_article')?.value || '',
+        brand: document.getElementById('nk_card_brand')?.value || '',
+        tnved: document.getElementById('nk_card_tnved')?.value || '',
+        category_id: document.getElementById('nk_card_category_id')?.value || '20000003',
+        category_name: document.getElementById('nk_card_category_name')?.value || '',
+        composition: document.getElementById('nk_card_composition')?.value || '',
+        country: document.getElementById('nk_card_country')?.value || 'Россия',
+        color: document.getElementById('nk_card_color')?.value || '',
+        size: document.getElementById('nk_card_size')?.value || '',
+        attributes: []
+    };
+
+    // Extract custom attributes from container
+    const attrRows = document.querySelectorAll('#nk_custom_attrs_container > div');
+    attrRows.forEach(row => {
+        const idInput = row.querySelector('[data-field="attr_id"]');
+        const valInput = row.querySelector('[data-field="attr_value"]');
+        const valIdInput = row.querySelector('[data-field="attr_value_id"]');
+        if (idInput && valInput && idInput.value) {
+            cardData.attributes.push({
+                attr_id: parseInt(idInput.value),
+                attr_value: valInput.value,
+                attr_value_id: valIdInput && valIdInput.value ? parseInt(valIdInput.value) : null
+            });
+        }
+    });
+
+    closeModal('productCardModal');
+    openMatrixModal(null);
+    populateMatrixFromDonor(cardData);
+    updateMatrixCombinationsPreview();
+}
+
+/**
+ * Заполнение полей матрицы данными из карточки-донора
+ */
+function populateMatrixFromDonor(card) {
+    matrixDonorCard = card;
+
+    const banner = document.getElementById('matrixDonorInfoBanner');
+    const donorTitle = document.getElementById('matrixDonorTitle');
+    const donorMeta = document.getElementById('matrixDonorMeta');
+
+    if (banner && donorTitle) {
+        banner.style.display = 'flex';
+        donorTitle.textContent = `Основано на карточке: ${card.name || 'Без названия'}`;
+        donorMeta.textContent = `GTIN: ${card.gtin || 'нет'} | Категория: #${card.category_id || '-'} ${card.category_name || ''}`;
+    }
+
+    // Extract attributes
+    const attrs = Array.isArray(card.attributes) ? card.attributes : [];
+    let donorArticle = card.article || '';
+    let donorComposition = card.composition || '';
+    let donorCountry = card.country || '';
+    let donorColor = card.color || '';
+    let donorSize = card.size || '';
+    let donorDeclaration = '';
+    let donorTechReg = '';
+
+    attrs.forEach(a => {
+        const id = a.attr_id;
+        const val = a.attr_value || a.value || '';
+        if (id === 13914 || id === 10001 || id === 2478) {
+            if (!donorArticle) donorArticle = val;
+        } else if (id === 2483 || id === 10610) {
+            if (!donorComposition) donorComposition = val;
+        } else if (id === 2480 || id === 10611) {
+            if (!donorCountry) donorCountry = val;
+        } else if (id === 36 || id === 10612) {
+            if (!donorColor) donorColor = val;
+        } else if (id === 35 || id === 10613) {
+            if (!donorSize) donorSize = val;
+        } else if (id === 23557 || id === 23561) {
+            donorDeclaration = val;
+        } else if (id === 13836) {
+            donorTechReg = val;
+        }
+    });
+
+    // Clean base name by removing trailing size/color suffixes if present
+    let cleanName = (card.name || '')
+        .replace(/,\s*(размер|р-р)\s*[^,]+/gi, '')
+        .replace(/,\s*цвет\s*[^,]+/gi, '')
+        .replace(/\s*\([^)]*(размер|цвет)[^)]*\)/gi, '')
+        .trim();
+
+    // Clean base article
+    let cleanArticle = donorArticle;
+    if (cleanArticle && donorSize && cleanArticle.endsWith('-' + donorSize)) {
+        cleanArticle = cleanArticle.slice(0, -(donorSize.length + 1));
+    }
+
+    document.getElementById('matrix_base_name').value = cleanName || card.name || '';
+    document.getElementById('matrix_base_article').value = cleanArticle || '';
+    document.getElementById('matrix_brand').value = card.brand || '';
+    document.getElementById('matrix_tnved').value = card.tnved || '';
+    document.getElementById('matrix_category_id').value = card.category_id || '20000003';
+    document.getElementById('matrix_composition').value = donorComposition || '';
+    document.getElementById('matrix_country').value = donorCountry || 'Россия';
+
+    if (donorDeclaration) {
+        document.getElementById('matrix_declaration').value = donorDeclaration;
+    }
+    if (donorTechReg) {
+        const techRegSelect = document.getElementById('matrix_tech_reg');
+        if (techRegSelect) {
+            // Check if matches option, else append
+            let matched = false;
+            for (let opt of techRegSelect.options) {
+                if (opt.value === donorTechReg) {
+                    techRegSelect.value = donorTechReg;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched && donorTechReg) {
+                const newOpt = new Option(donorTechReg, donorTechReg, true, true);
+                techRegSelect.add(newOpt);
+            }
+        }
+    }
+
+    if (donorSize) {
+        document.getElementById('matrix_sizes_input').value = donorSize;
+    }
+    if (donorColor) {
+        document.getElementById('matrix_colors_input').value = donorColor;
+    }
+}
+
+/**
+ * Сброс привязки к карточке-донору
+ */
+function clearMatrixDonor() {
+    matrixDonorCard = null;
+    const banner = document.getElementById('matrixDonorInfoBanner');
+    if (banner) banner.style.display = 'none';
+    showToast('Инфо', 'Привязка к донору сброшена. Заполненные данные сохранены.', 'info');
+}
+
+/**
+ * Пресеты размеров
+ */
+function applySizePreset(type) {
+    const presets = {
+        rus: '42, 44, 46, 48, 50, 52, 54',
+        rus_plus: '56, 58, 60, 62, 64',
+        intl: 'XS, S, M, L, XL, 2XL, 3XL',
+        kids: '86, 92, 98, 104, 110, 116, 122, 128',
+        shoes: '36, 37, 38, 39, 40, 41, 42, 43, 44, 45'
+    };
+
+    const presetVal = presets[type] || '';
+    const input = document.getElementById('matrix_sizes_input');
+    if (!input) return;
+
+    if (!input.value.trim()) {
+        input.value = presetVal;
+    } else {
+        const existing = input.value.split(',').map(s => s.trim()).filter(Boolean);
+        const toAdd = presetVal.split(',').map(s => s.trim()).filter(Boolean);
+        toAdd.forEach(sz => {
+            if (!existing.includes(sz)) existing.push(sz);
+        });
+        input.value = existing.join(', ');
+    }
+
+    updateMatrixCombinationsPreview();
+}
+
+function clearSizes() {
+    const input = document.getElementById('matrix_sizes_input');
+    if (input) input.value = '';
+    updateMatrixCombinationsPreview();
+}
+
+function addColorChip(colorName) {
+    const input = document.getElementById('matrix_colors_input');
+    if (!input) return;
+
+    const existing = input.value.split(',').map(s => s.trim()).filter(Boolean);
+    if (!existing.includes(colorName)) {
+        existing.push(colorName);
+        input.value = existing.join(', ');
+        updateMatrixCombinationsPreview();
+    }
+}
+
+function clearColors() {
+    const input = document.getElementById('matrix_colors_input');
+    if (input) input.value = '';
+    updateMatrixCombinationsPreview();
+}
+
+/**
+ * Пересчет и отображение матрицы комбинаций (Размеры × Цвета)
+ */
+function updateMatrixCombinationsPreview() {
+    const baseName = document.getElementById('matrix_base_name')?.value.trim() || '';
+    const baseArticle = document.getElementById('matrix_base_article')?.value.trim() || '';
+    const sizesRaw = document.getElementById('matrix_sizes_input')?.value.trim() || '';
+    const colorsRaw = document.getElementById('matrix_colors_input')?.value.trim() || '';
+    const skuTpl = document.getElementById('matrix_sku_template')?.value.trim() || '{article}-{color}-{size}';
+    const nameTpl = document.getElementById('matrix_name_template')?.value.trim() || '{name}, цвет {color}, размер {size}';
+    const isTechGtin = document.getElementById('matrix_is_tech_gtin')?.checked || false;
+
+    const sizes = sizesRaw.split(/[,;\s]+/).map(s => s.trim()).filter(Boolean);
+    const colors = colorsRaw.split(/[,;]+/).map(c => c.trim()).filter(Boolean);
+
+    // Build raw combinations: Sizes x Colors
+    const combos = [];
+    if (sizes.length > 0 && colors.length > 0) {
+        sizes.forEach(sz => {
+            colors.forEach(col => {
+                combos.push({ size: sz, color: col });
+            });
+        });
+    } else if (sizes.length > 0) {
+        sizes.forEach(sz => {
+            combos.push({ size: sz, color: '' });
+        });
+    } else if (colors.length > 0) {
+        colors.forEach(col => {
+            combos.push({ size: '', color: col });
+        });
+    } else if (baseName || baseArticle) {
+        combos.push({ size: '', color: '' });
+    }
+
+    // Preserve existing edits/GTINs
+    const oldCombosMap = new Map();
+    matrixCombinations.forEach(c => {
+        const key = `${c.size}__${c.color}`;
+        oldCombosMap.set(key, c);
+    });
+
+    matrixCombinations = combos.map((c, index) => {
+        const key = `${c.size}__${c.color}`;
+        const existing = oldCombosMap.get(key);
+
+        let article = existing?.article;
+        if (!article) {
+            article = skuTpl
+                .replace('{article}', baseArticle)
+                .replace('{color}', c.color)
+                .replace('{size}', c.size)
+                .replace(/--+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+
+        let name = existing?.name;
+        if (!name) {
+            name = nameTpl
+                .replace('{name}', baseName)
+                .replace('{color}', c.color || '')
+                .replace('{size}', c.size || '')
+                .replace('{article}', baseArticle)
+                .replace(/,\s*,/g, ',')
+                .replace(/,\s*размер\s*$/i, '')
+                .replace(/,\s*цвет\s*$/i, '')
+                .trim()
+                .replace(/,$/, '');
+        }
+
+        return {
+            id: existing?.id || 'row_' + index + '_' + Math.random().toString(36).substring(2, 7),
+            size: c.size,
+            color: c.color,
+            article: article || baseArticle,
+            name: name || baseName,
+            gtin: existing?.gtin || '',
+            checked: existing !== undefined ? existing.checked : true
+        };
+    });
+
+    renderMatrixTable();
+}
+
+/**
+ * Отрисовка строк таблицы матрицы
+ */
+function renderMatrixTable() {
+    const tbody = document.getElementById('matrixTableBody');
+    const badge = document.getElementById('matrix_count_badge');
+    const summary = document.getElementById('matrixSelectedSummary');
+    const isTech = document.getElementById('matrix_is_tech_gtin')?.checked || false;
+
+    if (!tbody) return;
+
+    if (badge) badge.textContent = matrixCombinations.length;
+
+    if (matrixCombinations.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    Укажите базовые данные, выберите размеры и цвета выше для генерации матрицы
+                </td>
+            </tr>
+        `;
+        if (summary) summary.textContent = 'Выбрано к созданию: 0 карточек';
+        return;
+    }
+
+    let checkedCount = 0;
+    tbody.innerHTML = matrixCombinations.map((row, idx) => {
+        if (row.checked) checkedCount++;
+        const gtinDisabled = isTech ? 'disabled' : '';
+        const gtinPlaceholder = isTech ? 'Авто (029)' : '04600000000000';
+        const gtinVal = isTech ? '' : escapeHtml(row.gtin || '');
+
+        return `
+            <tr id="matrix_tr_${row.id}" style="${row.checked ? '' : 'opacity: 0.5; background: rgba(0,0,0,0.2);'}">
+                <td style="text-align: center; padding: 6px;">
+                    <input type="checkbox" ${row.checked ? 'checked' : ''} onchange="onMatrixRowCheckboxChanged('${row.id}', this.checked)" style="accent-color: var(--primary);">
+                </td>
+                <td style="padding: 6px;">
+                    <input type="text" class="form-control" style="font-size: 11px; padding: 4px 6px; height: 28px;" value="${escapeHtml(row.article)}" onchange="onMatrixRowEdited('${row.id}', 'article', this.value)" placeholder="Артикул">
+                </td>
+                <td style="padding: 6px;">
+                    <span style="display: inline-block; padding: 2px 6px; background: rgba(147, 51, 234, 0.15); border-radius: 4px; font-weight: 600; color: #d8b4fe; font-size: 11px;">
+                        ${escapeHtml(row.size || '—')}
+                    </span>
+                </td>
+                <td style="padding: 6px;">
+                    <span style="display: inline-block; padding: 2px 6px; background: rgba(59, 130, 246, 0.15); border-radius: 4px; font-weight: 500; color: #93c5fd; font-size: 11px;">
+                        ${escapeHtml(row.color || '—')}
+                    </span>
+                </td>
+                <td style="padding: 6px;">
+                    <input type="text" class="form-control" style="font-size: 11px; padding: 4px 6px; height: 28px;" value="${escapeHtml(row.name)}" onchange="onMatrixRowEdited('${row.id}', 'name', this.value)" placeholder="Название карточки">
+                </td>
+                <td style="padding: 6px;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <input type="text" class="form-control matrix-gtin-input" id="gtin_input_${row.id}" style="font-size: 11px; padding: 4px 6px; height: 28px; font-family: monospace;" value="${gtinVal}" placeholder="${gtinPlaceholder}" ${gtinDisabled} onchange="onMatrixRowEdited('${row.id}', 'gtin', this.value)">
+                        ${!isTech ? `
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 6px; height: 28px; font-size: 11px;" onclick="generateSingleMatrixGtin('${row.id}')" title="Сгенерировать 1 GTIN в ГС1 РУС">
+                                🎲
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+                <td style="text-align: center; padding: 6px;">
+                    <button type="button" class="btn btn-danger btn-sm" style="padding: 2px 6px; height: 26px; width: 26px; font-size: 10px;" onclick="removeMatrixRow('${row.id}')" title="Удалить вариант">
+                        ✕
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    if (summary) {
+        summary.innerHTML = `Выбрано к созданию: <strong>${checkedCount}</strong> из ${matrixCombinations.length} карточек`;
+    }
+}
+
+function onMatrixRowCheckboxChanged(id, checked) {
+    const row = matrixCombinations.find(r => r.id === id);
+    if (row) row.checked = checked;
+    renderMatrixTable();
+}
+
+function toggleSelectAllMatrixRows(checked) {
+    matrixCombinations.forEach(r => r.checked = checked);
+    renderMatrixTable();
+}
+
+function onMatrixRowEdited(id, field, value) {
+    const row = matrixCombinations.find(r => r.id === id);
+    if (row) {
+        row[field] = value.trim();
+    }
+}
+
+function removeMatrixRow(id) {
+    matrixCombinations = matrixCombinations.filter(r => r.id !== id);
+    renderMatrixTable();
+}
+
+function onToggleMatrixTechGtin(isTech) {
+    renderMatrixTable();
+}
+
+function clearAllMatrixGtins() {
+    matrixCombinations.forEach(r => r.gtin = '');
+    renderMatrixTable();
+    showToast('GTIN', 'Все штрихкоды в матрице очищены', 'info');
+}
+
+/**
+ * Одиночная генерация GTIN для одной строки матрицы
+ */
+async function generateSingleMatrixGtin(rowId) {
+    if (!currentSellerId) return showToast('Внимание', 'Сначала выберите продавца', 'warning');
+
+    const input = document.getElementById(`gtin_input_${rowId}`);
+    try {
+        if (input) input.style.opacity = '0.5';
+        const res = await apiFetch(`/sellers/${currentSellerId}/national-catalog/helpers/generate-gtins?quantity=1`);
+        if (res.gtins && res.gtins.length > 0) {
+            const newGtin = res.gtins[0];
+            const row = matrixCombinations.find(r => r.id === rowId);
+            if (row) row.gtin = newGtin;
+            if (input) {
+                input.value = newGtin;
+                input.style.borderColor = 'var(--status-delivered)';
+            }
+            showToast('ГС1 РУС', `Сгенерирован GTIN: ${newGtin}`, 'success');
+        }
+    } catch (err) {
+        showToast('Ошибка генерации GTIN', err.message, 'error');
+    } finally {
+        if (input) input.style.opacity = '1';
+    }
+}
+
+/**
+ * Пакетная генерация GTIN для всех выбранных строк матрицы через ГС1 РУС
+ */
+async function batchGenerateGtinsForMatrix() {
+    if (!currentSellerId) return showToast('Внимание', 'Сначала выберите продавца', 'warning');
+
+    const checkedRows = matrixCombinations.filter(r => r.checked);
+    if (checkedRows.length === 0) {
+        return showToast('Внимание', 'Выберите хотя бы одну карточку (чекбокс слева)', 'warning');
+    }
+
+    // Check how many need GTIN
+    let targets = checkedRows.filter(r => !r.gtin || r.gtin.trim().length < 12);
+    if (targets.length === 0) {
+        if (!confirm(`У всех ${checkedRows.length} выбранных карточек уже есть GTIN. Сгенерировать новые поверх существующих?`)) {
+            return;
+        }
+        targets = checkedRows;
+    }
+
+    const count = targets.length;
+    const btn = document.getElementById('btnMatrixGenGtins');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>⏳</span> Генерация ${count} GTIN...`;
+    }
+
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/national-catalog/helpers/generate-gtins?quantity=${count}`);
+        if (!res.gtins || res.gtins.length === 0) {
+            throw new Error('ГС1 РУС не вернул пул свободных штрихкодов');
+        }
+
+        const generated = res.gtins;
+        targets.forEach((row, i) => {
+            if (generated[i]) {
+                row.gtin = generated[i];
+            }
+        });
+
+        renderMatrixTable();
+        showToast('ГС1 РУС', `Успешно присвоено ${Math.min(generated.length, count)} штрихкодов!`, 'success');
+    } catch (err) {
+        showToast('Ошибка ГС1 РУС', err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
+/**
+ * Отправка пакета карточек в Национальный Каталог (True API POST /nk/feed)
+ */
+async function submitMatrixBatch() {
+    if (!currentSellerId) return showToast('Внимание', 'Сначала выберите продавца', 'warning');
+
+    const baseName = document.getElementById('matrix_base_name')?.value.trim();
+    const baseArticle = document.getElementById('matrix_base_article')?.value.trim();
+    const brand = document.getElementById('matrix_brand')?.value.trim() || null;
+    const tnved = document.getElementById('matrix_tnved')?.value.trim() || null;
+    const categoryIdRaw = document.getElementById('matrix_category_id')?.value.trim();
+    const composition = document.getElementById('matrix_composition')?.value.trim();
+    const country = document.getElementById('matrix_country')?.value.trim() || 'Россия';
+    const declaration = document.getElementById('matrix_declaration')?.value.trim();
+    const techReg = document.getElementById('matrix_tech_reg')?.value.trim();
+    const isTechGtin = document.getElementById('matrix_is_tech_gtin')?.checked || false;
+    const sendToModeration = document.getElementById('matrixModerationCheck')?.checked || true;
+
+    if (!baseName) return showToast('Ошибка', 'Укажите базовое наименование товара', 'error');
+    if (!baseArticle) return showToast('Ошибка', 'Укажите базовый артикул (модель)', 'error');
+    if (!composition) return showToast('Ошибка', 'Укажите состав / материал ткани', 'error');
+
+    const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : 20000003;
+    const checkedRows = matrixCombinations.filter(r => r.checked);
+
+    if (checkedRows.length === 0) {
+        return showToast('Ошибка', 'Выберите хотя бы одну карточку для создания (отметьте галочками)', 'error');
+    }
+
+    // Validation of GTINs
+    if (!isTechGtin) {
+        const missingGtins = checkedRows.filter(r => !r.gtin || r.gtin.trim().length < 12);
+        if (missingGtins.length > 0) {
+            return showToast('Ошибка GTIN', `У ${missingGtins.length} выбранных карточек не заполнен GTIN. Нажмите «Заполнить все GTIN из ГС1 РУС» или отметьте «Технические GTIN (029)».`, 'error');
+        }
+    }
+
+    // Build items array
+    const items = [];
+    const donorAttrs = Array.isArray(matrixDonorCard?.attributes) ? matrixDonorCard.attributes : [];
+
+    // Filter donor custom attributes that should be preserved across all cards
+    const excludedAttrIds = [13914, 10001, 2478, 35, 10613, 36, 10612, 2483, 10610, 2480, 10611, 10609, 23557, 23561, 13836];
+    const inheritedCustomAttrs = donorAttrs.filter(a => !excludedAttrIds.includes(a.attr_id));
+
+    for (const row of checkedRows) {
+        const itemAttrs = [];
+
+        // 1. Article / Model
+        if (row.article) {
+            itemAttrs.push({ attr_id: 13914, attr_value: row.article });
+            itemAttrs.push({ attr_id: 10001, attr_value: row.article });
+        }
+
+        // 2. Size
+        if (row.size) {
+            itemAttrs.push({ attr_id: 35, attr_value: row.size });
+            itemAttrs.push({ attr_id: 10613, attr_value: row.size });
+        }
+
+        // 3. Color
+        if (row.color) {
+            itemAttrs.push({ attr_id: 36, attr_value: row.color });
+            itemAttrs.push({ attr_id: 10612, attr_value: row.color });
+        }
+
+        // 4. Composition
+        if (composition) {
+            itemAttrs.push({ attr_id: 2483, attr_value: composition });
+            itemAttrs.push({ attr_id: 10610, attr_value: composition });
+        }
+
+        // 5. Country of origin
+        if (country) {
+            itemAttrs.push({ attr_id: 2480, attr_value: country });
+            itemAttrs.push({ attr_id: 10611, attr_value: country });
+        }
+
+        // 6. TNVED attribute
+        if (tnved) {
+            itemAttrs.push({ attr_id: 10609, attr_value: tnved });
+        }
+
+        // 7. Declaration of Conformity (attr 23557)
+        if (declaration) {
+            itemAttrs.push({ attr_id: 23557, attr_value: declaration });
+        }
+
+        // 8. Technical Regulation (attr 13836)
+        if (techReg) {
+            itemAttrs.push({ attr_id: 13836, attr_value: techReg });
+        }
+
+        // 9. Additional inherited custom attributes
+        inheritedCustomAttrs.forEach(ca => {
+            itemAttrs.push({
+                attr_id: ca.attr_id,
+                attr_value: ca.attr_value || ca.value || '',
+                attr_value_id: ca.attr_value_id || null
+            });
+        });
+
+        const itemPayload = {
+            name: row.name || baseName,
+            brand: brand,
+            tnved: tnved,
+            category_id: categoryId,
+            category_name: matrixDonorCard?.category_name || null,
+            is_tech_gtin: isTechGtin,
+            is_set: false,
+            gtin: isTechGtin ? null : row.gtin.trim(),
+            moderation: sendToModeration,
+            attributes: itemAttrs,
+            images: Array.isArray(matrixDonorCard?.images) ? matrixDonorCard.images : []
+        };
+
+        items.push(itemPayload);
+    }
+
+    const submitBtn = document.getElementById('btnSubmitMatrixBatch');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>⏳</span> Создание ${items.length} карточек в True API...`;
+    }
+
+    try {
+        const payload = {
+            items: items,
+            moderation: sendToModeration
+        };
+
+        const res = await apiFetch(`/sellers/${currentSellerId}/national-catalog/products/batch`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        showToast('Серия создана', res.message || `Успешно создано ${res.created_count} карточек товаров!`, 'success');
+        closeModal('productMatrixModal');
+        await loadProductCards(true);
+    } catch (err) {
+        console.error('Ошибка пакетного создания карточек:', err);
+        showToast('Ошибка создания серии', err.message, 'error');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
 }

@@ -10,12 +10,18 @@ from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
-from app.database import init_db, AsyncSessionLocal
+from app.database import init_db, AsyncSessionLocal, engine
 from app.models.seller import Seller
 from app.national_catalog.models import ProductCard
 from app.national_catalog.client import NKClient
 from app.services.encryption import encrypt
 from app.config import settings
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_db_engine():
+    yield
+    await engine.dispose()
 
 
 async def _get_auth_headers(client: AsyncClient) -> dict:

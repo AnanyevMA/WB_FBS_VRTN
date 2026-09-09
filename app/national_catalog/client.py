@@ -107,7 +107,7 @@ class NKClient:
         if self.api_key and "apikey" not in query_params and not self.token:
             query_params["apikey"] = self.api_key
 
-        max_retries = 3
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 resp = await self._client.request(
@@ -139,7 +139,7 @@ class NKClient:
 
                 # Если 429 (Слишком много запросов), повторяем с задержкой
                 if resp.status_code == 429 and attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 1.5
+                    wait_sec = (attempt + 1) * 2.0
                     logger.warning("Честный Знак 429 (Too Many Requests) на %s, повтор через %.1f сек...", endpoint, wait_sec)
                     await asyncio.sleep(wait_sec)
                     continue

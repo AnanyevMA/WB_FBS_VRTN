@@ -373,6 +373,7 @@ async def sync_products_from_nk(
                 total_remote = etags_resp.get("total", len(all_remote_goods))
                 if not all_pages or offset >= total_remote or len(all_remote_goods) >= max_limit:
                     break
+                await asyncio.sleep(0.3)
 
             if not all_remote_goods:
                 return SyncNKResponse(

@@ -341,6 +341,7 @@ async def sync_products_from_nk(
     seller_id: str,
     all_pages: bool = Query(True, description="Синхронизировать все страницы товаров из НКТ"),
     max_limit: int = Query(1000, ge=1, le=5000, description="Максимальное количество товаров"),
+    force_refresh: bool = Query(False, description="Принудительно перезагрузить детали всех карточек"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -385,8 +386,24 @@ async def sync_products_from_nk(
                     message="В Национальном каталоге не найдено карточек товаров для данного ИНН.",
                 )
 
-            # Получаем детальные описания карточек параллельно (с семафором 6 для соблюдения лимитов True API)
-            sem = asyncio.Semaphore(6)
+            # Определяем товары для детального запроса:
+            # Если force_refresh=False: запрашиваем только новые товары или товары не в статусе 'published'
+            if force_refresh:
+                goods_to_fetch = all_remote_goods[:150]
+            else:
+                goods_to_fetch = []
+                for g in all_remote_goods:
+                    gid = g.get("good_id")
+                    if not gid:
+                        continue
+                    c = existing_by_good_id.get(int(gid))
+                    if not c or c.status in ("draft", "moderation", "notsigned", "errors", "rejected"):
+                        goods_to_fetch.append(g)
+
+            logger.info("НКТ Синхронизация: всего в каталоге %d, требуется загрузить деталей: %d", len(all_remote_goods), len(goods_to_fetch))
+
+            # Получаем детальные описания карточек параллельно (с семафором 5)
+            sem = asyncio.Semaphore(5)
 
             async def fetch_detail(good_item: dict):
                 gid = good_item.get("good_id")
@@ -400,7 +417,7 @@ async def sync_products_from_nk(
                     logger.warning("Ошибка получения деталей товара good_id %s: %s", gid, exc)
                     return None
 
-            details = await asyncio.gather(*(fetch_detail(g) for g in all_remote_goods))
+            details = await asyncio.gather(*(fetch_detail(g) for g in goods_to_fetch)) if goods_to_fetch else []
 
             # Проверяем статусы фидов для локальных карточек без good_id
             for c in existing_cards:
@@ -533,14 +550,14 @@ async def sync_products_from_nk(
 
     await db.commit()
 
-    total_synced = created_count + updated_count
+    total_in_db = len(existing_by_good_id)
     return SyncNKResponse(
         success=True,
         total_remote=total_remote,
-        synced_count=total_synced,
+        synced_count=total_in_db,
         created_count=created_count,
         updated_count=updated_count,
-        message=f"Успешно синхронизировано {total_synced} карточек из НКТ (создано: {created_count}, обновлено: {updated_count})"
+        message=f"Синхронизация завершена. В базе {total_in_db} карточек (новых загружено: {created_count}, обновлено: {updated_count})"
     )
 
 

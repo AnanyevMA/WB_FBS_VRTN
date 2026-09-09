@@ -332,7 +332,7 @@ async def test_sync_products_from_nk():
             mock_etags_fn.return_value = mock_etags
 
             sync_res_2 = await client.post(
-                f"/api/v1/sellers/{seller_id}/national-catalog/sync-nk",
+                f"/api/v1/sellers/{seller_id}/national-catalog/sync-nk?force_refresh=true",
                 headers=headers
             )
             assert sync_res_2.status_code == 200

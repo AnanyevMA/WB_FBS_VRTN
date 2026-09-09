@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from typing import Any, Dict, List, Optional
 import httpx
 
@@ -137,10 +138,10 @@ class NKClient:
                             return resp.text
                     return {}
 
-                # Если 429 (Слишком много запросов), повторяем с задержкой
+                # Если 429 (Слишком много запросов), повторяем с задержкой и джиттером
                 if resp.status_code == 429 and attempt < max_retries - 1:
-                    wait_sec = (attempt + 1) * 2.0
-                    logger.warning("Честный Знак 429 (Too Many Requests) на %s, повтор через %.1f сек...", endpoint, wait_sec)
+                    wait_sec = (attempt + 1) * 2.0 + random.uniform(0.3, 1.2)
+                    logger.warning("Честный Знак 429 (Too Many Requests) на %s, повтор через %.2f сек...", endpoint, wait_sec)
                     await asyncio.sleep(wait_sec)
                     continue
 

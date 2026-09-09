@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-04T15:19:26.755136+00:00",
+  "updated_at": "2026-09-09T13:52:39.472311+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 109,
+  "total_files": 120,
   "files": [
     {
       "file": "alembic/env.py",
@@ -252,6 +252,79 @@
       ]
     },
     {
+      "file": "alembic/versions/c3d4e5f6a7b8_add_cz_rejection_and_doc_status_to_orders.py",
+      "layer": "migrations",
+      "hash": "1c8d6d496c5c",
+      "docstring": "add_cz_rejection_and_doc_status_to_orders",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/d4e5f6a7b8c9_add_archive_reminder_time_to_sellers.py",
+      "layer": "migrations",
+      "hash": "78af7bc236d1",
+      "docstring": "add_archive_reminder_time_to_sellers",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/e5f6a7b8c9d0_add_product_cards_table.py",
+      "layer": "migrations",
+      "hash": "bd4475cb9825",
+      "error": "SyntaxError: invalid non-printable character U+FEFF (e5f6a7b8c9d0_add_product_cards_table.py, line 1)",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": []
+    },
+    {
       "file": "app/__init__.py",
       "layer": "core",
       "hash": "d38e4370fce2",
@@ -365,7 +438,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "99a9274e6245",
+      "hash": "d2967a99f945",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -406,13 +479,11 @@
         {
           "name": "check_archive_reminders",
           "is_async": false,
-          "args": [
-            "self"
-          ],
+          "args": [],
           "decorators": [
             "celery_app.task()"
           ],
-          "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней, по умолчанию 2)."
+          "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней в ЧЧ:ММ)."
         }
       ],
       "endpoints": [],
@@ -435,7 +506,7 @@
         {
           "name": "app.agents.archive_processor.check_archive_reminders",
           "function": "check_archive_reminders",
-          "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней, по умолчанию 2)."
+          "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней в ЧЧ:ММ)."
         }
       ],
       "db_tables": [],
@@ -448,6 +519,7 @@
         "app.models.seller",
         "app.services.encryption",
         "app.services.telegram_service",
+        "app.services.time_service",
         "app.services.wb_client",
         "asyncio",
         "datetime",
@@ -654,7 +726,7 @@
     {
       "file": "app/agents/cz_withdrawal.py",
       "layer": "agents",
-      "hash": "d54d380867ca",
+      "hash": "75e432bdc04b",
       "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -747,6 +819,7 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
+        "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
         "asyncio",
@@ -2028,7 +2101,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "18f646d350b2",
+      "hash": "23936b1f3a4b",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2178,7 +2251,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "6a90aa507156",
+      "hash": "6e21c12ca1c2",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3335,7 +3408,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "c088c65b8b37",
+      "hash": "e222e7dd238d",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3434,7 +3507,7 @@
     {
       "file": "app/main.py",
       "layer": "core",
-      "hash": "d1c91806e05a",
+      "hash": "b445b7fde1f4",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3489,6 +3562,7 @@
         "app.api.auth",
         "app.config",
         "app.database",
+        "app.national_catalog",
         "app.services.time_service",
         "contextlib",
         "fastapi",
@@ -3501,7 +3575,7 @@
     {
       "file": "app/models/__init__.py",
       "layer": "models",
-      "hash": "eb90de3158cc",
+      "hash": "d518cf9fc4fd",
       "docstring": "",
       "classes": [],
       "functions": [],
@@ -3514,7 +3588,8 @@
         "app.models.order",
         "app.models.seller",
         "app.models.supply",
-        "app.models.user"
+        "app.models.user",
+        "app.national_catalog.models"
       ]
     },
     {
@@ -3667,7 +3742,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "d34214b69373",
+      "hash": "5155b4f8f08c",
       "docstring": "",
       "classes": [
         {
@@ -3781,6 +3856,476 @@
         "sqlalchemy.sql",
         "typing",
         "uuid"
+      ]
+    },
+    {
+      "file": "app/national_catalog/__init__.py",
+      "layer": "core",
+      "hash": "2cfc862bdfe7",
+      "error": "SyntaxError: invalid non-printable character U+FEFF (__init__.py, line 1)",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": []
+    },
+    {
+      "file": "app/national_catalog/client.py",
+      "layer": "core",
+      "hash": "0a5a7655cc12",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "NKAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Исключение при взаимодействии с API Национального каталога.",
+          "methods": [
+            "__init__"
+          ]
+        },
+        {
+          "name": "NKClient",
+          "bases": [],
+          "docstring": "Асинхронный клиент для взаимодействия с подсистемой «Национальный каталог» (НКТ)",
+          "methods": [
+            "__init__",
+            "__aenter__",
+            "__aexit__",
+            "close",
+            "_ensure_client",
+            "_extract_error",
+            "_request",
+            "create_or_update_feed",
+            "get_feed_status",
+            "get_feed_product",
+            "get_product_info",
+            "send_to_moderation",
+            "get_product_document_xml",
+            "sign_product_pkcs",
+            "get_categories",
+            "get_attributes",
+            "get_brands",
+            "generate_gtin",
+            "get_etags_list"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "httpx",
+        "logging",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/national_catalog/models.py",
+      "layer": "core",
+      "hash": "4f14a6b8d8e3",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "ProductCard",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "Карточка товара в Национальном каталоге товаров (НКТ / ГИС МТ Честный Знак).",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "product_cards"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/national_catalog/router.py",
+      "layer": "core",
+      "hash": "f85d9b606a0b",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_get_seller_or_404",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_get_seller_nk_client",
+          "is_async": true,
+          "args": [
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "list_products",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "status",
+            "search",
+            "limit",
+            "offset",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/products')"
+          ],
+          "docstring": "Получение списка карточек товаров для указанного продавца."
+        },
+        {
+          "name": "create_product",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/products')"
+          ],
+          "docstring": "Создание новой карточки товара и отправка реального пакета (фида) в Честный Знак."
+        },
+        {
+          "name": "get_product",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/products/{product_id}')"
+          ],
+          "docstring": "Получение одной карточки товара."
+        },
+        {
+          "name": "update_product",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.put('/sellers/{seller_id}/national-catalog/products/{product_id}')"
+          ],
+          "docstring": "Редактирование карточки товара с отправкой обновления в Честный Знак."
+        },
+        {
+          "name": "delete_product",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "db"
+          ],
+          "decorators": [
+            "router.delete('/sellers/{seller_id}/national-catalog/products/{product_id}')"
+          ],
+          "docstring": "Удаление карточки из базы (если она не опубликована)."
+        },
+        {
+          "name": "check_product_status",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/products/{product_id}/check-status')"
+          ],
+          "docstring": "Запрос актуального статуса обработки фида и карточки из Национального каталога."
+        },
+        {
+          "name": "send_product_to_moderation",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/products/{product_id}/send-to-moderation')"
+          ],
+          "docstring": "Отправка черновика карточки на модерацию в Честный Знак (/nk/feed-moderation)."
+        },
+        {
+          "name": "prepare_sign",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/products/{product_id}/prepare-sign')"
+          ],
+          "docstring": "Получение канонического XML карточки для подписания УКЭП в браузере (POST /nk/feed-product-document)."
+        },
+        {
+          "name": "publish_product",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "product_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sellers/{seller_id}/national-catalog/products/{product_id}/publish')"
+          ],
+          "docstring": "Публикация карточки товара в НКТ с отправкой открепленной CMS-подписи (POST /nk/feed-product-sign-pkcs)."
+        },
+        {
+          "name": "get_categories",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "tnved",
+            "cat_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/helpers/categories')"
+          ],
+          "docstring": "Получение списка категорий НКТ по коду ТН ВЭД."
+        },
+        {
+          "name": "get_attributes",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "cat_id",
+            "tnved",
+            "attr_type",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/helpers/attributes')"
+          ],
+          "docstring": "Получение требований к атрибутам по категории или ТН ВЭД."
+        },
+        {
+          "name": "search_brands",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "name",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/helpers/brands')"
+          ],
+          "docstring": "Поиск торговых марок / брендов."
+        },
+        {
+          "name": "generate_gtin",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/sellers/{seller_id}/national-catalog/helpers/generate-gtin')"
+          ],
+          "docstring": "Генерация черновика GTIN по диапазону предприятия в ГС1 РУС."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/products",
+          "handler": "list_products",
+          "docstring": "Получение списка карточек товаров для указанного продавца."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/products",
+          "handler": "create_product",
+          "docstring": "Создание новой карточки товара и отправка реального пакета (фида) в Честный Знак."
+        },
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}",
+          "handler": "get_product",
+          "docstring": "Получение одной карточки товара."
+        },
+        {
+          "method": "PUT",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}",
+          "handler": "update_product",
+          "docstring": "Редактирование карточки товара с отправкой обновления в Честный Знак."
+        },
+        {
+          "method": "DELETE",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}",
+          "handler": "delete_product",
+          "docstring": "Удаление карточки из базы (если она не опубликована)."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}/check-status",
+          "handler": "check_product_status",
+          "docstring": "Запрос актуального статуса обработки фида и карточки из Национального каталога."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}/send-to-moderation",
+          "handler": "send_product_to_moderation",
+          "docstring": "Отправка черновика карточки на модерацию в Честный Знак (/nk/feed-moderation)."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}/prepare-sign",
+          "handler": "prepare_sign",
+          "docstring": "Получение канонического XML карточки для подписания УКЭП в браузере (POST /nk/feed-product-document)."
+        },
+        {
+          "method": "POST",
+          "path": "/sellers/{seller_id}/national-catalog/products/{product_id}/publish",
+          "handler": "publish_product",
+          "docstring": "Публикация карточки товара в НКТ с отправкой открепленной CMS-подписи (POST /nk/feed-product-sign-pkcs)."
+        },
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/helpers/categories",
+          "handler": "get_categories",
+          "docstring": "Получение списка категорий НКТ по коду ТН ВЭД."
+        },
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/helpers/attributes",
+          "handler": "get_attributes",
+          "docstring": "Получение требований к атрибутам по категории или ТН ВЭД."
+        },
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/helpers/brands",
+          "handler": "search_brands",
+          "docstring": "Поиск торговых марок / брендов."
+        },
+        {
+          "method": "GET",
+          "path": "/sellers/{seller_id}/national-catalog/helpers/generate-gtin",
+          "handler": "generate_gtin",
+          "docstring": "Генерация черновика GTIN по диапазону предприятия в ГС1 РУС."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.seller",
+        "app.national_catalog.client",
+        "app.national_catalog.models",
+        "app.national_catalog.schemas",
+        "app.services.encryption",
+        "base64",
+        "datetime",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/national_catalog/schemas.py",
+      "layer": "core",
+      "hash": "49c08fc02632",
+      "docstring": "",
+      "classes": [
+        {
+          "name": "ProductAttributeItem",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ProductImageItem",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ProductCardCreateRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ProductCardUpdateRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ProductCardResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "PrepareSignResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "SubmitSignRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "datetime",
+        "pydantic",
+        "typing"
       ]
     },
     {
@@ -3930,7 +4475,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "2a6030964e1a",
+      "hash": "4bf5439daf94",
       "docstring": "",
       "classes": [
         {
@@ -4029,7 +4574,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "443de2a85e49",
+      "hash": "9555721e0805",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -4239,7 +4784,7 @@
     {
       "file": "app/services/crypto_service.py",
       "layer": "services",
-      "hash": "1a1b61f4793f",
+      "hash": "0c470fbb8a1b",
       "docstring": "КриптоПро Digital Signature Service",
       "classes": [
         {
@@ -4486,7 +5031,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "d36a13475929",
+      "hash": "0ce5ce5c6c0f",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4907,7 +5452,7 @@
     {
       "file": "scripts/check_cz_doc.py",
       "layer": "config",
-      "hash": "5bf8a286410b",
+      "hash": "e90c53357005",
       "docstring": "CLI Utility to check Chestny Znak (GIS MT / True API) document status",
       "classes": [],
       "functions": [
@@ -4939,6 +5484,33 @@
         "sqlalchemy",
         "sqlalchemy.orm",
         "sys"
+      ]
+    },
+    {
+      "file": "scripts/do_heal.py",
+      "layer": "config",
+      "hash": "c0e00e46358d",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "main",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "asyncio",
+        "datetime",
+        "sqlalchemy"
       ]
     },
     {
@@ -4989,6 +5561,36 @@
         "os",
         "pathlib",
         "secrets",
+        "sys"
+      ]
+    },
+    {
+      "file": "scripts/retry_order_cz.py",
+      "layer": "config",
+      "hash": "6aa5b9af3b2f",
+      "docstring": "Script to trigger retry-withdrawal for an order.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "main",
+          "is_async": true,
+          "args": [
+            "order_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.orders",
+        "app.database",
+        "app.models.order",
+        "argparse",
+        "asyncio",
+        "pathlib",
         "sys"
       ]
     },
@@ -5061,6 +5663,40 @@
         "sqlalchemy",
         "sqlalchemy.orm",
         "subprocess",
+        "sys"
+      ]
+    },
+    {
+      "file": "scripts/sync_order_cz_status.py",
+      "layer": "config",
+      "hash": "fe9174c00625",
+      "docstring": "Script to synchronize order CZ withdrawal document status with True API v4.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_order",
+          "is_async": true,
+          "args": [
+            "order_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "argparse",
+        "asyncio",
+        "pathlib",
+        "sqlalchemy",
         "sys"
       ]
     },
@@ -5219,7 +5855,7 @@
     {
       "file": "tests/test_archive_reminder.py",
       "layer": "tests",
-      "hash": "b708105ce0d0",
+      "hash": "49c137d8d196",
       "docstring": "Unit & Integration Tests for Archive Upload Reminders Agent (Every 2 days)",
       "classes": [],
       "functions": [
@@ -5271,6 +5907,36 @@
           ],
           "decorators": [],
           "docstring": "If archive_reminder_enabled is False, reminder must NOT be sent."
+        },
+        {
+          "name": "test_archive_reminder_time_window_exact_14_00",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "When current time is exactly 14:00 Moscow time, reminder should be sent."
+        },
+        {
+          "name": "test_archive_reminder_time_window_before_14_00_skipped",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "When current time is 11:30 (before 14:00), reminder must NOT be sent."
+        },
+        {
+          "name": "test_archive_reminder_already_sent_today_skipped",
+          "is_async": false,
+          "args": [
+            "sync_db",
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": "If reminder was already sent today at 14:00, second check at 14:05 must NOT send again."
         }
       ],
       "endpoints": [],
@@ -5285,7 +5951,8 @@
         "pytest",
         "sqlalchemy",
         "sqlalchemy.orm",
-        "unittest.mock"
+        "unittest.mock",
+        "zoneinfo"
       ]
     },
     {
@@ -6651,7 +7318,7 @@
     {
       "file": "tests/test_kiz_dashboard_retry_r3.py",
       "layer": "tests",
-      "hash": "40bbb3883e42",
+      "hash": "f2e8c2a049cf",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6756,7 +7423,7 @@
     {
       "file": "tests/test_kiz_heuristics_r2.py",
       "layer": "tests",
-      "hash": "87b19a6e12a4",
+      "hash": "eb86a8885322",
       "docstring": "Unit and integration tests for Milestone 2 (R2):",
       "classes": [],
       "functions": [
@@ -7126,7 +7793,7 @@
     {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
-      "hash": "86c7b99e9373",
+      "hash": "5fcc336664f2",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -7146,6 +7813,13 @@
         },
         {
           "name": "test_parse_kiz_code_with_crypto_tail",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_kiz_code_with_double_single_quotes_from_wb",
           "is_async": false,
           "args": [],
           "decorators": [],
@@ -7263,7 +7937,7 @@
     {
       "file": "tests/test_kiz_signature_batches.py",
       "layer": "tests",
-      "hash": "816f0be11519",
+      "hash": "0a00c3d3ba02",
       "docstring": "Integration & Unit Tests for KIZ Signature Batches and Dashboard Signing Queue",
       "classes": [],
       "functions": [
@@ -7284,6 +7958,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Проверяет:"
+        },
+        {
+          "name": "test_signature_batch_rejection_handling",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет корректную обработку отказа ГИС МТ (CHECKED_NOT_OK / CZDocumentError)"
         }
       ],
       "endpoints": [],
@@ -7296,6 +7979,7 @@
         "app.models.order",
         "app.models.seller",
         "app.services.auth_service",
+        "app.services.cz_client",
         "app.services.encryption",
         "datetime",
         "httpx",
@@ -8404,7 +9088,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "cdf30abc4fcb",
+      "hash": "498f07b44b99",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

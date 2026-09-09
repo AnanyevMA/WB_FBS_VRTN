@@ -24,6 +24,8 @@ function navigateTo(route) {
         if (typeof loadSignatureBatches === 'function') loadSignatureBatches();
     } else if (route === '/supplies') {
         loadSupplies();
+    } else if (route === '/products') {
+        if (typeof loadProductCards === 'function') loadProductCards();
     } else if (route === '/sellers') {
         loadSellers();
     } else if (route === '/audit') {

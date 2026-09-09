@@ -8,6 +8,7 @@ import logging
 # Import all routers
 from app.api import auth, sellers, orders, supplies, kiz, audit, debug, qa
 from app.api.auth import get_current_active_user, require_admin
+from app.national_catalog import nk_router
 from app.database import init_db
 from app.config import settings
 
@@ -69,6 +70,11 @@ app.include_router(
 app.include_router(
     audit.router, 
     prefix="/api/v1", 
+    dependencies=[Depends(get_current_active_user)]
+)
+app.include_router(
+    nk_router,
+    prefix="/api/v1",
     dependencies=[Depends(get_current_active_user)]
 )
 

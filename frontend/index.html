@@ -38,6 +38,9 @@
             <div class="nav-item" data-route="/supplies">
                 <span>🚚</span> Поставки
             </div>
+            <div class="nav-item" data-route="/products">
+                <span>🏷️</span> Карточки (НКТ)
+            </div>
             <div class="nav-item" data-route="/sellers">
                 <span>👥</span> Продавцы
             </div>
@@ -393,6 +396,60 @@
                         </thead>
                         <tbody id="supplies-table-body">
                             <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка поставок...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Products / National Catalog Page -->
+            <div id="page-/products" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">🏷️ Карточки товаров (НКТ)</h1>
+                        <p class="page-subtitle">Управление каталогом товаров продавца в Национальном Каталоге Честного Знака.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="nkSyncBtn" onclick="syncProductCardsFromNK()">
+                            <span>🔄</span> Синхронизировать с НКТ
+                        </button>
+                        <button class="btn btn-primary" onclick="openCreateCardModal()">
+                            <span>➕</span> Добавить карточку
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters & Search -->
+                <div class="filter-bar" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+                    <div style="flex: 1; min-width: 240px;">
+                        <input type="text" class="form-control" id="nkSearchInput" placeholder="Поиск по названию, артикулу, бренду или GTIN..." oninput="renderProductCards(nkCardsList)">
+                    </div>
+                    <div style="min-width: 180px;">
+                        <select class="form-control" id="nkStatusFilter" onchange="renderProductCards(nkCardsList)">
+                            <option value="all">Все статусы</option>
+                            <option value="draft">Черновик</option>
+                            <option value="moderation">На модерации</option>
+                            <option value="notsigned">Ожидает подписи</option>
+                            <option value="published">Опубликован</option>
+                            <option value="rejected">Отклонен</option>
+                            <option value="error">Ошибка</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="min-width: 130px;">GTIN / Штрихкод</th>
+                                <th>Товар / Артикул</th>
+                                <th>Категория НКТ</th>
+                                <th>Статус НКТ</th>
+                                <th>Обновлено</th>
+                                <th style="min-width: 140px;">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nk-cards-table-body">
+                            <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка карточек товаров...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -946,6 +1003,178 @@
             <button class="btn btn-secondary" onclick="closeModal('userAccountModal')">Закрыть</button>
         </div>
     </div>
+<!-- National Catalog Product Card Modal -->
+<div class="modal-overlay" id="productCardModal">
+    <div class="modal-content" style="max-width: 780px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 22px;">🏷️</span>
+                <div>
+                    <h3 id="nkCardModalTitle" style="margin: 0;">Карточка товара (НКТ)</h3>
+                    <div style="font-size: 12px; color: var(--text-muted);">Национальный Каталог Честного Знака</div>
+                </div>
+            </div>
+            <button class="icon-btn" onclick="closeModal('productCardModal')">✕</button>
+        </div>
+
+        <div class="modal-body" style="overflow-y: auto; flex: 1; padding: 20px;">
+            <form id="nkCardForm" onsubmit="event.preventDefault();">
+                <input type="hidden" id="nk_card_good_id">
+
+                <h4 style="margin: 0 0 12px; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                    1. Основные сведения
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Наименование товара <span style="color:var(--status-cancelled);">*</span></label>
+                        <input type="text" class="form-control" id="nk_card_name" placeholder="Например: Футболка мужская базовая" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Артикул продавца <span style="color:var(--status-cancelled);">*</span></label>
+                        <input type="text" class="form-control" id="nk_card_article" placeholder="Например: TSHIRT-BLK-01" required>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Бренд / Торговая марка</label>
+                        <input type="text" class="form-control" id="nk_card_brand" placeholder="Например: MyBrand">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label class="form-label" style="margin-bottom: 0;">GTIN (Штрихкод)</label>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnGenGtin" onclick="generateCardGtin()" style="padding: 2px 8px; font-size: 11px;">
+                                🎲 Сгенерировать GTIN
+                            </button>
+                        </div>
+                        <input type="text" class="form-control" id="nk_card_gtin" placeholder="04600000000000 (14 цифр)">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: 14px; margin-bottom: 16px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">ID Категории НКТ</label>
+                        <input type="number" class="form-control" id="nk_card_category_id" value="20000003" placeholder="20000003">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Название категории</label>
+                        <input type="text" class="form-control" id="nk_card_category_name" placeholder="Одежда и текстиль">
+                    </div>
+                </div>
+
+                <h4 style="margin: 16px 0 12px; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                    2. Атрибуты маркировки (Честный Знак / Легпром)
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Код ТН ВЭД (10 знаков)</label>
+                        <input type="text" class="form-control" id="nk_card_tnved" placeholder="6203420000" maxlength="10">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Состав / Материал</label>
+                        <input type="text" class="form-control" id="nk_card_composition" placeholder="100% хлопок">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Страна производства</label>
+                        <input type="text" class="form-control" id="nk_card_country" placeholder="Россия">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Цвет</label>
+                        <input type="text" class="form-control" id="nk_card_color" placeholder="Черный">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Размер изделия</label>
+                        <input type="text" class="form-control" id="nk_card_size" placeholder="L / 50">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">Краткое описание</label>
+                        <input type="text" class="form-control" id="nk_card_description" placeholder="Базовая модель прямого кроя">
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+                            Дополнительные атрибуты НКТ
+                        </span>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomAttributeRow()" style="padding: 2px 8px; font-size: 11px;">
+                            + Добавить строку атрибута
+                        </button>
+                    </div>
+                    <div id="nk_custom_attrs_container"></div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px; margin-bottom: 0; background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 12px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" id="nkCardModerationCheck" checked style="accent-color: var(--primary); width: 18px; height: 18px;">
+                        <div>
+                            <span style="font-weight: 600; font-size: 13px;">Отправить на модерацию в НКТ</span>
+                            <div style="font-size: 11px; color: var(--text-muted);">При отправке в НКТ карточка сразу перейдет в статус проверки модератором НКТ.</div>
+                        </div>
+                    </label>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8); border-top: 1px solid var(--border-color); padding: 14px 20px;">
+            <button class="btn btn-secondary" onclick="closeModal('productCardModal')">Отмена</button>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="saveProductCard(false)">
+                    Сохранить черновик
+                </button>
+                <button type="button" class="btn btn-primary" id="btnSaveNkCard" onclick="saveProductCard(true)">
+                    <span>🚀 Передать в НКТ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- National Catalog Product Sign & Publish Modal -->
+<div class="modal-overlay" id="productSignModal">
+    <div class="modal-content" style="max-width: 650px; width: 95vw;">
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 22px;">🔏</span>
+                <div>
+                    <h3 style="margin: 0;">Подписание и публикация карточки</h3>
+                    <div style="font-size: 12px; color: var(--text-muted);">Национальный Каталог (True API /nk/feed-product-sign-pkcs)</div>
+                </div>
+            </div>
+            <button class="icon-btn" onclick="closeModal('productSignModal')">✕</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px;">
+            <div id="nkSignModalContent">
+                <!-- Loaded dynamically -->
+            </div>
+
+            <div class="form-group" style="margin-top: 14px; background: rgba(124,58,237,0.06); border: 1px solid rgba(124,58,237,0.25); border-radius: 8px; padding: 12px;">
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>✍️ Сертификат УКЭП (КриптоПро)</span>
+                    <button type="button" class="btn btn-secondary" onclick="safePopulateCertificatesDropdown('nk_cert_select')" style="padding: 2px 6px; font-size: 10px;">🔄 Обновить</button>
+                </label>
+                <select class="form-control" id="nk_cert_select" style="font-size: 13px;">
+                    <option value="">-- Выберите личный сертификат УКЭП --</option>
+                </select>
+            </div>
+
+            <div id="nk_sign_status_box" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-top: 12px; background: rgba(15,23,42,0.6); border: 1px solid var(--border-color);"></div>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border-color);">
+            <button class="btn btn-secondary" onclick="closeModal('productSignModal')">Отмена</button>
+            <button class="btn btn-primary" id="btnSubmitNkSign" onclick="signAndPublishCard()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                <span>🔏 Подписать и опубликовать</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- WB Archive Preview & Processing Modal -->
@@ -1090,6 +1319,7 @@
 <script src="js/signature_queue.js?v=1.1.0"></script>
 <script src="js/supplies.js?v=1.1.0"></script>
 <script src="js/sellers.js?v=1.1.0"></script>
+<script src="js/national_catalog.js?v=1.1.0"></script>
 <script src="js/audit.js?v=1.1.0"></script>
 <script src="js/app.js?v=1.1.0"></script>
 </body>

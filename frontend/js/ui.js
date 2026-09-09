@@ -50,6 +50,10 @@ function getStatusBadge(status, type = 'order') {
     } else if (type === 'kiz') {
         const ru = STATUS_MAP_KIZ[s] || s;
         return `<span class="badge kiz-${s.toLowerCase()}">${ru}</span>`;
+    } else if (type === 'nk') {
+        const raw = status.toLowerCase();
+        const ru = (typeof STATUS_MAP_NK !== 'undefined' && STATUS_MAP_NK[raw]) ? STATUS_MAP_NK[raw] : status;
+        return `<span class="badge nk-${raw}">${ru}</span>`;
     } else {
         const ru = STATUS_MAP_SUPPLY[s] || s;
         return `<span class="badge bg-${s.toLowerCase()}">${ru}</span>`;

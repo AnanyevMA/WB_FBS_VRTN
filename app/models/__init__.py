@@ -4,11 +4,12 @@ from app.models.supply import Supply, SupplyStatus
 from app.models.kiz import KizOperation, KizOperationType, KizProductInfo, KizSignatureBatch, BatchStatus
 from app.models.audit import AuditLog
 from app.models.user import User, UserRole
+from app.national_catalog.models import ProductCard
 
 __all__ = [
     "Seller", "Order", "OrderStatus", "KizStatus",
     "Supply", "SupplyStatus",
     "KizOperation", "KizOperationType", "KizProductInfo",
     "KizSignatureBatch", "BatchStatus",
-    "AuditLog", "User", "UserRole"
+    "AuditLog", "User", "UserRole", "ProductCard"
 ]

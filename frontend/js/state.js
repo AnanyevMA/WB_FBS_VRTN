@@ -78,3 +78,12 @@ const STATUS_MAP_WB = {
     'declined_by_client': 'Отменен клиентом (1-й час)',
     'defect': 'Брак'
 };
+
+const STATUS_MAP_NK = {
+    'draft': 'Черновик',
+    'moderation': 'На модерации',
+    'notsigned': 'Ожидает подписи',
+    'published': 'Опубликован',
+    'rejected': 'Отклонен',
+    'error': 'Ошибка'
+};

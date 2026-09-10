@@ -409,6 +409,113 @@ async function silentCheckAndRefreshCzToken() {
     }
 }
 
+/**
+ * Принудительное обновление динамического токена Честного Знака через браузерный плагин КриптоПро.
+ * Вызывается при нажатии «Актуализировать ЧЗ» или при 401 ошибке от True API.
+ * @param {string} sellerId - UUID продавца
+ * @returns {Promise<boolean>} True если токен успешно получен и сохранен в БД
+ */
+async function forceRefreshCzTokenViaBrowser(sellerId) {
+    const targetSellerId = sellerId || currentSellerId;
+    if (!targetSellerId) {
+        console.warn("[Force-Refresh CZ] sellerId is missing");
+        return false;
+    }
+
+    try {
+        console.log(`[Force-Refresh CZ] Requesting auth challenge for seller ${targetSellerId}...`);
+        const challenge = await apiFetch(`/sellers/${targetSellerId}/cz-challenge`);
+        if (!challenge || !challenge.uuid || !challenge.data) {
+            throw new Error("Не удалось получить строку challenge от Честного Знака");
+        }
+
+        // Get seller info
+        let seller = (typeof currentSeller !== 'undefined' && currentSeller && currentSeller.id === targetSellerId)
+            ? currentSeller
+            : null;
+        if (!seller) {
+            try {
+                seller = await apiFetch(`/sellers/${targetSellerId}`);
+            } catch (e) {
+                console.debug("[Force-Refresh CZ] Could not fetch seller object:", e);
+            }
+        }
+
+        const sellerInn = seller ? (seller.cz_inn || '') : '';
+        let targetThumb = seller ? (seller.cryptopro_cert_thumbprint || seller.cz_cert_path || '') : '';
+
+        await loadCryptoProCerts();
+        if (!targetThumb || !cryptoProCerts.some(c => c.thumbprint.toLowerCase() === targetThumb.toLowerCase())) {
+            const matchByInn = sellerInn ? cryptoProCerts.find(c => c.inn && c.inn === sellerInn) : null;
+            if (matchByInn) {
+                targetThumb = matchByInn.thumbprint;
+            } else if (cryptoProCerts.length > 0) {
+                targetThumb = cryptoProCerts[0].thumbprint;
+            }
+        }
+
+        if (!targetThumb) {
+            throw new Error("Не найден подходящий сертификат УКЭП в хранилище КриптоПро");
+        }
+
+        let signature = null;
+        if (window.cryptoPro && typeof window.cryptoPro.createAttachedSignature === 'function') {
+            try {
+                signature = await window.cryptoPro.createAttachedSignature(targetThumb, challenge.data);
+            } catch (e) {
+                console.debug("cryptoPro.createAttachedSignature fallback:", e);
+            }
+        }
+
+        if (!signature && window.cadesplugin) {
+            await window.cadesplugin;
+            const CURRENT_USER = (window.cadesplugin.CAPICOM_CURRENT_USER_STORE !== undefined) ? window.cadesplugin.CAPICOM_CURRENT_USER_STORE : 2;
+            const MY_STORE = (window.cadesplugin.CAPICOM_MY_STORE !== undefined) ? window.cadesplugin.CAPICOM_MY_STORE : "My";
+            const STORE_OPEN_MAX = (window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED !== undefined) ? window.cadesplugin.CAPICOM_STORE_OPEN_MAXIMUM_ALLOWED : 2;
+
+            const oStore = await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+            await oStore.Open(CURRENT_USER, MY_STORE, STORE_OPEN_MAX);
+            const certs = await oStore.Certificates;
+            const found = await certs.Find(window.cadesplugin.CAPICOM_CERTIFICATE_FIND_SHA1_HASH, targetThumb);
+            if ((await found.Count) > 0) {
+                const cert = await found.Item(1);
+                const oSigner = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+                await oSigner.propset_Certificate(cert);
+
+                const oSignedData = await window.cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+                await oSignedData.propset_Content(challenge.data);
+
+                signature = await oSignedData.SignCades(oSigner, window.cadesplugin.CADESCOM_CADES_BES, false);
+            }
+            await oStore.Close();
+        }
+
+        if (!signature) {
+            throw new Error("Не удалось сформировать присоединенную подпись УКЭП через плагин КриптоПро");
+        }
+
+        const signinRes = await apiFetch(`/sellers/${targetSellerId}/cz-signin`, {
+            method: 'POST',
+            body: JSON.stringify({
+                uuid: challenge.uuid,
+                data: signature
+            })
+        });
+
+        console.log(`[Force-Refresh CZ] ✅ Token refreshed successfully:`, signinRes.token_preview || 'OK');
+        lastSilentCzCheckTimestamp = Date.now();
+
+        const czStatusEl = document.getElementById('seller_cz_token_status');
+        if (czStatusEl) {
+            czStatusEl.innerHTML = `<span style="color:var(--status-delivered); font-weight:600;">✅ Токен активен в БД (${signinRes.token_preview || 'обновлен через ЭЦП'})</span>`;
+        }
+        return true;
+    } catch (err) {
+        console.warn(`[Force-Refresh CZ] Re-authentication failed:`, err);
+        return false;
+    }
+}
+
 // Global window bindings
 window.initCryptoProPlugin = initCryptoProPlugin;
 window.checkPluginLoaded = checkPluginLoaded;
@@ -418,5 +525,6 @@ window.onCertSelected = onCertSelected;
 window.signDataWithCryptoPro = signDataWithCryptoPro;
 window.signBase64WithCades = signDataWithCryptoPro;
 window.silentCheckAndRefreshCzToken = silentCheckAndRefreshCzToken;
+window.forceRefreshCzTokenViaBrowser = forceRefreshCzTokenViaBrowser;
 
 

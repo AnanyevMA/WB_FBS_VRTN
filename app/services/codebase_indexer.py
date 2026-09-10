@@ -388,3 +388,10 @@ class CodebaseIndexer:
                 })
 
         return results[:limit]
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    indexer = CodebaseIndexer()
+    indexer.save_index()
+    print(f"Codebase indexed successfully: {indexer.index_json_path} and {indexer.map_md_path}")

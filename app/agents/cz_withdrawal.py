@@ -105,7 +105,7 @@ def withdraw_order_kiz(
 
         # Guard: In production, server must not attempt withdrawal if CryptoPro is not installed on host
         from app.services.crypto_service import is_cryptopro_available
-        if not is_cryptopro_available() and not settings.mock_cz:
+        if not is_cryptopro_available() and not getattr(settings, "mock_cz", False):
             msg = (
                 "Серверная электронная подпись недоступна (КриптоПро CSP не установлен на сервере). "
                 "Вывод КИЗ из оборота должен выполняться в дашборде через браузерный плагин КриптоПро (КЭП)."

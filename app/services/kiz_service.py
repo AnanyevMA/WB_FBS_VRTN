@@ -862,10 +862,16 @@ async def batch_verify_and_sync_cises(
                 except Exception as auth_err:
                     logger.warning(f"Batch CZ auth error for seller {seller.id}: {auth_err}")
                     if force_refresh:
-                        raise CZUnauthorizedError(f"Ошибка авторизации в Честном Знаке: {auth_err}")
+                        raise CZUnauthorizedError(
+                            "Срок действия сессии Честного Знака истек (401). "
+                            "Требуется обновление токена через ЭЦП в браузере."
+                        )
             else:
                 if force_refresh:
-                    raise CZUnauthorizedError("Срок действия токена Честного Знака истек (401). Перейдите в «Настройки» продавца и нажмите «Получить через ЭЦП» для обновления токена.")
+                    raise CZUnauthorizedError(
+                        "Срок действия токена Честного Знака истек (401). "
+                        "Перейдите в «Настройки» продавца и нажмите «Получить через ЭЦП» для обновления токена."
+                    )
         except Exception as cz_err:
             logger.warning(f"Batch CZ get_cises_info error: {cz_err}")
             if force_refresh:

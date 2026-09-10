@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-09T23:13:45.826633+00:00",
+  "updated_at": "2026-09-10T23:10:01.475411+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 121,
   "files": [
@@ -316,13 +316,33 @@
     {
       "file": "alembic/versions/e5f6a7b8c9d0_add_product_cards_table.py",
       "layer": "migrations",
-      "hash": "6451be94437d",
-      "error": "SyntaxError: invalid non-printable character U+FEFF (e5f6a7b8c9d0_add_product_cards_table.py, line 1)",
+      "hash": "928136492e2f",
+      "docstring": "add_product_cards_table",
       "classes": [],
-      "functions": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
       "endpoints": [],
       "celery_tasks": [],
-      "db_tables": []
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
     },
     {
       "file": "app/__init__.py",
@@ -726,7 +746,7 @@
     {
       "file": "app/agents/cz_withdrawal.py",
       "layer": "agents",
-      "hash": "75e432bdc04b",
+      "hash": "1c91d56e12c5",
       "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -2251,7 +2271,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "6e21c12ca1c2",
+      "hash": "681a8f805cc7",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3447,7 +3467,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "d9b610b376e7",
+      "hash": "b392aa996a64",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -3529,7 +3549,7 @@
     {
       "file": "app/main.py",
       "layer": "core",
-      "hash": "b445b7fde1f4",
+      "hash": "de6753be9432",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3541,6 +3561,18 @@
           ],
           "decorators": [
             "asynccontextmanager"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "cz_unauthorized_exception_handler",
+          "is_async": true,
+          "args": [
+            "request",
+            "exc"
+          ],
+          "decorators": [
+            "app.exception_handler(CZUnauthorizedError)"
           ],
           "docstring": ""
         },
@@ -3585,6 +3617,7 @@
         "app.config",
         "app.database",
         "app.national_catalog",
+        "app.services.cz_client",
         "app.services.time_service",
         "contextlib",
         "fastapi",
@@ -3883,13 +3916,17 @@
     {
       "file": "app/national_catalog/__init__.py",
       "layer": "core",
-      "hash": "2cfc862bdfe7",
-      "error": "SyntaxError: invalid non-printable character U+FEFF (__init__.py, line 1)",
+      "hash": "c35f226f8a81",
+      "docstring": "Национальный Каталог (НКТ) Честного Знака — модуль управления карточками товаров.",
       "classes": [],
       "functions": [],
       "endpoints": [],
       "celery_tasks": [],
-      "db_tables": []
+      "db_tables": [],
+      "imports": [
+        "app.national_catalog.models",
+        "app.national_catalog.router"
+      ]
     },
     {
       "file": "app/national_catalog/client.py",
@@ -4871,7 +4908,7 @@
     {
       "file": "app/services/codebase_indexer.py",
       "layer": "services",
-      "hash": "be0d0d2a2ec7",
+      "hash": "0a65558937b5",
       "docstring": "Codebase Semantic & Symbol Indexer — WB FBS Manager",
       "classes": [
         {
@@ -4909,7 +4946,7 @@
     {
       "file": "app/services/crypto_service.py",
       "layer": "services",
-      "hash": "0c470fbb8a1b",
+      "hash": "b33bc541f196",
       "docstring": "КриптоПро Digital Signature Service",
       "classes": [
         {
@@ -5156,7 +5193,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "0ce5ce5c6c0f",
+      "hash": "75f7cba591f9",
       "docstring": "",
       "classes": [],
       "functions": [

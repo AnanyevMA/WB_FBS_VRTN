@@ -1,4 +1,4 @@
-﻿"""add_product_cards_table
+"""add_product_cards_table
 
 Revision ID: e5f6a7b8c9d0
 Revises: d4e5f6a7b8c9

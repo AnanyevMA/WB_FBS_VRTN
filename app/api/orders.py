@@ -418,7 +418,7 @@ async def retry_order_cz_withdrawal(
 
     # 4. Отправка Celery-задачи на вывод из оборота (только при наличии КриптоПро на сервере)
     from app.services.crypto_service import is_cryptopro_available
-    has_server_crypto = is_cryptopro_available() or settings.mock_cz
+    has_server_crypto = is_cryptopro_available() or getattr(settings, "mock_cz", False)
     price_kopecks = int((order.price or Decimal("0.00")) * 100)
 
     if has_server_crypto:

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from contextlib import asynccontextmanager
 import logging
 
@@ -11,6 +11,7 @@ from app.api.auth import get_current_active_user, require_admin
 from app.national_catalog import nk_router
 from app.database import init_db
 from app.config import settings
+from app.services.cz_client import CZUnauthorizedError
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,13 @@ app = FastAPI(
     version=settings.app_version,
     lifespan=lifespan
 )
+
+@app.exception_handler(CZUnauthorizedError)
+async def cz_unauthorized_exception_handler(request, exc: CZUnauthorizedError):
+    return JSONResponse(
+        status_code=401,
+        content={"detail": str(exc)}
+    )
 
 # CORS middleware
 cors_origins_list = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]

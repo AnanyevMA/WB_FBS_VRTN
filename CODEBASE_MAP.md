@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-09 23:13:45 UTC | **Файлов проиндексировано**: 121  
+> **Дата актуализации**: 2026-09-10 23:10:01 UTC | **Файлов проиндексировано**: 121  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -100,7 +100,7 @@
 | [`app/config.py`](file:///D:/PyCharm_Projects/WB FBS/app/config.py) | `Settings` | `get_settings` | Application Configuration — WB FBS Manager |
 | [`app/database.py`](file:///D:/PyCharm_Projects/WB FBS/app/database.py) | `Base` | `get_db`, `init_db` | Database setup — async SQLAlchemy engine + session factory |
 | [`app/main.py`](file:///D:/PyCharm_Projects/WB FBS/app/main.py) | — | `GET /` → `root`<br>`GET /health` → `health_check` | Модуль кодовой базы |
-| [`app/national_catalog/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/__init__.py) | — | — | Модуль кодовой базы |
+| [`app/national_catalog/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/__init__.py) | — | — | Национальный Каталог (НКТ) Честного Знака — модуль управления карточками товаров. |
 | [`app/national_catalog/client.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/client.py) | `NKAPIError`, `NKClient` | — | Модуль кодовой базы |
 | [`app/national_catalog/models.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/models.py) | `ProductCard` | — | Модуль кодовой базы |
 | [`app/national_catalog/router.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/router.py) | — | `GET /sellers/{seller_id}/national-catalog/products` → `list_products`<br>`POST /sellers/{seller_id}/national-catalog/products` → `create_product`<br>`POST /sellers/{seller_id}/national-catalog/products/batch` → `create_products_batch`<br>`GET /sellers/{seller_id}/national-catalog/products/{product_id}` → `get_product`<br>`PUT /sellers/{seller_id}/national-catalog/products/{product_id}` → `update_product`<br>`DELETE /sellers/{seller_id}/national-catalog/products/{product_id}` → `delete_product`<br>`POST /sellers/{seller_id}/national-catalog/sync-nk` → `sync_products_from_nk`<br>`POST /sellers/{seller_id}/national-catalog/products/{product_id}/check-status` → `check_product_status`<br>`POST /sellers/{seller_id}/national-catalog/products/{product_id}/send-to-moderation` → `send_product_to_moderation`<br>`POST /sellers/{seller_id}/national-catalog/products/{product_id}/prepare-sign` → `prepare_sign`<br>`POST /sellers/{seller_id}/national-catalog/products/{product_id}/publish` → `publish_product`<br>`GET /sellers/{seller_id}/national-catalog/helpers/categories` → `get_categories`<br>`GET /sellers/{seller_id}/national-catalog/helpers/attributes` → `get_attributes`<br>`GET /sellers/{seller_id}/national-catalog/helpers/brands` → `search_brands`<br>`GET /sellers/{seller_id}/national-catalog/helpers/generate-gtin` → `generate_gtin`<br>`GET /sellers/{seller_id}/national-catalog/helpers/generate-gtins` → `generate_gtins` | Модуль кодовой базы |

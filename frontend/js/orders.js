@@ -360,7 +360,30 @@ async function syncAllOrdersCzStatus() {
     if (btn) btn.classList.add('loading');
     showToast('Честный Знак', 'Запрос актуальных статусов КИЗ в ГИС МТ...', 'info');
     try {
-        const res = await apiFetch(`/sellers/${currentSellerId}/orders/sync-cz`, { method: 'POST' });
+        let res;
+        try {
+            res = await apiFetch(`/sellers/${currentSellerId}/orders/sync-cz`, { method: 'POST' });
+        } catch (firstErr) {
+            const isAuthIssue = firstErr.isCzAuthError || 
+                                firstErr.status === 401 || 
+                                String(firstErr.message).includes('401') ||
+                                String(firstErr.message).includes('сессии') ||
+                                String(firstErr.message).includes('токен') ||
+                                String(firstErr.message).includes('авторизац');
+
+            if (isAuthIssue && typeof window.forceRefreshCzTokenViaBrowser === 'function') {
+                showToast('Честный Знак', 'Сессия ГИС МТ истекла. Авто-продление токена через ЭЦП...', 'warning');
+                const refreshed = await window.forceRefreshCzTokenViaBrowser(currentSellerId);
+                if (refreshed) {
+                    showToast('Честный Знак', 'Токен успешно продлен! Запрос статусов КИЗ...', 'info');
+                    res = await apiFetch(`/sellers/${currentSellerId}/orders/sync-cz`, { method: 'POST' });
+                } else {
+                    throw firstErr;
+                }
+            } else {
+                throw firstErr;
+            }
+        }
         showToast('Честный Знак', res.message || 'Статусы КИЗ успешно обновлены через Честный Знак', 'success');
         await loadOrders(true);
         await loadDashboard();

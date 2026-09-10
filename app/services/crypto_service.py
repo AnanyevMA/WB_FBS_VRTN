@@ -61,7 +61,7 @@ async def sign_document(
     cryptopro_bin = _find_cryptopro_bin()
 
     if not thumbprint:
-        if not settings.mock_cz:
+        if not getattr(settings, "mock_cz", False):
             raise CryptoSignatureError(
                 "Не настроен отпечаток сертификата УКЭП (cert_thumbprint) для продавца. "
                 "Подписание на сервере невозможно — выполните подписание через браузерный плагин КриптоПро ЭЦП."
@@ -70,7 +70,7 @@ async def sign_document(
         return _mock_signature(data)
 
     if not cryptopro_bin:
-        if not settings.mock_cz:
+        if not getattr(settings, "mock_cz", False):
             raise CryptoSignatureError(
                 "КриптоПро CSP не найден на сервере. "
                 "Подписание документов на сервере невозможно — выполните подписание через браузерный плагин КриптоПро ЭЦП."

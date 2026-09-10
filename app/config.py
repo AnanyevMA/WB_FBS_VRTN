@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     cz_api_sandbox_url: str = "https://markirovka.sandbox.crpt.tech"
     cz_use_sandbox: bool = False
     cz_oms_id: str = ""
+    mock_cz: bool = False
 
     # Flower
     flower_port: int = 5555

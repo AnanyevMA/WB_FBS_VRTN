@@ -66,6 +66,18 @@ function openAddSellerModal() {
     const arcMinute = document.getElementById('seller_archive_reminder_minute');
     if (arcMinute) arcMinute.value = 0;
 
+    // Auto KIZ queue defaults (daily at 17:00)
+    const autoKizEnabled = document.getElementById('seller_auto_kiz_queue_enabled');
+    if (autoKizEnabled) autoKizEnabled.checked = true;
+    const autoKizHour = document.getElementById('seller_auto_kiz_queue_hour');
+    if (autoKizHour) autoKizHour.value = 17;
+    const autoKizMinute = document.getElementById('seller_auto_kiz_queue_minute');
+    if (autoKizMinute) autoKizMinute.value = 0;
+    const autoKizServerSign = document.getElementById('seller_auto_kiz_auto_sign_server');
+    if (autoKizServerSign) autoKizServerSign.checked = false;
+    const autoKizManagerChatId = document.getElementById('seller_auto_kiz_manager_chat_id');
+    if (autoKizManagerChatId) autoKizManagerChatId.value = '';
+
     // Populate crypto certificates
     safePopulateCertificatesDropdown();
     openModal('sellerModal');
@@ -119,6 +131,18 @@ async function editSeller(sellerId) {
         if (arcHour) arcHour.value = seller.archive_reminder_hour ?? 14;
         const arcMinute = document.getElementById('seller_archive_reminder_minute');
         if (arcMinute) arcMinute.value = seller.archive_reminder_minute ?? 0;
+
+        // Auto KIZ queue settings
+        const autoKizEnabled = document.getElementById('seller_auto_kiz_queue_enabled');
+        if (autoKizEnabled) autoKizEnabled.checked = seller.auto_kiz_queue_enabled !== false;
+        const autoKizHour = document.getElementById('seller_auto_kiz_queue_hour');
+        if (autoKizHour) autoKizHour.value = seller.auto_kiz_queue_hour ?? 17;
+        const autoKizMinute = document.getElementById('seller_auto_kiz_queue_minute');
+        if (autoKizMinute) autoKizMinute.value = seller.auto_kiz_queue_minute ?? 0;
+        const autoKizServerSign = document.getElementById('seller_auto_kiz_auto_sign_server');
+        if (autoKizServerSign) autoKizServerSign.checked = !!seller.auto_kiz_auto_sign_server;
+        const autoKizManagerChatId = document.getElementById('seller_auto_kiz_manager_chat_id');
+        if (autoKizManagerChatId) autoKizManagerChatId.value = seller.auto_kiz_manager_chat_id || '';
         
         // Token inputs & persistent status indicators
         const wbInput = document.getElementById('seller_wb_token');
@@ -374,6 +398,11 @@ async function saveSeller() {
                 archive_reminder_days: parseInt(document.getElementById('seller_archive_reminder_days')?.value) || 2,
                 archive_reminder_hour: parseInt(document.getElementById('seller_archive_reminder_hour')?.value) ?? 14,
                 archive_reminder_minute: parseInt(document.getElementById('seller_archive_reminder_minute')?.value) ?? 0,
+                auto_kiz_queue_enabled: document.getElementById('seller_auto_kiz_queue_enabled')?.checked ?? true,
+                auto_kiz_queue_hour: parseInt(document.getElementById('seller_auto_kiz_queue_hour')?.value) ?? 17,
+                auto_kiz_queue_minute: parseInt(document.getElementById('seller_auto_kiz_queue_minute')?.value) ?? 0,
+                auto_kiz_auto_sign_server: document.getElementById('seller_auto_kiz_auto_sign_server')?.checked ?? false,
+                auto_kiz_manager_chat_id: document.getElementById('seller_auto_kiz_manager_chat_id')?.value.trim() || null,
             };
             await apiFetch('/sellers', {
                 method: 'POST',
@@ -402,6 +431,11 @@ async function saveSeller() {
                 archive_reminder_days: parseInt(document.getElementById('seller_archive_reminder_days')?.value) || 2,
                 archive_reminder_hour: parseInt(document.getElementById('seller_archive_reminder_hour')?.value) ?? 14,
                 archive_reminder_minute: parseInt(document.getElementById('seller_archive_reminder_minute')?.value) ?? 0,
+                auto_kiz_queue_enabled: document.getElementById('seller_auto_kiz_queue_enabled')?.checked ?? true,
+                auto_kiz_queue_hour: parseInt(document.getElementById('seller_auto_kiz_queue_hour')?.value) ?? 17,
+                auto_kiz_queue_minute: parseInt(document.getElementById('seller_auto_kiz_queue_minute')?.value) ?? 0,
+                auto_kiz_auto_sign_server: document.getElementById('seller_auto_kiz_auto_sign_server')?.checked ?? false,
+                auto_kiz_manager_chat_id: document.getElementById('seller_auto_kiz_manager_chat_id')?.value.trim() || null,
             };
             // Only send tokens if user typed new values (prevent resetting encrypted secrets)
             if (wbToken) payload.wb_api_token = wbToken;

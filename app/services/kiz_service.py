@@ -174,9 +174,6 @@ def normalize_kiz_light_industry(raw_code: str) -> str:
     if not code:
         return ""
 
-    # Деэкранирование сдвоенных одинарных кавычек от Wildberries / SQL выгрузок ('' -> ")
-    code = code.replace("''", '"')
-
     # 0. Снятие префиксов 2D-сканеров AIM (ISO/IEC 15424, например: ]d2, ]d1, ]Q3, ]C1, ]e0)
     code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]*\][a-zA-Z0-9]{2}[\x1d\x1e\x1f\u001d\u001e\u001f\s]*', '', code)
 
@@ -224,6 +221,13 @@ def normalize_kiz_light_industry(raw_code: str) -> str:
 
     # 6. Определение серийного номера:
     # Согласно ПП РФ № 1956 (легпром) и ГОСТ/GS1, серийный номер состоит ровно из 13 символов.
+    # Если serial_raw содержит сдвоенные одинарные кавычки '' (экранирование " от WB/SQL выгрузок)
+    # и при замене '' -> " длина остается >= 13, деэкранируем.
+    if "''" in serial_raw and len(serial_raw) >= 14:
+        unescaped = serial_raw.replace("''", '"')
+        if len(unescaped) >= 13:
+            serial_raw = unescaped
+
     # Если serial_raw >= 13, первые 13 символов гарантированно являются серийным номером,
     # а любые '91...92' внутри них — это легитимная часть серийного номера (не криптохвост).
     # Любой слитный криптохвост начинается с позиции >= 13 и безопасно отсекается с помощью [:13].
@@ -276,8 +280,6 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
         }
 
     code = str(raw_code).strip()
-    # Деэкранирование сдвоенных одинарных кавычек от Wildberries / SQL выгрузок ('' -> ")
-    code = code.replace("''", '"')
     # 0. Снятие префиксов 2D-сканеров AIM (ISO/IEC 15424, например: ]d2, ]d1, ]Q3, ]C1, ]e0)
     code = re.sub(r'^[\x1d\x1e\x1f\u001d\u001e\u001f\s]*\][a-zA-Z0-9]{2}[\x1d\x1e\x1f\u001d\u001e\u001f\s]*', '', code)
     normalized = re.sub(r'\((01|21|91|92)\)', r'\1', code)
@@ -352,6 +354,9 @@ def parse_kiz_code(raw_code: str) -> Dict[str, Optional[str]]:
     # Гарантированная нормализация через normalize_kiz_light_industry
     normalized_cis = normalize_kiz_light_industry(raw_code)
     clean_cis = normalized_cis if normalized_cis else (f"01{gtin}21{serial}" if (gtin and serial) else None)
+    if clean_cis and len(clean_cis) == 31 and clean_cis.startswith("01"):
+        gtin = clean_cis[2:16]
+        serial = clean_cis[18:31]
 
     return {
         "raw_code": code,

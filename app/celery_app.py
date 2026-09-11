@@ -28,6 +28,7 @@ celery_app = Celery(
         "app.agents.morning_digest",
         "app.agents.kb_sync_agent",
         "app.agents.security_audit_agent",
+        "app.agents.auto_kiz_queue_agent",
     ],
 )
 
@@ -67,6 +68,7 @@ celery_app.conf.update(
         "app.agents.kb_sync_agent.*": {"queue": "maintenance"},
         "app.agents.security_audit_agent.*": {"queue": "maintenance"},
         "app.agents.qa_test_agent.*": {"queue": "qa_testing"},
+        "app.agents.auto_kiz_queue_agent.*": {"queue": "cz_operations"},
     },
     # Periodic Tasks Beat Schedule matching agents_config.json
     beat_schedule={
@@ -124,6 +126,12 @@ celery_app.conf.update(
             "task": "app.agents.archive_processor.check_archive_reminders",
             "schedule": 60.0,  # every 60 seconds for on-minute delivery
             "options": {"queue": "notifications"},
+        },
+        # Runs every 60s to check sellers requiring daily auto KIZ queue (by default at 17:00 local time)
+        "daily-auto-kiz-queue-check": {
+            "task": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
+            "schedule": 60.0,  # every 60 seconds for on-minute delivery
+            "options": {"queue": "cz_operations"},
         },
     },
     # Task Retry Annotations & Time Limits

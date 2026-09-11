@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-11T15:26:03.440013+00:00",
+  "updated_at": "2026-09-11T23:52:34.294683+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 121,
+  "total_files": 127,
   "files": [
     {
       "file": "alembic/env.py",
@@ -345,6 +345,37 @@
       ]
     },
     {
+      "file": "alembic/versions/f6a7b8c9d0e1_add_auto_kiz_queue_settings.py",
+      "layer": "migrations",
+      "hash": "a36b41e62cdc",
+      "docstring": "add_auto_kiz_queue_settings",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
       "file": "app/__init__.py",
       "layer": "core",
       "hash": "d38e4370fce2",
@@ -546,6 +577,78 @@
         "io",
         "logging",
         "pandas",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/agents/auto_kiz_queue_agent.py",
+      "layer": "agents",
+      "hash": "8277604e6875",
+      "docstring": "Auto KIZ Queue Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "is_seller_auto_queue_due",
+          "is_async": false,
+          "args": [
+            "seller",
+            "now_utc",
+            "grace_hours"
+          ],
+          "decorators": [],
+          "docstring": "Проверяет, наступило ли локальное время (по умолчанию 17:00) для формирования очереди КИЗ."
+        },
+        {
+          "name": "check_and_run_auto_kiz_queue",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Периодическая задача Celery Beat (запускается раз в минуту)."
+        },
+        {
+          "name": "trigger_seller_auto_kiz_queue",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "trigger_source"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Запуск формирования пакета КИЗ для конкретного магазина."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
+          "function": "check_and_run_auto_kiz_queue",
+          "docstring": "Периодическая задача Celery Beat (запускается раз в минуту)."
+        },
+        {
+          "name": "app.agents.auto_kiz_queue_agent.trigger_seller_auto_kiz_queue",
+          "function": "trigger_seller_auto_kiz_queue",
+          "docstring": "Запуск формирования пакета КИЗ для конкретного магазина."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models.seller",
+        "app.services.auto_kiz_queue_service",
+        "app.services.time_service",
+        "asyncio",
+        "datetime",
+        "logging",
         "sqlalchemy",
         "sqlalchemy.orm",
         "typing"
@@ -1776,7 +1879,7 @@
     {
       "file": "app/api/kiz/__init__.py",
       "layer": "api",
-      "hash": "f4db28986024",
+      "hash": "353e1308055b",
       "docstring": "FastAPI KIZ Router Package — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -1786,6 +1889,7 @@
       "imports": [
         "app.api.kiz.archive",
         "app.api.kiz.attach",
+        "app.api.kiz.auto_queue",
         "app.api.kiz.documents",
         "app.api.kiz.signature_batches",
         "fastapi"
@@ -2003,6 +2107,83 @@
         "datetime",
         "fastapi",
         "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/kiz/auto_queue.py",
+      "layer": "api",
+      "hash": "3992e729420d",
+      "docstring": "FastAPI Auto KIZ Queue Endpoints — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "trigger_auto_kiz_batch_now",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/auto-batch/trigger')"
+          ],
+          "docstring": "Принудительный ручной запуск суточного сбора КИЗ (не дожидаясь 17:00)."
+        },
+        {
+          "name": "get_auto_kiz_settings",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/kiz/auto-batch/settings')"
+          ],
+          "docstring": "Получение настроек автоматической очереди КИЗ (время, тумблер, менеджер)."
+        },
+        {
+          "name": "update_auto_kiz_settings",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.patch('/kiz/auto-batch/settings')"
+          ],
+          "docstring": "Обновление настроек автоматической очереди КИЗ:"
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/kiz/auto-batch/trigger",
+          "handler": "trigger_auto_kiz_batch_now",
+          "docstring": "Принудительный ручной запуск суточного сбора КИЗ (не дожидаясь 17:00)."
+        },
+        {
+          "method": "GET",
+          "path": "/kiz/auto-batch/settings",
+          "handler": "get_auto_kiz_settings",
+          "docstring": "Получение настроек автоматической очереди КИЗ (время, тумблер, менеджер)."
+        },
+        {
+          "method": "PATCH",
+          "path": "/kiz/auto-batch/settings",
+          "handler": "update_auto_kiz_settings",
+          "docstring": "Обновление настроек автоматической очереди КИЗ:"
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.seller",
+        "app.services.auto_kiz_queue_service",
+        "fastapi",
+        "logging",
         "sqlalchemy.ext.asyncio",
         "typing"
       ]
@@ -3467,7 +3648,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "e222e7dd238d",
+      "hash": "82bdff6b0342",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3814,7 +3995,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "da2ed982814a",
+      "hash": "74b55b503641",
       "docstring": "",
       "classes": [
         {
@@ -4657,7 +4838,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "ddba1cdbbd4b",
+      "hash": "12e7a0179537",
       "docstring": "",
       "classes": [
         {
@@ -4923,6 +5104,79 @@
         "re",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/auto_kiz_queue_service.py",
+      "layer": "services",
+      "hash": "a6d3c6cf063e",
+      "docstring": "Auto KIZ Queue Service — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_delivered_orders_with_wb",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Шаг 1. Предварительная синхронизация с WB API (Live Sync)."
+        },
+        {
+          "name": "collect_auto_kiz_candidates",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Шаг 2. Отбор кандидатов на вывод и возврат КИЗ с дедупликацией."
+        },
+        {
+          "name": "verify_candidates_against_cz",
+          "is_async": true,
+          "args": [
+            "seller",
+            "withdrawals",
+            "returns",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Шаг 3. Предварительная валидация в True API «Честный Знак»."
+        },
+        {
+          "name": "process_auto_kiz_queue_for_seller",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "trigger_source"
+          ],
+          "decorators": [],
+          "docstring": "Основной метод суточного цикла обработки КИЗ:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.crypto_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.telegram_service",
+        "app.services.wb_client",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.orm.attributes",
         "typing"
       ]
     },
@@ -5214,7 +5468,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "75f7cba591f9",
+      "hash": "684c55cc7290",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -5332,7 +5586,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "a5446ebc20a9",
+      "hash": "c1666ec76f1b",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -5353,6 +5607,7 @@
             "send_morning_digest",
             "send_orders_digest",
             "send_archive_reminder",
+            "send_auto_kiz_batch_notification",
             "send_text",
             "_broadcast"
           ]
@@ -5989,6 +6244,38 @@
       ]
     },
     {
+      "file": "tests/test_api_auto_kiz_queue.py",
+      "layer": "tests",
+      "hash": "2a64c76eebfc",
+      "docstring": "API Tests for Auto KIZ Queue Endpoints (app/api/kiz/auto_queue.py)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_auto_kiz_queue_api_endpoints",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.main",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_api_sellers.py",
       "layer": "tests",
       "hash": "36bee8dc6ed6",
@@ -6295,6 +6582,58 @@
         "pytest",
         "scripts.set_admin_password",
         "sqlalchemy",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_auto_kiz_queue_service.py",
+      "layer": "tests",
+      "hash": "29f724e60279",
+      "docstring": "Tests for Auto KIZ Queue Service (app/services/auto_kiz_queue_service.py)",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_sync_wb_orders_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_collect_candidates_and_deduplication",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_process_auto_kiz_queue_flow",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auto_kiz_queue_service",
+        "app.services.encryption",
+        "app.services.telegram_service",
+        "datetime",
+        "pytest",
+        "unittest.mock",
         "uuid"
       ]
     },
@@ -9441,7 +9780,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "a78f03e0dbf7",
+      "hash": "e57bdfddabf7",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

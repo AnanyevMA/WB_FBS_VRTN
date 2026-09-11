@@ -32,6 +32,12 @@ from app.api.kiz.signature_batches import (
     submit_signed_batch,
     cancel_signature_batch,
 )
+from app.api.kiz.auto_queue import (
+    router as auto_queue_router,
+    trigger_auto_kiz_batch_now,
+    get_auto_kiz_settings,
+    update_auto_kiz_settings,
+)
 
 router = APIRouter(prefix="/sellers/{seller_id}", tags=["kiz"])
 
@@ -40,6 +46,7 @@ router.include_router(attach_router)
 router.include_router(documents_router)
 router.include_router(archive_router)
 router.include_router(signature_batches_router)
+router.include_router(auto_queue_router)
 
 __all__ = [
     "router",
@@ -60,4 +67,7 @@ __all__ = [
     "prepare_batch_documents_for_signing",
     "submit_signed_batch",
     "cancel_signature_batch",
+    "trigger_auto_kiz_batch_now",
+    "get_auto_kiz_settings",
+    "update_auto_kiz_settings",
 ]

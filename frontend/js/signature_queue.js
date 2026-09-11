@@ -439,11 +439,16 @@ function renderEmptyBatchState() {
             <div style="font-size: 40px; margin-bottom: 12px;">🎉</div>
             <h3 style="font-size: 18px; margin-bottom: 8px; color: var(--text-main);">Нет пакетов, ожидающих подписания ЭЦП</h3>
             <p style="color: var(--text-muted); font-size: 14px; max-width: 500px; margin: 0 auto 20px;">
-                Все загруженные отчёты обработаны. Как только менеджер пришлёт файл <code>archive.xlsx</code> в Telegram-бот (или вы загрузите его вручную), здесь появится готовый список на ввод и вывод КИЗ.
+                Все операции обработаны. Пакеты формируются автоматически 1 раз в сутки (в 17:00), а также при загрузке <code>archive.xlsx</code> или по кнопке ниже.
             </p>
-            <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
-                <span>📁</span> Загрузить отчёт вручную
-            </button>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="triggerAutoBatchNow()" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <span>⚡</span> Сформировать пакет за сегодня
+                </button>
+                <button class="btn btn-secondary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                    <span>📁</span> Загрузить отчёт вручную
+                </button>
+            </div>
         </div>
     `;
 }
@@ -464,7 +469,7 @@ function renderActiveBatch(batch) {
 
     const totalToSign = sales_needing + returns_needing;
     const dateStr = batch.created_at ? new Date(batch.created_at).toLocaleString('ru-RU') : '—';
-    const sourceIcon = batch.source === 'telegram' ? '📱 Telegram-бот' : '🌐 Веб-загрузка';
+    const sourceIcon = batch.source === 'auto' ? '⚡ Автоматически (WB API)' : (batch.source === 'telegram' ? '📱 Telegram-бот' : '🌐 Веб-загрузка');
 
     container.innerHTML = `
         <div class="glass-card" style="border: 1px solid rgba(124, 58, 237, 0.4); box-shadow: 0 4px 20px rgba(124, 58, 237, 0.1);">
@@ -792,7 +797,7 @@ function renderBatchesHistory(batches) {
 
     tbody.innerHTML = batches.map(b => {
         const dateStr = b.created_at ? new Date(b.created_at).toLocaleString('ru-RU') : '—';
-        const sourceBadge = b.source === 'telegram' ? '📱 Telegram' : '🌐 Web';
+        const sourceBadge = b.source === 'auto' ? '⚡ Авто (WB API)' : (b.source === 'telegram' ? '📱 Telegram' : '🌐 Web');
         
         let statusBadge = '<span class="badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">Ожидает ЭЦП</span>';
         if (b.status === 'COMPLETED') {
@@ -957,6 +962,51 @@ async function viewBatchDetailsModal(batchId) {
     }
 }
 
+async function triggerAutoBatchNow() {
+    if (!currentSellerId && currentSellersList && currentSellersList.length > 0) {
+        currentSellerId = currentSellersList[0].id;
+    }
+    if (!currentSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активный магазин в верхнем меню', 'error');
+    }
+
+    const btn1 = document.getElementById('triggerAutoBatchBtn');
+    const btn2 = document.getElementById('triggerAutoBatchBtnKiz');
+    const origHtml1 = btn1 ? btn1.innerHTML : '';
+    const origHtml2 = btn2 ? btn2.innerHTML : '';
+    if (btn1) { btn1.disabled = true; btn1.innerHTML = '<span>⏳</span> Формирование...'; }
+    if (btn2) { btn2.disabled = true; btn2.innerHTML = '⏳ Формирование...'; }
+
+    showToast('Сбор данных', 'Синхронизация заказов с WB и проверка статусов в ЧЗ...', 'info');
+
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/kiz/auto-batch/trigger`, {
+            method: 'POST'
+        });
+
+        if (res.status === 'created') {
+            showToast(
+                'Пакет создан',
+                `Сформирован пакет: ${res.sales_count || 0} выбытий, ${res.returns_count || 0} возвратов`,
+                'success'
+            );
+        } else if (res.status === 'already_pending') {
+            showToast('Внимание', res.message || 'В очереди уже есть неподписанный пакет', 'warning');
+        } else if (res.status === 'no_operations') {
+            showToast('Информация', res.message || 'Нет новых операций для вывода или ввода в оборот', 'info');
+        } else {
+            showToast('Результат', res.message || 'Операция завершена', 'info');
+        }
+
+        await loadSignatureBatches();
+    } catch (e) {
+        showToast('Ошибка формирования пакета', e.message, 'error');
+    } finally {
+        if (btn1) { btn1.disabled = false; btn1.innerHTML = origHtml1; }
+        if (btn2) { btn2.disabled = false; btn2.innerHTML = origHtml2; }
+    }
+}
+
 // Global window bindings for inline HTML onclick handlers
 window.openArchiveFileInput = openArchiveFileInput;
 window.handleArchiveFileSelect = handleArchiveFileSelect;
@@ -976,4 +1026,6 @@ window.submitBatchSigningAction = submitBatchSigningAction;
 window.cancelBatchAction = cancelBatchAction;
 window.switchBatchTab = switchBatchTab;
 window.viewBatchDetailsModal = viewBatchDetailsModal;
+window.triggerAutoBatchNow = triggerAutoBatchNow;
+
 

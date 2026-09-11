@@ -432,6 +432,56 @@ class TelegramService:
         )
         return await self._broadcast(chat_ids, text)
 
+    async def send_auto_kiz_batch_notification(
+        self,
+        chat_ids: list[str | int],
+        seller_name: str,
+        sales_count: int,
+        returns_count: int,
+        total_sum_rub: float = 0.0,
+        batch_id: Optional[str] = None,
+        is_auto_signed: bool = False,
+    ) -> bool:
+        """
+        Уведомление о готовности автоматического суточного пакета КИЗ на подписание.
+        Отправляется строго ответственному менеджеру.
+        """
+        seller_name_esc = html.escape(str(seller_name or "—"))
+        sum_str = f"{total_sum_rub:,.2f} ₽".replace(",", " ")
+
+        status_line = (
+            "✅ <b>Пакет автоматически подписан на сервере и передан в ГИС МТ</b>"
+            if is_auto_signed
+            else "✍️ <b>Пакет ожидает подписания ЭЦП в веб-дашборде</b> (раздел «Очередь ЭЦП»)"
+        )
+
+        text = (
+            f"📦 <b>АВТОМАТИЧЕСКИЙ ПАКЕТ МАРКИРОВКИ СФОРМИРОВАН</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏪 <b>Магазин:</b> {seller_name_esc}\n"
+            f"📤 <b>Продажи к выводу из оборота:</b> {sales_count} шт. ({sum_str})\n"
+            f"📥 <b>Возвраты к вводу в оборот:</b> {returns_count} шт.\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{status_line}\n\n"
+            f"💡 <i>Сформировано автоматически по статусам WB API без загрузки archive.xlsx.</i>"
+        )
+
+        keyboard = None
+        if not is_auto_signed and batch_id:
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="✍️ Перейти к подписанию",
+                            url=f"{settings.public_url}/#kiz-queue",
+                        ),
+                    ],
+                ]
+            )
+
+        return await self._broadcast(chat_ids, text, keyboard)
+
+
     async def send_text(
         self,
         chat_ids: list[str | int],

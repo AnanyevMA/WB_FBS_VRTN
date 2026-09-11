@@ -120,6 +120,12 @@ class SellerCreate(SellerBase):
     archive_reminder_days: Optional[int] = Field(2, ge=1, le=30)
     archive_reminder_hour: Optional[int] = Field(14, ge=0, le=23)
     archive_reminder_minute: Optional[int] = Field(0, ge=0, le=59)
+    # Auto KIZ queue settings
+    auto_kiz_queue_enabled: Optional[bool] = True
+    auto_kiz_queue_hour: Optional[int] = Field(17, ge=0, le=23, description="Час формирования очереди КИЗ (0–23)")
+    auto_kiz_queue_minute: Optional[int] = Field(0, ge=0, le=59, description="Минута формирования очереди КИЗ (0–59)")
+    auto_kiz_auto_sign_server: Optional[bool] = False
+    auto_kiz_manager_chat_id: Optional[str] = None
 
 
 class SellerUpdate(BaseModel):
@@ -147,6 +153,12 @@ class SellerUpdate(BaseModel):
     archive_reminder_days: Optional[int] = Field(None, ge=1, le=30, description="Интервал напоминания о загрузке архива в днях")
     archive_reminder_hour: Optional[int] = Field(None, ge=0, le=23, description="Час напоминания (0–23)")
     archive_reminder_minute: Optional[int] = Field(None, ge=0, le=59, description="Минута напоминания (0–59)")
+    # Auto KIZ queue settings (daily automated batch creation)
+    auto_kiz_queue_enabled: Optional[bool] = None
+    auto_kiz_queue_hour: Optional[int] = Field(None, ge=0, le=23, description="Час формирования очереди КИЗ (0–23)")
+    auto_kiz_queue_minute: Optional[int] = Field(None, ge=0, le=59, description="Минута формирования очереди КИЗ (0–59)")
+    auto_kiz_auto_sign_server: Optional[bool] = None
+    auto_kiz_manager_chat_id: Optional[str] = None
     # Digest settings (flat for simple PATCH, or nested via digest object)
     digest_enabled: Optional[bool] = None
     digest_hour: Optional[int] = Field(None, ge=0, le=23)
@@ -224,6 +236,13 @@ class SellerResponse(SellerBase):
     archive_reminder_hour: Optional[int] = 14
     archive_reminder_minute: Optional[int] = 0
     last_archive_uploaded_at: Optional[datetime] = None
+    # Auto KIZ queue settings
+    auto_kiz_queue_enabled: Optional[bool] = True
+    auto_kiz_queue_hour: Optional[int] = 17
+    auto_kiz_queue_minute: Optional[int] = 0
+    auto_kiz_auto_sign_server: Optional[bool] = False
+    auto_kiz_manager_chat_id: Optional[str] = None
+    last_auto_kiz_queue_at: Optional[datetime] = None
     created_at: datetime
     has_wb_token: bool = False
     has_cz_token: bool = False
@@ -305,6 +324,10 @@ class SellerListItem(BaseModel):
     archive_reminder_hour: Optional[int] = 14
     archive_reminder_minute: Optional[int] = 0
     last_archive_uploaded_at: Optional[datetime] = None
+    auto_kiz_queue_enabled: Optional[bool] = True
+    auto_kiz_queue_hour: Optional[int] = 17
+    auto_kiz_queue_minute: Optional[int] = 0
+    last_auto_kiz_queue_at: Optional[datetime] = None
     wb_token_status: str = "valid"
     wb_token_expires_at: Optional[datetime] = None
     wb_token_days_left: Optional[int] = None

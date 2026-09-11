@@ -253,6 +253,9 @@
                         <p class="page-subtitle">Сканирование DataMatrix, привязка КИЗ, загрузка архива WB и операции с Честным Знаком.</p>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="triggerAutoBatchNow()" id="triggerAutoBatchBtnKiz" style="background: linear-gradient(135deg, #10b981, #059669);" title="Сформировать пакет вывода и возврата из API WB без файла">
+                            ⚡ Сформировать пакет за сегодня
+                        </button>
                         <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
                             📁 Загрузить архив WB (.xlsx)
                         </button>
@@ -328,6 +331,9 @@
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="loadSignatureBatches()">
                             <span>🔄</span> Обновить очередь
+                        </button>
+                        <button class="btn btn-primary" onclick="triggerAutoBatchNow()" id="triggerAutoBatchBtn" style="background: linear-gradient(135deg, #10b981, #059669);" title="Сформировать пакет вывода и возврата из API WB без файла">
+                            <span>⚡</span> Сформировать пакет за сегодня
                         </button>
                         <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
                             <span>📁</span> Загрузить отчёт (.xlsx)
@@ -749,6 +755,54 @@
                     </div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
                         Отправка уведомления в Telegram о необходимости выгрузить и прислать еженедельный архив WB (по умолчанию: 1 раз в 2 дня в 14:00 по часовому поясу магазина).
+                    </div>
+                </div>
+
+                <!-- Auto KIZ Queue Settings (Daily Automated Batch) -->
+                <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius:10px; padding:16px; margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                        <span style="font-weight:600; font-size:14px; color:#38bdf8;">⚡ Авто-очередь вывода и возврата КИЗ (без архива)</span>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <span style="font-size:13px; color:var(--text-muted);">Включено</span>
+                            <input type="checkbox" id="seller_auto_kiz_queue_enabled" checked
+                                style="width:16px; height:16px; accent-color:#0284c7; cursor:pointer;">
+                        </label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Час запуска (0–23)</label>
+                            <input type="number" class="form-control" id="seller_auto_kiz_queue_hour"
+                                min="0" max="23" value="17" style="font-size:14px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Минута (0–59)</label>
+                            <input type="number" class="form-control" id="seller_auto_kiz_queue_minute"
+                                min="0" max="59" value="0" step="10" style="font-size:14px;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label" style="font-size:12px; display:flex; justify-content:space-between;">
+                            <span>Telegram Chat ID менеджера (для отчётов)</span>
+                            <span style="color:var(--text-muted); font-weight:normal;">персональный</span>
+                        </label>
+                        <input type="text" class="form-control" id="seller_auto_kiz_manager_chat_id"
+                            placeholder="Например: 123456789 (оставьте пустым для общего чата)" style="font-size:13px;">
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                            Уведомления о сформированных пакетах будут отправляться только этому менеджеру, не засоряя общий чат магазина.
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox" id="seller_auto_kiz_auto_sign_server"
+                                style="width:16px; height:16px; accent-color:var(--primary); cursor:pointer;">
+                            <span style="font-size:13px; font-weight:500;">Автоматически подписывать на сервере (КриптоПро CSP)</span>
+                        </label>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px; margin-left:24px;">
+                            Если флаг снят, сформированный пакет ожидает подтверждения и подписи в браузере (ЭЦП плагин).
+                        </div>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                        Автоматически 1 раз в сутки (по умолчанию в 17:00) опрашивает API Wildberries, отбирает проданные товары и возвраты, валидирует их в ЧЗ и формирует пакет операций без загрузки файла архива.
                     </div>
                 </div>
 
@@ -1555,9 +1609,9 @@
 <script src="js/cadesplugin_api.js?v=1.1.0"></script>
 <script src="js/cryptopro.js?v=1.1.0"></script>
 <script src="js/kiz.js?v=1.1.0"></script>
-<script src="js/signature_queue.js?v=1.1.0"></script>
+<script src="js/signature_queue.js?v=1.2.0"></script>
 <script src="js/supplies.js?v=1.1.0"></script>
-<script src="js/sellers.js?v=1.1.0"></script>
+<script src="js/sellers.js?v=1.2.0"></script>
 <script src="js/national_catalog.js?v=1.1.0"></script>
 <script src="js/audit.js?v=1.1.0"></script>
 <script src="js/app.js?v=1.1.0"></script>

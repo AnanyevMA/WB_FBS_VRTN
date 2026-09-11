@@ -185,6 +185,30 @@ class TelegramService:
         )
         return await self._broadcast(chat_ids, text)
 
+    async def send_wb_token_expired_alert(
+        self,
+        chat_ids: list[str | int],
+        seller_name: str,
+        reason: str = "",
+    ) -> bool:
+        """Специализированное предупреждение: истёк срок действия токена Wildberries."""
+        name_esc = html.escape(str(seller_name or "—"))
+        reason_esc = html.escape(str(reason or ""))
+        reason_line = f"\n<i>Причина: {reason_esc}</i>\n" if reason_esc else ""
+        text = (
+            f"⚠️ <b>СРОК ДЕЙСТВИЯ ТОКЕНА WB ИСТЁК!</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏪 <b>Магазин:</b> {name_esc}\n"
+            f"{reason_line}\n"
+            f"⛔ <b>Опрос новых заказов приостановлен!</b>\n\n"
+            f"👉 <b>Как восстановить работу:</b>\n"
+            f"1. Откройте личный кабинет продавца: <i>seller.wildberries.ru</i>\n"
+            f"2. Перейдите в <b>Настройки → Доступ к API</b>\n"
+            f"3. Создайте новый токен (с категориями «Контент», «Маркетплейс», «Цены и скидки»)\n"
+            f"4. Вставьте новый токен в настройках магазина в WB FBS Manager и включите опрос."
+        )
+        return await self._broadcast(chat_ids, text)
+
     async def send_batch_orders_notification(
         self,
         chat_ids: list[str | int],

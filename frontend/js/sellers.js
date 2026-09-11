@@ -42,6 +42,9 @@ function openAddSellerModal() {
     const delModalBtn = document.getElementById('deleteSellerModalBtn');
     if (delModalBtn) delModalBtn.style.display = 'none';
 
+    const wbStatusEl = document.getElementById('seller_wb_token_status');
+    if (wbStatusEl) wbStatusEl.innerHTML = '';
+
     // Notification schedule defaults
     const notifInstant = document.getElementById('notif_mode_instant');
     if (notifInstant) notifInstant.checked = true;
@@ -127,10 +130,27 @@ async function editSeller(sellerId) {
         czInput.value = '';
         tgInput.value = '';
 
+        const wbStatusEl = document.getElementById('seller_wb_token_status');
         if (seller.has_wb_token) {
             wbInput.placeholder = '●●●●●●●● (токен сохранен в БД)';
+            if (wbStatusEl) {
+                if (seller.wb_token_status === 'expired') {
+                    const expDate = seller.wb_token_expires_at ? new Date(seller.wb_token_expires_at).toLocaleDateString('ru-RU') : '';
+                    wbStatusEl.innerHTML = `<span style="color:var(--status-cancelled); font-weight:600;">⚠️ Срок действия токена WB истёк${expDate ? ' (' + expDate + ')' : ''}! Требуется обновить токен в ЛК Wildberries.</span>`;
+                } else if (seller.wb_token_status === 'expiring_soon') {
+                    const days = (seller.wb_token_days_left !== undefined && seller.wb_token_days_left !== null) ? seller.wb_token_days_left : '';
+                    const expDate = seller.wb_token_expires_at ? new Date(seller.wb_token_expires_at).toLocaleDateString('ru-RU') : '';
+                    wbStatusEl.innerHTML = `<span style="color:#f59e0b; font-weight:600;">⏳ Токен WB истекает${days !== '' ? ' через ' + days + ' дн.' : ''}${expDate ? ' (' + expDate + ')' : ''}. Рекомендуется обновить.</span>`;
+                } else {
+                    const expDate = seller.wb_token_expires_at ? new Date(seller.wb_token_expires_at).toLocaleDateString('ru-RU') : '';
+                    wbStatusEl.innerHTML = `<span style="color:var(--status-delivered); font-weight:600;">✅ Токен WB активен${expDate ? ' (действует до ' + expDate + ')' : ''}</span>`;
+                }
+            }
         } else {
             wbInput.placeholder = 'Введите API токен Wildberries';
+            if (wbStatusEl) {
+                wbStatusEl.innerHTML = `<span style="color:var(--text-muted);">Токен не установлен.</span>`;
+            }
         }
 
         if (seller.has_cz_token) {
@@ -251,9 +271,17 @@ async function loadSellers() {
         return;
     }
 
-    tbody.innerHTML = sellers.map(s => `
+    tbody.innerHTML = sellers.map(s => {
+        let wbBadge = '';
+        if (s.wb_token_status === 'expired') {
+            wbBadge = `<span class="badge bg-cancelled" style="margin-left:6px; font-size:11px;" title="Срок действия API-токена WB истёк! Обновите токен.">⚠️ Токен WB истёк</span>`;
+        } else if (s.wb_token_status === 'expiring_soon') {
+            const dl = (s.wb_token_days_left !== undefined && s.wb_token_days_left !== null) ? s.wb_token_days_left : '';
+            wbBadge = `<span class="badge" style="margin-left:6px; font-size:11px; background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4);" title="Токен WB истекает через ${dl} дн.">⏳ Токен истекает</span>`;
+        }
+        return `
         <tr>
-            <td style="font-weight: 600;">${s.name}</td>
+            <td style="font-weight: 600;">${s.name}${wbBadge}</td>
             <td style="font-family:monospace;">${s.wb_supplier_id || '-'}</td>
             <td>${s.cz_inn || '-'}</td>
             <td>
@@ -274,7 +302,7 @@ async function loadSellers() {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 async function saveSeller() {

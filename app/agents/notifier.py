@@ -260,6 +260,37 @@ def send_alert(seller_id: str, agent: str, message: str):
     asyncio.run(_send())
 
 
+@celery_app.task(name="app.agents.notifier.send_wb_token_expired_alert", queue="notifications")
+def send_wb_token_expired_alert(seller_id: str, reason: str = ""):
+    """Send dedicated Telegram alert that WB API token is expired."""
+    import asyncio
+    with Session(sync_engine) as db:
+        seller = _get_seller(db, seller_id)
+        if not seller or not seller.telegram_bot_token_encrypted:
+            return
+        bot_token = decrypt(seller.telegram_bot_token_encrypted)
+        chat_ids = seller.telegram_chat_ids or []
+        seller_name = seller.name
+
+    from app.services.telegram_service import TelegramService
+    async def _send():
+        svc = TelegramService(bot_token)
+        try:
+            await svc.send_wb_token_expired_alert(chat_ids, seller_name, reason)
+            with Session(sync_engine) as db:
+                _log_audit(db, seller_id, "SEND_WB_TOKEN_EXPIRED_ALERT_SUCCESS", "seller", seller_id, payload={"reason": reason})
+                db.commit()
+        except Exception as exc:
+            with Session(sync_engine) as db:
+                _log_audit(db, seller_id, "SEND_WB_TOKEN_EXPIRED_ALERT_FAILED", "seller", seller_id, error=str(exc))
+                db.commit()
+            raise exc
+        finally:
+            await svc.close()
+
+    asyncio.run(_send())
+
+
 # In-memory tracking for scheduled digests: (seller_id, YYYY-MM-DD, HH:MM)
 _scheduled_digest_sent: set[tuple[str, str, str]] = set()
 

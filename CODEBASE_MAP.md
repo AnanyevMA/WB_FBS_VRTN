@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-10 23:10:01 UTC | **Файлов проиндексировано**: 121  
+> **Дата актуализации**: 2026-09-11 15:26:03 UTC | **Файлов проиндексировано**: 121  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -62,7 +62,7 @@
 | [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `is_kiz_withdrawn`, `extract_cz_item_info`, `normalize_kiz_light_industry`, `parse_kiz_code`, +еще 4 | Модуль кодовой базы |
 | [`app/services/telegram_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/telegram_service.py) | `TelegramService` | `get_telegram_service` | Telegram Notification Service — отправка Push-уведомлений менеджерам |
 | [`app/services/time_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/time_service.py) | — | `resolve_timezone`, `get_server_time_info`, `get_now_in_timezone`, `get_seller_local_time`, +еще 2 | Time & Timezone Management Service — WB FBS Manager |
-| [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `is_kiz_required` | Wildberries Marketplace API Client. |
+| [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `parse_wb_token_expiration`, `get_wb_token_status`, `is_kiz_required` | Wildberries Marketplace API Client. |
 
 ### 🤖 Мультиагентный Слой Celery (`app/agents/`)
 
@@ -76,7 +76,7 @@
 | [`app/agents/cz_withdrawal.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_withdrawal.py) | — | ⚙️ `app.agents.cz_withdrawal.withdraw_order_kiz`<br>⚙️ `app.agents.cz_withdrawal.process_seller_archive` | CZ Withdrawal Celery Agent — Вывод КИЗ из оборота |
 | [`app/agents/kb_sync_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/kb_sync_agent.py) | — | ⚙️ `app.agents.kb_sync_agent.sync_knowledge_base` | Knowledge Base & Codebase Synchronization Agent — WB FBS Manager |
 | [`app/agents/morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/morning_digest.py) | — | ⚙️ `app.agents.morning_digest.send_morning_digest` | Morning Digest Agent — WB FBS Manager |
-| [`app/agents/notifier.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/notifier.py) | — | ⚙️ `app.agents.notifier.notify_new_order`<br>⚙️ `app.agents.notifier.notify_batch_orders`<br>⚙️ `app.agents.notifier.send_cz_status_notification`<br>⚙️ `app.agents.notifier.send_supply_notification`<br>⚙️ `app.agents.notifier.send_alert`<br>⚙️ `app.agents.notifier.send_scheduled_orders_digest` | Notifier Agent — отправка уведомлений через Telegram |
+| [`app/agents/notifier.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/notifier.py) | — | ⚙️ `app.agents.notifier.notify_new_order`<br>⚙️ `app.agents.notifier.notify_batch_orders`<br>⚙️ `app.agents.notifier.send_cz_status_notification`<br>⚙️ `app.agents.notifier.send_supply_notification`<br>⚙️ `app.agents.notifier.send_alert`<br>⚙️ `app.agents.notifier.send_wb_token_expired_alert`<br>⚙️ `app.agents.notifier.send_scheduled_orders_digest` | Notifier Agent — отправка уведомлений через Telegram |
 | [`app/agents/order_poller.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/order_poller.py) | — | ⚙️ `app.agents.order_poller.get_order_sticker`<br>⚙️ `app.agents.order_poller.poll_all_sellers` | Order Polling Agent — WB FBS Manager |
 | [`app/agents/qa_test_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/qa_test_agent.py) | `QATestingError` | ⚙️ `app.agents.qa_test_agent.run_system_regression_tests` | QA Testing Agent — Автоматический агент-тестировщик системы |
 | [`app/agents/security_audit_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/security_audit_agent.py) | — | ⚙️ `app.agents.security_audit_agent.run_security_audit` | Security Audit Agent — WB FBS Manager |
@@ -150,7 +150,7 @@
 | [`tests/test_telegram_adversarial_stress.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_adversarial_stress.py) | `TelegramHTMLValidator` | `_stub_aiogram`, `_verify_telegram_html_validity`, `test_send_new_order_adversarial_html_xss_injection`, `test_all_methods_adversarial_html_escaping`, +еще 4 | Empirical Adversarial Stress Test Suite for TelegramService. |
 | [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
-| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 4 | Модуль кодовой базы |
+| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 6 | Модуль кодовой базы |
 
 ### 📄 Системные Конфигурации & Скрипты
 

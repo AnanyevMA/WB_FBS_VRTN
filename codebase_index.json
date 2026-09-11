@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-10T23:10:01.475411+00:00",
+  "updated_at": "2026-09-11T15:26:03.440013+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 121,
   "files": [
@@ -999,7 +999,7 @@
     {
       "file": "app/agents/notifier.py",
       "layer": "agents",
-      "hash": "af1dd22d0115",
+      "hash": "8624c98af5be",
       "docstring": "Notifier Agent — отправка уведомлений через Telegram",
       "classes": [],
       "functions": [
@@ -1095,6 +1095,18 @@
           "docstring": "Send error alert to seller's admin."
         },
         {
+          "name": "send_wb_token_expired_alert",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "reason"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Send dedicated Telegram alert that WB API token is expired."
+        },
+        {
           "name": "is_scheduled_slot_due",
           "is_async": false,
           "args": [
@@ -1146,6 +1158,11 @@
           "docstring": "Send error alert to seller's admin."
         },
         {
+          "name": "app.agents.notifier.send_wb_token_expired_alert",
+          "function": "send_wb_token_expired_alert",
+          "docstring": "Send dedicated Telegram alert that WB API token is expired."
+        },
+        {
           "name": "app.agents.notifier.send_scheduled_orders_digest",
           "function": "send_scheduled_orders_digest",
           "docstring": "Periodic task checking active sellers with notification_mode='scheduled'."
@@ -1173,7 +1190,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "94cb16715e19",
+      "hash": "2c9ae52aaa5e",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2566,7 +2583,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "5f1cd57eaba1",
+      "hash": "744c2a0a2a1d",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3797,7 +3814,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "02944e115a91",
+      "hash": "da2ed982814a",
       "docstring": "",
       "classes": [
         {
@@ -3808,6 +3825,8 @@
           "docstring": "",
           "methods": [
             "has_wb_token",
+            "wb_token_expires_at",
+            "wb_token_status",
             "has_cz_token",
             "has_telegram_token",
             "cz_token_preview"
@@ -3823,6 +3842,7 @@
       "imports": [
         "app.database",
         "app.services.encryption",
+        "app.services.wb_client",
         "datetime",
         "sqlalchemy",
         "sqlalchemy.orm",
@@ -4637,7 +4657,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "eb446a9b9848",
+      "hash": "ddba1cdbbd4b",
       "docstring": "",
       "classes": [
         {
@@ -4714,6 +4734,7 @@
       "db_tables": [],
       "imports": [
         "app.services.encryption",
+        "app.services.wb_client",
         "datetime",
         "pydantic",
         "re",
@@ -5311,7 +5332,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "b73260a05392",
+      "hash": "a5446ebc20a9",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -5327,6 +5348,7 @@
             "send_cz_withdrawal_status",
             "send_supply_delivered",
             "send_error_alert",
+            "send_wb_token_expired_alert",
             "send_batch_orders_notification",
             "send_morning_digest",
             "send_orders_digest",
@@ -5446,7 +5468,7 @@
     {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "39e60ca5e770",
+      "hash": "7d8a6e1e049e",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {
@@ -5512,6 +5534,24 @@
       ],
       "functions": [
         {
+          "name": "parse_wb_token_expiration",
+          "is_async": false,
+          "args": [
+            "token"
+          ],
+          "decorators": [],
+          "docstring": "Decodes the JWT payload of a Wildberries API token and returns the expiration datetime in UTC."
+        },
+        {
+          "name": "get_wb_token_status",
+          "is_async": false,
+          "args": [
+            "token"
+          ],
+          "decorators": [],
+          "docstring": "Returns (status, expires_at, days_left):"
+        },
+        {
           "name": "is_kiz_required",
           "is_async": false,
           "args": [
@@ -5528,8 +5568,10 @@
       "db_tables": [],
       "imports": [
         "asyncio",
+        "base64",
         "datetime",
         "httpx",
+        "json",
         "logging",
         "tenacity",
         "typing"
@@ -9281,7 +9323,7 @@
     {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
-      "hash": "d33916c6eff3",
+      "hash": "bc4746bd0ff4",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -9356,6 +9398,22 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify cz-token-status computes age_seconds and needs_refresh based on AuditLog."
+        },
+        {
+          "name": "test_parse_wb_token_expiration_and_status",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_seller_wb_token_properties_and_test_connection_expired",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
         }
       ],
       "endpoints": [],
@@ -9370,8 +9428,10 @@
         "app.models.seller",
         "app.services.encryption",
         "app.services.wb_client",
+        "base64",
         "datetime",
         "fastapi",
+        "json",
         "pytest",
         "random",
         "unittest.mock",
@@ -9381,7 +9441,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "598817284f07",
+      "hash": "a78f03e0dbf7",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

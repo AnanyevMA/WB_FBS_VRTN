@@ -229,6 +229,9 @@ class SellerResponse(SellerBase):
     has_cz_token: bool = False
     has_telegram_token: bool = False
     cz_token_preview: Optional[str] = None
+    wb_token_status: str = "valid"
+    wb_token_expires_at: Optional[datetime] = None
+    wb_token_days_left: Optional[int] = None
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 
     @classmethod
@@ -237,26 +240,40 @@ class SellerResponse(SellerBase):
         # Compute human-friendly minutes from stored seconds
         instance.polling_interval_minutes = max(1, instance.polling_interval_seconds // 60)
         
-        sched = getattr(obj, "notification_schedule", None)
+        sched = getattr(obj, "notification_schedule", None) if not isinstance(obj, dict) else obj.get("notification_schedule")
         if isinstance(sched, list) and sched:
             instance.notification_schedule = sched
         else:
             instance.notification_schedule = ["10:00", "14:00", "18:00"]
 
-        mode = getattr(obj, "notification_mode", None)
+        mode = getattr(obj, "notification_mode", None) if not isinstance(obj, dict) else obj.get("notification_mode")
         instance.notification_mode = mode or "instant"
 
-        tz = getattr(obj, "timezone", None) or getattr(obj, "digest_timezone", None)
+        tz = (getattr(obj, "timezone", None) or getattr(obj, "digest_timezone", None)) if not isinstance(obj, dict) else (obj.get("timezone") or obj.get("digest_timezone"))
         instance.timezone = tz or "Europe/Moscow"
 
-        wb_enc = getattr(obj, "wb_api_token_encrypted", None)
-        cz_enc = getattr(obj, "cz_token_encrypted", None)
-        tg_enc = getattr(obj, "telegram_bot_token_encrypted", None)
+        wb_enc = obj.get("wb_api_token_encrypted") if isinstance(obj, dict) else getattr(obj, "wb_api_token_encrypted", None)
+        cz_enc = obj.get("cz_token_encrypted") if isinstance(obj, dict) else getattr(obj, "cz_token_encrypted", None)
+        tg_enc = obj.get("telegram_bot_token_encrypted") if isinstance(obj, dict) else getattr(obj, "telegram_bot_token_encrypted", None)
         
         instance.has_wb_token = bool(wb_enc)
         instance.has_cz_token = bool(cz_enc)
         instance.has_telegram_token = bool(tg_enc)
         
+        if wb_enc:
+            try:
+                from app.services.encryption import decrypt
+                from app.services.wb_client import get_wb_token_status
+                raw_wb = decrypt(wb_enc)
+                st, exp, dl = get_wb_token_status(raw_wb)
+                instance.wb_token_status = st
+                instance.wb_token_expires_at = exp
+                instance.wb_token_days_left = dl
+            except Exception:
+                pass
+        else:
+            instance.wb_token_status = "missing"
+
         if cz_enc:
             try:
                 from app.services.encryption import decrypt
@@ -288,6 +305,9 @@ class SellerListItem(BaseModel):
     archive_reminder_hour: Optional[int] = 14
     archive_reminder_minute: Optional[int] = 0
     last_archive_uploaded_at: Optional[datetime] = None
+    wb_token_status: str = "valid"
+    wb_token_expires_at: Optional[datetime] = None
+    wb_token_days_left: Optional[int] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 
@@ -304,9 +324,25 @@ class SellerListItem(BaseModel):
     @classmethod
     def model_validate(cls, obj, **kwargs):
         instance = super().model_validate(obj, **kwargs)
-        interval_sec = getattr(obj, "polling_interval_seconds", 60) or 60
+        interval_sec = (obj.get("polling_interval_seconds") if isinstance(obj, dict) else getattr(obj, "polling_interval_seconds", 60)) or 60
         instance.polling_interval_minutes = max(1, interval_sec // 60)
-        instance.notification_mode = getattr(obj, "notification_mode", "instant") or "instant"
-        tz = getattr(obj, "timezone", None) or getattr(obj, "digest_timezone", None)
+        instance.notification_mode = (obj.get("notification_mode") if isinstance(obj, dict) else getattr(obj, "notification_mode", "instant")) or "instant"
+        tz = (obj.get("timezone") or obj.get("digest_timezone")) if isinstance(obj, dict) else (getattr(obj, "timezone", None) or getattr(obj, "digest_timezone", None))
         instance.timezone = tz or "Europe/Moscow"
+
+        wb_enc = obj.get("wb_api_token_encrypted") if isinstance(obj, dict) else getattr(obj, "wb_api_token_encrypted", None)
+        if wb_enc:
+            try:
+                from app.services.encryption import decrypt
+                from app.services.wb_client import get_wb_token_status
+                raw_wb = decrypt(wb_enc)
+                st, exp, dl = get_wb_token_status(raw_wb)
+                instance.wb_token_status = st
+                instance.wb_token_expires_at = exp
+                instance.wb_token_days_left = dl
+            except Exception:
+                pass
+        else:
+            instance.wb_token_status = "missing"
+
         return instance

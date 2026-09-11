@@ -3,7 +3,9 @@ Wildberries Marketplace API Client.
 Handles authentication, requests, rate limits, retries, and error mapping for WB FBS Manager.
 """
 import asyncio
-from datetime import datetime
+import base64
+from datetime import datetime, timezone
+import json
 import logging
 from typing import Any, Dict, List, Optional, Union
 
@@ -32,6 +34,49 @@ except (ImportError, ModuleNotFoundError):
     stop_after_attempt = wait_exponential = retry_if_exception_type = lambda *a, **k: None
 
 logger = logging.getLogger(__name__)
+
+
+def parse_wb_token_expiration(token: str) -> Optional[datetime]:
+    """
+    Decodes the JWT payload of a Wildberries API token and returns the expiration datetime in UTC.
+    WB tokens are standard JWTs (valid for 180 days).
+    Returns None if the token is not a valid JWT or does not contain an 'exp' claim.
+    """
+    if not token or not isinstance(token, str):
+        return None
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        payload_b64 = parts[1]
+        payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+        payload_bytes = base64.urlsafe_b64decode(payload_b64.encode("ascii"))
+        payload = json.loads(payload_bytes)
+        exp_ts = payload.get("exp")
+        if exp_ts and isinstance(exp_ts, (int, float)):
+            return datetime.fromtimestamp(exp_ts, tz=timezone.utc)
+    except Exception:
+        return None
+    return None
+
+
+def get_wb_token_status(token: str) -> tuple[str, Optional[datetime], Optional[int]]:
+    """
+    Returns (status, expires_at, days_left):
+    status: 'missing', 'expired', 'expiring_soon' (<= 14 days), 'valid'
+    """
+    if not token or not str(token).strip():
+        return "missing", None, None
+    expires_at = parse_wb_token_expiration(token)
+    if not expires_at:
+        return "valid", None, None
+    now = datetime.now(timezone.utc)
+    days_left = int((expires_at - now).total_seconds() // 86400)
+    if expires_at <= now:
+        return "expired", expires_at, days_left
+    elif days_left <= 14:
+        return "expiring_soon", expires_at, days_left
+    return "valid", expires_at, days_left
 
 
 class WBAPIError(Exception):
@@ -122,8 +167,9 @@ class WBClient:
             raise
         
         if response.status_code == 401:
-            self.log.error(f"WB API Unauthorized: {endpoint}")
-            raise WBUnauthorizedError("Invalid or expired API token.")
+            err_detail = response.text.strip() if response.text else "Invalid or expired API token."
+            self.log.error(f"WB API Unauthorized: {endpoint} - {err_detail}")
+            raise WBUnauthorizedError(f"WB API HTTP 401 Unauthorized: {err_detail}")
         
         if response.status_code == 429:
             self.log.warning(f"WB API Rate limit hit: {endpoint}")

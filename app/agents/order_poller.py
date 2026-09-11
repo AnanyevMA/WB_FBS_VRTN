@@ -479,6 +479,16 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
         return [], []
 
     decrypted_token = EncryptionService.decrypt(raw_token)
+    try:
+        from app.services.wb_client import parse_wb_token_expiration
+        expires_at = parse_wb_token_expiration(decrypted_token)
+        if expires_at and expires_at <= datetime.now(timezone.utc):
+            raise WBUnauthorizedError(f"Срок действия токена WB истёк ({expires_at.strftime('%d.%m.%Y %H:%M UTC')}). Обновите токен в ЛК Wildberries.")
+    except WBUnauthorizedError:
+        raise
+    except Exception:
+        pass
+
     wb_client = WBClient(decrypted_token)
 
     new_orders_res = wb_client.get_new_orders()
@@ -770,28 +780,37 @@ def poll_all_sellers(self: Any) -> dict:
 
             except WBUnauthorizedError as exc:
                 session.rollback()
-                logger.error(f"WB API Unauthorized for seller {seller_id_str}: {exc}. Disabling seller polling.")
-                seller.is_active = False
+                logger.error(f"WB API Unauthorized / Token Expired for seller {seller_id_str}: {exc}. Disabling seller polling.")
+                seller_obj = session.query(Seller).filter(Seller.id == seller_id_str).first()
+                if seller_obj:
+                    seller_obj.polling_enabled = False
+                    seller_name = seller_obj.name
+                else:
+                    seller_name = getattr(seller, "name", seller_id_str)
+
                 import uuid
                 audit_log = AuditLog(
-                    seller_id=seller.id,
+                    seller_id=seller_id_str,
                     agent="order_poller",
-                    action="SELLER_DISABLED_UNAUTHORIZED",
+                    action="WB_TOKEN_EXPIRED",
                     entity_type="seller",
-                    entity_id=str(seller.id),
-                    error=f"Disabling polling due to WBUnauthorizedError: {exc}",
+                    entity_id=seller_id_str,
+                    error=f"WB API token expired or unauthorized: {exc}",
+                    payload={"seller_name": seller_name, "error": str(exc)},
                     trace_id=str(uuid.uuid4()),
                     created_at=datetime.now(timezone.utc),
                 )
                 session.add(audit_log)
                 session.commit()
 
-                from app.agents.notifier import send_alert
-                send_alert.delay(
-                    seller_id=str(seller.id),
-                    agent="order_poller",
-                    message=f"Seller {seller_id_str} disabled due to invalid WB API token: {exc}",
-                )
+                try:
+                    from app.agents.notifier import send_wb_token_expired_alert
+                    send_wb_token_expired_alert.delay(
+                        seller_id=seller_id_str,
+                        reason=str(exc),
+                    )
+                except Exception as alert_err:
+                    logger.warning(f"Could not dispatch send_wb_token_expired_alert for {seller_id_str}: {alert_err}")
             except WBRateLimitError as exc:
                 session.rollback()
                 logger.warning(f"WB API Rate Limit encountered for seller {seller_id_str}: {exc}")

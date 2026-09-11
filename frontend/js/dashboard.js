@@ -94,17 +94,30 @@ async function loadSellersForDropdown() {
     }
 
     showSeedBanner(false);
-    select.innerHTML = sellers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    select.innerHTML = sellers.map(s => {
+        const warn = s.wb_token_status === 'expired' ? '⚠️ [Истёк токен] ' : (s.wb_token_status === 'expiring_soon' ? '⏳ [Истекает] ' : '');
+        return `<option value="${s.id}">${warn}${s.name}</option>`;
+    }).join('');
     
     if (!currentSellerId || !sellers.some(s => s.id == currentSellerId)) {
         currentSellerId = sellers[0].id;
     }
     select.value = currentSellerId;
 
+    const activeSeller = sellers.find(s => s.id == currentSellerId);
+    if (activeSeller && activeSeller.wb_token_status === 'expired') {
+        showToast('Токен WB истёк', `У магазина «${activeSeller.name}» истёк срок действия API-токена WB. Обновите токен в настройках продавца.`, 'warning');
+    }
+
     // Change listener
     select.onchange = (e) => {
         currentSellerId = e.target.value;
-        showToast('Переключение', `Выбран магазин`, 'info');
+        const sel = sellers.find(s => s.id == currentSellerId);
+        if (sel && sel.wb_token_status === 'expired') {
+            showToast('Токен WB истёк', `У магазина «${sel.name}» истёк срок API-токена WB. Обновите токен!`, 'warning');
+        } else {
+            showToast('Переключение', `Выбран магазин`, 'info');
+        }
         if (typeof updateSignatureBadge === 'function') updateSignatureBadge();
         if (typeof silentCheckAndRefreshCzToken === 'function') {
             setTimeout(silentCheckAndRefreshCzToken, 1000);

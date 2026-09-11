@@ -9,7 +9,7 @@ from app.models.seller import Seller
 from app.models.order import Order, OrderStatus
 from app.schemas.seller import SellerCreate, SellerUpdate, SellerResponse, SellerListItem
 from app.services.encryption import encrypt, decrypt
-from app.services.wb_client import WBClient
+from app.services.wb_client import WBClient, WBUnauthorizedError, parse_wb_token_expiration
 
 router = APIRouter(prefix="/sellers", tags=["sellers"])
 
@@ -255,15 +255,31 @@ async def test_connection(seller_id: str, db: AsyncSession = Depends(get_db)):
     # 1. WB API test
     try:
         token = decrypt(seller.wb_api_token_encrypted)
-        client = WBClient(token)
-        try:
-            await client.get_new_orders()
-            results["wb"] = {"status": "ok", "message": "Подключение к WB API успешно проверено"}
-        except Exception as e:
+        exp_dt = parse_wb_token_expiration(token)
+        now_dt = datetime.now(timezone.utc)
+        if exp_dt and exp_dt <= now_dt:
             overall_success = False
-            results["wb"] = {"status": "error", "message": f"Ошибка WB API: {str(e)}"}
-        finally:
-            await client.close()
+            results["wb"] = {
+                "status": "error",
+                "message": f"Срок действия API-токена Wildberries истёк ({exp_dt.strftime('%d.%m.%Y %H:%M UTC')}). Требуется выпустить новый токен в ЛК Wildberries."
+            }
+        else:
+            client = WBClient(token)
+            try:
+                await client.get_new_orders()
+                exp_msg = f" (действует до {exp_dt.strftime('%d.%m.%Y')})" if exp_dt else ""
+                results["wb"] = {"status": "ok", "message": f"Подключение к WB API успешно проверено{exp_msg}"}
+            except WBUnauthorizedError as e:
+                overall_success = False
+                results["wb"] = {
+                    "status": "error",
+                    "message": f"Срок действия API-токена WB истёк или токен недействителен (HTTP 401 Unauthorized). Обновите токен в ЛК Wildberries: {str(e)}"
+                }
+            except Exception as e:
+                overall_success = False
+                results["wb"] = {"status": "error", "message": f"Ошибка WB API: {str(e)}"}
+            finally:
+                await client.close()
     except Exception as e:
         overall_success = False
         results["wb"] = {"status": "error", "message": f"Не удалось расшифровать токен WB: {str(e)}"}

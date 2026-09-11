@@ -69,6 +69,32 @@ class Seller(Base):
         return bool(self.wb_api_token_encrypted)
 
     @property
+    def wb_token_expires_at(self) -> Optional[datetime]:
+        if not self.wb_api_token_encrypted:
+            return None
+        try:
+            from app.services.encryption import decrypt
+            from app.services.wb_client import parse_wb_token_expiration
+            raw_token = decrypt(self.wb_api_token_encrypted)
+            return parse_wb_token_expiration(raw_token)
+        except Exception:
+            return None
+
+    @property
+    def wb_token_status(self) -> str:
+        """Returns 'missing', 'expired', 'expiring_soon', or 'valid'."""
+        if not self.wb_api_token_encrypted:
+            return "missing"
+        try:
+            from app.services.encryption import decrypt
+            from app.services.wb_client import get_wb_token_status
+            raw_token = decrypt(self.wb_api_token_encrypted)
+            st, _, _ = get_wb_token_status(raw_token)
+            return st
+        except Exception:
+            return "valid"
+
+    @property
     def has_cz_token(self) -> bool:
         return bool(self.cz_token_encrypted)
 

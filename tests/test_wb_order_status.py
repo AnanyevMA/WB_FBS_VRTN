@@ -320,3 +320,91 @@ async def test_get_cz_token_status_recent_and_expired():
         assert status_expired["age_seconds"] >= 25000
 
 
+def test_parse_wb_token_expiration_and_status():
+    import base64
+    import json
+    from datetime import timedelta
+    from app.services.wb_client import parse_wb_token_expiration, get_wb_token_status
+
+    # 1. Non-JWT tokens
+    assert parse_wb_token_expiration("") is None
+    assert parse_wb_token_expiration("plain_token_string") is None
+    status, exp, days = get_wb_token_status("")
+    assert status == "missing"
+    status, exp, days = get_wb_token_status("invalid_format_string")
+    assert status == "valid"  # fallback if not standard JWT
+
+    # Helper to construct a mock JWT
+    def make_jwt(exp_timestamp: int) -> str:
+        header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
+        payload = base64.urlsafe_b64encode(json.dumps({"id": 123, "s": 456, "exp": exp_timestamp}).encode()).decode().rstrip("=")
+        sig = "mocksignature"
+        return f"{header}.{payload}.{sig}"
+
+    now = datetime.now(timezone.utc)
+
+    # 2. Expired JWT (expired 2 days ago)
+    past_ts = int((now - timedelta(days=2)).timestamp())
+    expired_token = make_jwt(past_ts)
+    exp_dt = parse_wb_token_expiration(expired_token)
+    assert exp_dt is not None
+    assert int(exp_dt.timestamp()) == past_ts
+    status, exp, days = get_wb_token_status(expired_token)
+    assert status == "expired"
+    assert days is not None and days < 0
+
+    # 3. Expiring soon JWT (expires in 5 days)
+    soon_ts = int((now + timedelta(days=5)).timestamp())
+    soon_token = make_jwt(soon_ts)
+    status, exp, days = get_wb_token_status(soon_token)
+    assert status == "expiring_soon"
+    assert days is not None and 4 <= days <= 5
+
+    # 4. Valid JWT (expires in 90 days)
+    valid_ts = int((now + timedelta(days=90)).timestamp())
+    valid_token = make_jwt(valid_ts)
+    status, exp, days = get_wb_token_status(valid_token)
+    assert status == "valid"
+    assert days is not None and 89 <= days <= 91
+
+
+@pytest.mark.asyncio
+async def test_seller_wb_token_properties_and_test_connection_expired():
+    import base64
+    import json
+    from datetime import timedelta
+    from app.services.encryption import encrypt
+    from app.api.sellers import test_connection
+
+    def make_jwt(exp_timestamp: int) -> str:
+        header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
+        payload = base64.urlsafe_b64encode(json.dumps({"id": 999, "exp": exp_timestamp}).encode()).decode().rstrip("=")
+        return f"{header}.{payload}.sig"
+
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        # Create seller with expired token
+        past_ts = int((datetime.now(timezone.utc) - timedelta(days=10)).timestamp())
+        expired_jwt = make_jwt(past_ts)
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Seller Expired WB Token",
+            wb_api_token_encrypted=encrypt(expired_jwt),
+            is_active=True,
+        )
+        session.add(seller)
+        await session.commit()
+
+        # Check model properties
+        assert seller.wb_token_status == "expired"
+        assert seller.wb_token_expires_at is not None
+
+        # Test test-connection endpoint
+        res = await test_connection(seller_id=seller_id, db=session)
+        assert res["success"] is False
+        assert "истёк" in res["message"]
+        assert res["details"]["wb"]["status"] == "error"
+
+
+

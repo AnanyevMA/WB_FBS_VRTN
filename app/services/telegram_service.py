@@ -17,6 +17,8 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -467,13 +469,14 @@ class TelegramService:
         )
 
         keyboard = None
-        if not is_auto_signed and batch_id:
+        base_url = (getattr(settings, "public_url", "") or "").rstrip("/")
+        if not is_auto_signed and batch_id and base_url:
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
                             text="✍️ Перейти к подписанию",
-                            url=f"{settings.public_url}/#kiz-queue",
+                            url=f"{base_url}/#kiz-queue",
                         ),
                     ],
                 ]

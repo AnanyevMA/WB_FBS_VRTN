@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = False
     secret_key: str = "change-this-secret-key"
+    public_url: str = "http://46.149.79.201"
 
     # Database (defaults to local SQLite for instant testing without Docker)
     database_url: str = "sqlite+aiosqlite:///./wbfbs.db"

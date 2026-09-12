@@ -335,12 +335,28 @@ class WBClient:
         POST /api/marketplace/v3/orders/meta
         Body: {orders: [id1, id2]}
         Returns meta info including KIZ validation status.
+        Batches order_ids in chunks of 50 to avoid WB 400 UploadDataLimit.
         """
-        payload = {
-            "orders": order_ids
-        }
-        data = await self._request("POST", "/api/marketplace/v3/orders/meta", json=payload)
-        return data or {}
+        if not order_ids:
+            return {"orders": []}
+
+        all_orders = []
+        chunk_size = 50
+        for i in range(0, len(order_ids), chunk_size):
+            chunk = order_ids[i:i + chunk_size]
+            payload = {
+                "orders": chunk
+            }
+            try:
+                data = await self._request("POST", "/api/marketplace/v3/orders/meta", json=payload)
+                if data and isinstance(data, dict):
+                    orders_part = data.get("orders") or []
+                    if isinstance(orders_part, list):
+                        all_orders.extend(orders_part)
+            except Exception as e:
+                logger.warning(f"Error fetching orders meta for chunk {chunk[:3]}...: {e}")
+
+        return {"orders": all_orders}
 
     # --- Supplies ---
 

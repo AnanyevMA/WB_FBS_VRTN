@@ -726,6 +726,50 @@ async def sync_all_orders_cz_status(seller_id: str, db: AsyncSession = Depends(g
             detail="У продавца не настроен ИНН Честного Знака в настройках магазина."
         )
 
+    # 0. Автоматически подтягиваем недостающие SGTIN/КИЗ из Wildberries для заказов продавца
+    if seller.wb_api_token_encrypted:
+        try:
+            from app.services.encryption import decrypt
+            wb_token = decrypt(seller.wb_api_token_encrypted)
+            if wb_token:
+                from app.services.wb_client import WBClient
+                from app.services.kiz_service import normalize_kiz_light_industry
+                wb_client = WBClient(wb_token)
+                orders_without_kiz = (await db.execute(
+                    select(Order).where(
+                        Order.seller_id == seller_id,
+                        Order.kiz_code.is_(None)
+                    )
+                )).scalars().all()
+                if orders_without_kiz:
+                    oids = [o.id for o in orders_without_kiz]
+                    meta_res = await wb_client.get_orders_meta(oids)
+                    now_ts = datetime.now(timezone.utc)
+                    for om in meta_res.get("orders", []):
+                        om_id = om.get("id")
+                        meta_dict = om.get("meta", {})
+                        sgtin_val = None
+                        if "sgtin" in meta_dict and meta_dict["sgtin"] and meta_dict["sgtin"].get("value"):
+                            vals = meta_dict["sgtin"]["value"]
+                            if isinstance(vals, list) and vals:
+                                sgtin_val = vals[0]
+                        if not sgtin_val and "metaDetails" in om:
+                            for md in om.get("metaDetails", []):
+                                if md.get("key") == "sgtin" and md.get("value"):
+                                    sgtin_val = md.get("value")
+                                    break
+                        if om_id and sgtin_val:
+                            clean_k = normalize_kiz_light_industry(sgtin_val) or str(sgtin_val).strip()
+                            matching_o = next((o for o in orders_without_kiz if o.id == om_id), None)
+                            if matching_o:
+                                matching_o.kiz_code = clean_k
+                                matching_o.kiz_required = True
+                                matching_o.kiz_status = KizStatus.ATTACHED
+                                matching_o.kiz_attached_at = now_ts
+                    await db.flush()
+        except Exception as meta_err:
+            logger.warning(f"Failed to auto-sync missing order SGTINs from WB before CZ sync: {meta_err}")
+
     # 1. Собираем все уникальные КИЗ продавца
     # А. Из таблицы orders
     stmt_orders = select(Order.kiz_code).where(

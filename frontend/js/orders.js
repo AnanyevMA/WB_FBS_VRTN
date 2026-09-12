@@ -202,6 +202,9 @@ async function viewOrderDetail(orderId) {
         const order = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}`);
         const sticker = await apiFetch(`/sellers/${currentSellerId}/orders/${orderId}/sticker`);
 
+        const isWithdrawnOrRetired = order.kiz_status === 'WITHDRAWN' || order.kiz_cz_status === 'RETIRED' || order.kiz_cz_status === 'WITHDRAWN';
+        const isCzRejected = !isWithdrawnOrRetired && (order.kiz_status === 'ERROR' || order.cz_doc_status === 'CHECKED_NOT_OK' || !!order.cz_rejection_reason);
+
         document.getElementById('orderDetailTitle').innerText = `Детали сборочного задания #${order.id}`;
         
         document.getElementById('orderDetailBody').innerHTML = `

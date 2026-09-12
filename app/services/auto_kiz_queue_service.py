@@ -178,11 +178,13 @@ async def collect_auto_kiz_candidates(
         ),
     )
     res_uw = await db.execute(stmt_unwithdrawn_cancelled)
-    for unwithdrawn_order in res_uw.scalars().all():
-        # Товар не выводился из ГИС МТ — освобождаем в БД
-        unwithdrawn_order.kiz_status = KizStatus.NOT_ATTACHED
+    uw_orders = res_uw.scalars().all()
+    for unwithdrawn_order in uw_orders:
+        # Товар не выводился из ГИС МТ — отвязываем КИЗ в БД
+        unwithdrawn_order.kiz_code = None
+        unwithdrawn_order.kiz_status = KizStatus.PENDING
         unwithdrawn_order.updated_at = datetime.now(timezone.utc)
-    if res_uw.scalars().all():
+    if uw_orders:
         await db.commit()
 
     return list(withdrawal_orders), list(return_orders)

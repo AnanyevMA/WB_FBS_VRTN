@@ -686,8 +686,10 @@ function populateMatrixFromDonor(card) {
     attrs.forEach(a => {
         const id = a.attr_id;
         const val = a.attr_value || a.value || '';
-        if (id === 13914 || id === 10001 || id === 2478) {
-            if (!donorArticle) donorArticle = val;
+        if (id === 13914 || id === 10001) {
+            donorArticle = val;
+        } else if (id === 2478 && !donorArticle) {
+            donorArticle = val;
         } else if (id === 2483 || id === 10610) {
             if (!donorComposition) donorComposition = val;
         } else if (id === 2480 || id === 10611) {
@@ -830,7 +832,7 @@ function updateMatrixCombinationsPreview() {
     const nameTpl = document.getElementById('matrix_name_template')?.value.trim() || '{name}, цвет {color}, размер {size}';
     const isTechGtin = document.getElementById('matrix_is_tech_gtin')?.checked || false;
 
-    const sizes = sizesRaw.split(/[,;\s]+/).map(s => s.trim()).filter(Boolean);
+    const sizes = sizesRaw.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
     const colors = colorsRaw.split(/[,;]+/).map(c => c.trim()).filter(Boolean);
 
     // Build raw combinations: Sizes x Colors

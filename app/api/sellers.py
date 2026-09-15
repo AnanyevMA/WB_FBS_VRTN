@@ -532,6 +532,18 @@ async def get_cz_token_status(seller_id: str, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=404, detail="Продавец не найден")
 
     has_token = bool(seller.cz_token_encrypted)
+    raw_cz_token = None
+    if has_token:
+        try:
+            raw_cz_token = decrypt(seller.cz_token_encrypted)
+        except Exception:
+            raw_cz_token = None
+
+    token_expires_at = None
+    if raw_cz_token:
+        from app.services.cz_client import parse_cz_token_expiration
+        token_expires_at = parse_cz_token_expiration(raw_cz_token)
+
     stmt = (
         select(AuditLog.created_at)
         .where(
@@ -543,11 +555,20 @@ async def get_cz_token_status(seller_id: str, db: AsyncSession = Depends(get_db)
     )
     last_auth_at = (await db.execute(stmt)).scalar_one_or_none()
 
+    now_utc = datetime.now(timezone.utc)
     age_seconds = None
+    expires_in_seconds = None
     needs_refresh = True
+
     if has_token:
-        if last_auth_at:
-            now_utc = datetime.now(timezone.utc)
+        if token_expires_at:
+            expires_in_seconds = int((token_expires_at - now_utc).total_seconds())
+            # True API tokens are valid for up to 10 hours. Refresh when less than 4h remaining or expired
+            needs_refresh = expires_in_seconds < (4 * 3600)
+            if last_auth_at:
+                auth_dt = last_auth_at if last_auth_at.tzinfo else last_auth_at.replace(tzinfo=timezone.utc)
+                age_seconds = max(0, int((now_utc - auth_dt).total_seconds()))
+        elif last_auth_at:
             auth_dt = last_auth_at if last_auth_at.tzinfo else last_auth_at.replace(tzinfo=timezone.utc)
             age_seconds = max(0, int((now_utc - auth_dt).total_seconds()))
             # True API token expires in 10 hours (36000 sec). Refresh when older than 6 hours (21600 sec)
@@ -563,6 +584,8 @@ async def get_cz_token_status(seller_id: str, db: AsyncSession = Depends(get_db)
         "cz_inn": seller.cz_inn,
         "thumbprint": seller.cryptopro_cert_thumbprint or seller.cz_cert_path,
         "last_auth_at": last_auth_at.isoformat() if last_auth_at else None,
+        "expires_at": token_expires_at.isoformat() if token_expires_at else None,
+        "expires_in_seconds": expires_in_seconds,
         "age_seconds": age_seconds,
         "needs_refresh": needs_refresh,
     }

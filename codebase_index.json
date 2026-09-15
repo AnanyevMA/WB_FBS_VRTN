@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-12T00:05:58.304482+00:00",
+  "updated_at": "2026-09-15T14:36:44.499770+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 127,
+  "total_files": 128,
   "files": [
     {
       "file": "alembic/env.py",
@@ -777,7 +777,7 @@
     {
       "file": "app/agents/cz_token_refresher.py",
       "layer": "agents",
-      "hash": "b450cd560e77",
+      "hash": "23c030a3fc10",
       "docstring": "Chestny Znak Token Refresher Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -817,6 +817,24 @@
           ],
           "decorators": [],
           "docstring": "Write structured audit log entry."
+        },
+        {
+          "name": "sync_active_orders_cz_status_async",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": "Асинхронная логика фоновой синхронизации статусов КИЗ Честного Знака для активных заказов."
+        },
+        {
+          "name": "sync_active_orders_cz_status",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Периодическая задача Celery Beat (каждые 30 минут):"
         }
       ],
       "endpoints": [],
@@ -825,6 +843,11 @@
           "name": "app.agents.cz_token_refresher.refresh_all_tokens",
           "function": "refresh_all_tokens",
           "docstring": "Refresh CZ tokens for all active sellers before expiration."
+        },
+        {
+          "name": "app.agents.cz_token_refresher.sync_active_orders_cz_status",
+          "function": "sync_active_orders_cz_status",
+          "docstring": "Периодическая задача Celery Beat (каждые 30 минут):"
         }
       ],
       "db_tables": [],
@@ -832,11 +855,14 @@
         "app.agents.notifier",
         "app.celery_app",
         "app.config",
+        "app.database",
         "app.models.audit",
+        "app.models.order",
         "app.models.seller",
         "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
+        "app.services.kiz_service",
         "asyncio",
         "datetime",
         "logging",
@@ -2764,7 +2790,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "744c2a0a2a1d",
+      "hash": "714ba49969d3",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3648,7 +3674,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "82bdff6b0342",
+      "hash": "6eed78941243",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3665,7 +3691,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "b392aa996a64",
+      "hash": "30844c0ee385",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -5110,7 +5136,7 @@
     {
       "file": "app/services/auto_kiz_queue_service.py",
       "layer": "services",
-      "hash": "a6d3c6cf063e",
+      "hash": "b91713bd35fc",
       "docstring": "Auto KIZ Queue Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5287,7 +5313,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "a08011354e49",
+      "hash": "80c9196c85a7",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -5359,7 +5385,17 @@
           ]
         }
       ],
-      "functions": [],
+      "functions": [
+        {
+          "name": "parse_cz_token_expiration",
+          "is_async": false,
+          "args": [
+            "token"
+          ],
+          "decorators": [],
+          "docstring": "Decodes the JWT payload of a Chestny Znak (True API) session token and returns the expiration datetime in UTC."
+        }
+      ],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
@@ -5586,7 +5622,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "c1666ec76f1b",
+      "hash": "e9eec04b6788",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -5633,6 +5669,7 @@
         "aiogram.enums",
         "aiogram.exceptions",
         "aiogram.types",
+        "app.config",
         "asyncio",
         "datetime",
         "html",
@@ -7365,6 +7402,97 @@
         "json",
         "pathlib",
         "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_cz_background_sync.py",
+      "layer": "tests",
+      "hash": "36ad7b7684f1",
+      "docstring": "Unit and Integration Tests for CZ Background Sync & Token Keep-Alive (Option 1).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_make_dummy_jwt",
+          "is_async": false,
+          "args": [
+            "payload"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_parse_cz_token_expiration",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_get_auth_headers",
+          "is_async": true,
+          "args": [
+            "client"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_get_cz_token_status_jwt_exp",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sync_active_orders_cz_status_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sync_active_orders_cz_status_handles_401_gracefully",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sync_active_orders_cz_status_celery_task_wrapper",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify synchronous Celery task wrapper executes and returns result."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_token_refresher",
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "base64",
+        "datetime",
+        "httpx",
+        "json",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -9780,7 +9908,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "e57bdfddabf7",
+      "hash": "5abafabda1c5",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

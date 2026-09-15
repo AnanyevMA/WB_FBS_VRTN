@@ -17,7 +17,8 @@ from app.config import settings
 from app.models.seller import Seller
 from app.models.audit import AuditLog
 from app.services.encryption import encrypt, decrypt
-from app.services.cz_client import CZClient, CZAPIError
+from app.services.cz_client import CZClient, CZAPIError, CZUnauthorizedError
+from app.services.kiz_service import batch_verify_and_sync_cises
 
 logger = logging.getLogger(__name__)
 sync_engine = create_engine(settings.database_url_sync)
@@ -142,3 +143,102 @@ def _log_audit(
         created_at=datetime.now(timezone.utc),
     )
     db.add(log)
+
+
+async def sync_active_orders_cz_status_async() -> Dict[str, Any]:
+    """
+    Асинхронная логика фоновой синхронизации статусов КИЗ Честного Знака для активных заказов.
+    Запрашивает актуальный статус в True API без необходимости ручного нажатия «Сверить ЧЗ».
+    """
+    from app.database import AsyncSessionLocal
+    from app.models.order import Order, OrderStatus, KizStatus
+
+    results_summary: Dict[str, Any] = {
+        "status": "success",
+        "sellers_checked": 0,
+        "orders_checked": 0,
+        "kiz_synced": 0,
+        "expired_tokens": 0,
+        "errors": [],
+    }
+
+    async with AsyncSessionLocal() as db:
+        sellers = (
+            await db.execute(
+                select(Seller).where(
+                    Seller.is_active == True,
+                    Seller.cz_inn.isnot(None),
+                    Seller.cz_token_encrypted.isnot(None),
+                )
+            )
+        ).scalars().all()
+
+        for seller in sellers:
+            if not seller.cz_inn or not seller.cz_token_encrypted:
+                continue
+
+            order_stmt = (
+                select(Order.kiz_code)
+                .where(
+                    Order.seller_id == str(seller.id),
+                    Order.kiz_code.isnot(None),
+                    Order.kiz_code != "",
+                    Order.status.in_([OrderStatus.NEW, OrderStatus.ASSEMBLING, OrderStatus.DELIVERING]),
+                    Order.kiz_status != KizStatus.WITHDRAWN,
+                )
+                .distinct()
+            )
+            kiz_rows = (await db.execute(order_stmt)).scalars().all()
+            all_codes = list(set([str(k).strip() for k in kiz_rows if k and str(k).strip()]))
+
+            if not all_codes:
+                continue
+
+            results_summary["sellers_checked"] += 1
+            results_summary["orders_checked"] += len(all_codes)
+
+            try:
+                synced_map = await batch_verify_and_sync_cises(
+                    seller=seller,
+                    kiz_codes=all_codes,
+                    db=db,
+                    force_refresh=True,
+                )
+                await db.commit()
+                count = len(synced_map) if synced_map else 0
+                results_summary["kiz_synced"] += count
+                logger.info(
+                    f"[CZ Background Sync] Successfully synced {count} KIZ codes "
+                    f"for seller {seller.name or seller.id} ({seller.cz_inn})"
+                )
+            except CZUnauthorizedError:
+                results_summary["expired_tokens"] += 1
+                logger.warning(
+                    f"[CZ Background Sync] Session token expired (401) for seller {seller.name or seller.id}. "
+                    f"Awaiting browser keep-alive refresh or manual UKEP signin."
+                )
+            except Exception as exc:
+                err_text = f"Seller {seller.id}: {exc}"
+                results_summary["errors"].append(err_text)
+                logger.error(f"[CZ Background Sync] Error syncing KIZ: {err_text}")
+
+    return results_summary
+
+
+@celery_app.task(
+    name="app.agents.cz_token_refresher.sync_active_orders_cz_status",
+    queue="cz_operations",
+    bind=True,
+    max_retries=1,
+)
+def sync_active_orders_cz_status(self=None) -> Dict[str, Any]:
+    """
+    Периодическая задача Celery Beat (каждые 30 минут):
+    Автоматическая фоновая синхронизация статусов КИЗ Честного Знака для активных заказов.
+    """
+    try:
+        return asyncio.run(sync_active_orders_cz_status_async())
+    except Exception as exc:
+        logger.error(f"[CZ Background Sync] Fatal error in sync_active_orders_cz_status: {exc}")
+        return {"status": "error", "error": str(exc)}
+

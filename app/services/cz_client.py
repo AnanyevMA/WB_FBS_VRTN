@@ -71,6 +71,30 @@ class CZDocumentError(CZAPIError):
         self.doc_id = doc_id
 
 
+def parse_cz_token_expiration(token: str) -> Optional[datetime]:
+    """
+    Decodes the JWT payload of a Chestny Znak (True API) session token and returns the expiration datetime in UTC.
+    True API tokens are standard JWTs (valid up to 10 hours).
+    Returns None if the token is not a valid JWT or does not contain an 'exp' claim.
+    """
+    if not token or not isinstance(token, str):
+        return None
+    parts = token.strip().split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        payload_b64 = parts[1]
+        payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+        payload_bytes = base64.urlsafe_b64decode(payload_b64.encode("ascii"))
+        payload = json.loads(payload_bytes)
+        exp_ts = payload.get("exp")
+        if exp_ts and isinstance(exp_ts, (int, float)):
+            return datetime.fromtimestamp(exp_ts, tz=timezone.utc)
+    except Exception:
+        return None
+    return None
+
+
 class CZClient:
     """
     Async client for ГИС МТ (True API) and СУЗ-Облако 5.0 (API 3.0.38).

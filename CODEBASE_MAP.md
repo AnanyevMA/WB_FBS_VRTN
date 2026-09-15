@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-12 00:05:58 UTC | **Файлов проиндексировано**: 127  
+> **Дата актуализации**: 2026-09-15 14:36:44 UTC | **Файлов проиндексировано**: 128  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -58,7 +58,7 @@
 | [`app/services/auto_kiz_queue_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/auto_kiz_queue_service.py) | — | `sync_delivered_orders_with_wb`, `collect_auto_kiz_candidates`, `verify_candidates_against_cz`, `process_auto_kiz_queue_for_seller` | Auto KIZ Queue Service — WB FBS Manager |
 | [`app/services/codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/codebase_indexer.py) | `CodebaseIndexer` | — | Codebase Semantic & Symbol Indexer — WB FBS Manager |
 | [`app/services/crypto_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/crypto_service.py) | `CryptoSignatureError` | `_find_cryptopro_bin`, `sign_document`, `_mock_signature`, `is_cryptopro_available` | КриптоПро Digital Signature Service |
-| [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | — | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
+| [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | `parse_cz_token_expiration` | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
 | [`app/services/encryption.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/encryption.py) | `EncryptionService` | `_get_fernet`, `encrypt`, `decrypt` | Encryption Service — шифрование чувствительных данных (токены API, credentials) |
 | [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
 | [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `is_kiz_withdrawn`, `extract_cz_item_info`, `normalize_kiz_light_industry`, `parse_kiz_code`, +еще 4 | Модуль кодовой базы |
@@ -75,7 +75,7 @@
 | [`app/agents/auto_kiz_queue_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/auto_kiz_queue_agent.py) | — | ⚙️ `app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue`<br>⚙️ `app.agents.auto_kiz_queue_agent.trigger_seller_auto_kiz_queue` | Auto KIZ Queue Agent — WB FBS Manager |
 | [`app/agents/cleanup.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cleanup.py) | — | ⚙️ `app.agents.cleanup.cleanup_old_audit_logs` | Cleanup Agent — WB FBS Manager |
 | [`app/agents/cz_return.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_return.py) | — | ⚙️ `app.agents.cz_return.return_order_kiz` | CZ Return Agent — Возврат КИЗ в оборот при возврате товара |
-| [`app/agents/cz_token_refresher.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_token_refresher.py) | — | ⚙️ `app.agents.cz_token_refresher.refresh_all_tokens` | Chestny Znak Token Refresher Agent — WB FBS Manager |
+| [`app/agents/cz_token_refresher.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_token_refresher.py) | — | ⚙️ `app.agents.cz_token_refresher.refresh_all_tokens`<br>⚙️ `app.agents.cz_token_refresher.sync_active_orders_cz_status` | Chestny Znak Token Refresher Agent — WB FBS Manager |
 | [`app/agents/cz_withdrawal.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_withdrawal.py) | — | ⚙️ `app.agents.cz_withdrawal.withdraw_order_kiz`<br>⚙️ `app.agents.cz_withdrawal.process_seller_archive` | CZ Withdrawal Celery Agent — Вывод КИЗ из оборота |
 | [`app/agents/kb_sync_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/kb_sync_agent.py) | — | ⚙️ `app.agents.kb_sync_agent.sync_knowledge_base` | Knowledge Base & Codebase Synchronization Agent — WB FBS Manager |
 | [`app/agents/morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/morning_digest.py) | — | ⚙️ `app.agents.morning_digest.send_morning_digest` | Morning Digest Agent — WB FBS Manager |
@@ -132,6 +132,7 @@
 | [`tests/test_challenger_r3_m1_1_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_challenger_r3_m1_1_adversarial.py) | — | `test_clean_31_kiz_with_91_92_in_serial_must_stay_31_chars`, `test_concatenated_barcode_with_91_92_in_serial`, `test_space_delimited_barcode_with_91_92_in_serial`, `test_gs_delimited_barcode_with_91_92_in_serial`, +еще 4 | Adversarial Challenge & Empirical Bug Reproduction Test Suite. |
 | [`tests/test_challenger_r3_m2_1_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_challenger_r3_m2_1_adversarial.py) | — | `test_extract_error_corrupted_and_non_dict_inputs`, `test_extract_error_deeply_nested_and_heterogeneous_errors_field`, `test_extract_error_complex_common_errors_structures`, `test_extract_error_unicode_emojis_and_control_chars`, +еще 14 | Модуль кодовой базы |
 | [`tests/test_codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_codebase_indexer.py) | — | `test_codebase_indexer_scan_and_save`, `test_codebase_indexer_fast_symbol_query`, `test_lookup_code_symbol_helper`, `test_codebase_indexing_rule_in_manifest`, +еще 2 | Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule. |
+| [`tests/test_cz_background_sync.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_background_sync.py) | — | `_make_dummy_jwt`, `test_parse_cz_token_expiration`, `_get_auth_headers`, `test_get_cz_token_status_jwt_exp`, +еще 3 | Unit and Integration Tests for CZ Background Sync & Token Keep-Alive (Option 1). |
 | [`tests/test_cz_client_and_queues.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_and_queues.py) | — | `test_encryption_service_compatibility`, `test_cz_client_authenticate_flow`, `test_cz_client_suz_endpoints_and_cises_info`, `test_agent_task_queue_decorators_match_manifest`, +еще 3 | Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService. |
 | [`tests/test_cz_true_api_v4_polling.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_true_api_v4_polling.py) | — | `test_cz_client_get_document_info_v4_endpoint`, `test_cz_client_extract_document_error_text`, `test_wait_for_document_polling_progression_to_checked_ok`, `test_wait_for_document_checked_not_ok_raises_cz_document_error`, +еще 6 | Модуль кодовой базы |
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |

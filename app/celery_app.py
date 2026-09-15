@@ -82,6 +82,11 @@ celery_app.conf.update(
             "schedule": 1800.0,  # every 30 minutes
             "options": {"queue": "cz_operations"},
         },
+        "sync-active-orders-cz-status": {
+            "task": "app.agents.cz_token_refresher.sync_active_orders_cz_status",
+            "schedule": 1800.0,  # every 30 minutes
+            "options": {"queue": "cz_operations"},
+        },
         "process-archive-daily": {
             "task": "app.agents.archive_processor.process_all_archives",
             "schedule": crontab(hour=3, minute=30),  # daily at 03:30 Moscow time

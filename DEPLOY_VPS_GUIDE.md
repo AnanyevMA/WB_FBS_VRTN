@@ -26,12 +26,13 @@
 
 - **Swap 2 GB (Обязательно)**: Автоматически создается и подключается скриптами `setup_vps.sh` и `deploy.sh` с параметром `swappiness=10`. Предотвращает аварийное завершение Celery и PostgreSQL при пиках нагрузки.
 - **PostgreSQL 16**: Ограничен буфер памяти (`shared_buffers=64MB`, `max_connections=30`, cgroup limit 180MB).
-- **Redis 7**: Ограничен лимит памяти до 64 MB с политикой вытеснения `allkeys-lru`.
-- **FastAPI (Uvicorn)**: 1 асинхронный воркер с лимитом соединений (cgroup limit 280MB).
-- **Celery Worker**: Запускается с `--concurrency=1`, `--max-tasks-per-child=50` и `--max-memory-per-child=120000` (120 МБ на дочерний процесс для предотвращения утечек памяти, cgroup limit 300MB).
-- **Nginx**: 
-  - Смонтированы оба конфигурационных файла: `nginx.conf` (зоны rate-limiting) и `app.conf`.
-  - Настроен динамический резолвинг DNS (`resolver 127.0.0.11 valid=10s ipv6=off;` и переменная `$upstream_api`). При пересборке API-контейнера Nginx автоматически переопределяет IP за 10 секунд и никогда не выдает ошибку 502 Bad Gateway.
+- **Redis 7**: Ограничен лимит памяти до 64 MB с политикой вытеснения `allkeys-lru` (cgroup limit 64MB).
+- **FastAPI (Uvicorn)**: 1 асинхронный воркер с лимитом соединений (cgroup limit 200MB).
+- **Celery Worker**: Запускается с `--concurrency=1`, `--max-tasks-per-child=50` и `--max-memory-per-child=100000` (100 МБ на дочерний процесс для предотвращения утечек памяти, cgroup limit 290MB).
+- **Celery Beat (Scheduler)**: Планировщик периодических задач (cgroup limit 165MB).
+- **Telegram Bot**: Асинхронный сервис уведомлений и команд бота (cgroup limit 135MB, предотвращает OOM kill).
+- **Nginx**: cgroup limit 48MB.
+- **Certbot**: cgroup limit 32MB.
 - **Docker Logs**: Ограничены до 10 МБ на файл (максимум 3 файла), защищая диск 30 ГБ от переполнения.
 
 ---

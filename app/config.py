@@ -2,6 +2,7 @@
 Application Configuration — WB FBS Manager
 """
 from functools import lru_cache
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +11,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # App
@@ -19,7 +21,10 @@ class Settings(BaseSettings):
     secret_key: str = "change-this-secret-key"
     public_url: str = "http://46.149.79.201"
 
-    # Database (defaults to local SQLite for instant testing without Docker)
+    # Database
+    postgres_user: Optional[str] = None
+    postgres_password: Optional[str] = None
+    postgres_db: Optional[str] = None
     database_url: str = "sqlite+aiosqlite:///./wbfbs.db"
     database_url_sync: str = "sqlite:///./wbfbs.db"
 

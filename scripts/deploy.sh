@@ -74,22 +74,48 @@ else
     echo "  docker compose -f docker-compose.prod.yml logs --tail=30 api"
 fi
 
-# 6. Проверка входа администратора
+# 6. Проверка учетной записи администратора (без принудительного сброса пароля)
 ADMIN_PWD=$(grep -oP '^ADMIN_PASSWORD=\K.*' .env 2>/dev/null || echo "")
-if [ -n "$ADMIN_PWD" ] && [ "$API_READY" = true ]; then
-    echo "🔑 Проверка входа администратора..."
-    LOGIN_RESULT=$(docker compose -f docker-compose.prod.yml exec -T api curl -sf \
-        -X POST http://localhost:8000/api/v1/auth/login \
-        -H "Content-Type: application/json" \
-        -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PWD}\"}" 2>/dev/null || echo "FAIL")
+if [ "$API_READY" = true ]; then
+    echo "🔑 Проверка статуса учетной записи администратора..."
+    ADMIN_STATUS=$(docker compose -f docker-compose.prod.yml exec -T api python -c "
+import sys
+from app.config import settings
+from app.services.auth_service import verify_password
+from app.models.user import User
+from sqlalchemy import create_engine, select, or_
+from sqlalchemy.orm import Session
 
-    if echo "$LOGIN_RESULT" | grep -q "access_token"; then
-        echo "✅ Вход администратора работает!"
-    else
-        echo "⚠️ Вход администратора не удался. Синхронизация пароля из .env..."
+try:
+    engine = create_engine(settings.database_url_sync)
+    with Session(engine) as session:
+        user = session.execute(
+            select(User).where(or_(User.username == 'admin', User.is_superuser == True))
+        ).scalars().first()
+        if not user:
+            print('MISSING')
+            sys.exit(0)
+        env_pwd = (settings.admin_password or '').strip()
+        if env_pwd and verify_password(env_pwd, user.hashed_password):
+            print('MATCH')
+        else:
+            print('CUSTOM')
+except Exception as e:
+    print('ERROR:' + str(e))
+" 2>/dev/null | tr -d '\r\n' || echo "FAIL")
+
+    if [ "$ADMIN_STATUS" = "MATCH" ]; then
+        echo "✅ Учетная запись администратора активна (пароль в БД синхронизирован с .env)!"
+    elif [ "$ADMIN_STATUS" = "CUSTOM" ]; then
+        echo "ℹ️ Учетная запись администратора активна (в БД установлен собственный пароль)."
+        echo "  Пароль в базе данных сохранён и НЕ сбрасывается при обновлении."
+    elif [ "$ADMIN_STATUS" = "MISSING" ]; then
+        echo "⚠️ Учетная запись администратора не найдена. Создание из .env..."
         docker compose -f docker-compose.prod.yml exec -T api \
             python scripts/set_admin_password.py --direct --password "$ADMIN_PWD" || true
-        echo "🔄 Пароль синхронизирован. Попробуйте войти в дашборд."
+        echo "✅ Начальный администратор создан."
+    else
+        echo "ℹ️ Проверка администратора завершена со статусом: ${ADMIN_STATUS}."
     fi
 fi
 

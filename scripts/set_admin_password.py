@@ -31,20 +31,24 @@ def sync_local_env_file(new_password: str) -> bool:
         Path(".env"),
         Path("/app/.env"),
     ]
+    cleaned_pwd = str(new_password).strip()
     updated = False
     for env_path in candidates:
         try:
             if env_path.exists() and os.access(env_path, os.W_OK):
                 content = env_path.read_text(encoding="utf-8")
-                if re.search(r"^ADMIN_PASSWORD=.*$", content, flags=re.MULTILINE):
-                    new_content = re.sub(
-                        r"^ADMIN_PASSWORD=.*$",
-                        f"ADMIN_PASSWORD={new_password}",
-                        content,
-                        flags=re.MULTILINE
-                    )
-                else:
-                    new_content = content.rstrip() + f"\nADMIN_PASSWORD={new_password}\n"
+                lines = content.splitlines()
+                found = False
+                new_lines = []
+                for line in lines:
+                    if re.match(r"^\s*ADMIN_PASSWORD\s*=", line):
+                        new_lines.append(f"ADMIN_PASSWORD={cleaned_pwd}")
+                        found = True
+                    else:
+                        new_lines.append(line)
+                if not found:
+                    new_lines.append(f"ADMIN_PASSWORD={cleaned_pwd}")
+                new_content = "\n".join(new_lines) + "\n"
                 env_path.write_text(new_content, encoding="utf-8")
                 updated = True
         except Exception:

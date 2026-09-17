@@ -167,7 +167,11 @@ async def change_password(
     if current_user.is_superuser or current_user.role == UserRole.ADMIN.value:
         from app.services.auth_service import sync_env_admin_password
         settings.admin_password = data.new_password
-        sync_env_admin_password(data.new_password)
+        synced = sync_env_admin_password(data.new_password)
+        if synced:
+            logger.info("Admin password successfully synchronized with .env file.")
+        else:
+            logger.warning("Could not synchronize new admin password with .env file (check mount/permissions).")
 
     return {
         "success": True, 

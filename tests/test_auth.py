@@ -326,4 +326,31 @@ async def test_admin_login_resilience_cases():
         assert res_recover.json()["user"]["is_active"] is True
 
 
+@pytest.mark.asyncio
+async def test_sync_env_admin_password_safe_parsing(tmp_path):
+    """Verify safe line-by-line sync of ADMIN_PASSWORD with special characters."""
+    from app.services.auth_service import sync_env_admin_password
+
+    # Create dummy .env file
+    dummy_env = tmp_path / ".env"
+    initial_content = (
+        "# Configuration\n"
+        "APP_NAME=WB FBS Manager\n"
+        "ADMIN_PASSWORD=old_initial_pass\n"
+        "DATABASE_URL=postgresql://localhost/db\n"
+    )
+    dummy_env.write_text(initial_content, encoding="utf-8")
+
+    # Test complex password with backslashes, dollar signs, and symbols
+    complex_password = r"Secr3t\1\$Value#Special!Pass"
+    success = sync_env_admin_password(complex_password, custom_path=dummy_env)
+    assert success is True
+
+    updated_content = dummy_env.read_text(encoding="utf-8")
+    assert f"ADMIN_PASSWORD={complex_password}" in updated_content
+    assert "APP_NAME=WB FBS Manager" in updated_content
+    assert "DATABASE_URL=postgresql://localhost/db" in updated_content
+
+
+
 

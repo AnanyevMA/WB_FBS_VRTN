@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 from jose import jwt, JWTError
@@ -150,33 +151,39 @@ async def get_user_by_username(db: AsyncSession, username_or_email: str) -> Opti
     return result.scalar_one_or_none()
 
 
-def sync_env_admin_password(new_password: str) -> bool:
+def sync_env_admin_password(new_password: str, custom_path: Optional[Path] = None) -> bool:
     """Safely update ADMIN_PASSWORD in .env file if it exists."""
-    from pathlib import Path
     import re
-    candidates = [
+    candidates = []
+    if custom_path:
+        candidates.append(custom_path)
+    candidates.extend([
         Path(".env"),
         Path("/app/.env"),
         Path(__file__).resolve().parents[2] / ".env",
-    ]
+    ])
+    cleaned_pwd = str(new_password).strip()
     for env_path in candidates:
         try:
             if env_path.exists() and os.access(env_path, os.W_OK):
                 content = env_path.read_text(encoding="utf-8")
-                if re.search(r"^ADMIN_PASSWORD=.*$", content, flags=re.MULTILINE):
-                    new_content = re.sub(
-                        r"^ADMIN_PASSWORD=.*$",
-                        f"ADMIN_PASSWORD={new_password}",
-                        content,
-                        flags=re.MULTILINE
-                    )
-                else:
-                    new_content = content.rstrip() + f"\nADMIN_PASSWORD={new_password}\n"
+                lines = content.splitlines()
+                found = False
+                new_lines = []
+                for line in lines:
+                    if re.match(r"^\s*ADMIN_PASSWORD\s*=", line):
+                        new_lines.append(f"ADMIN_PASSWORD={cleaned_pwd}")
+                        found = True
+                    else:
+                        new_lines.append(line)
+                if not found:
+                    new_lines.append(f"ADMIN_PASSWORD={cleaned_pwd}")
+                new_content = "\n".join(new_lines) + "\n"
                 env_path.write_text(new_content, encoding="utf-8")
                 logger.info(f"Updated ADMIN_PASSWORD in {env_path}")
                 return True
         except Exception as e:
-            logger.debug(f"Could not update .env at {env_path}: {e}")
+            logger.warning(f"Could not update .env at {env_path}: {e}")
     return False
 
 

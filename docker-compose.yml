@@ -59,6 +59,7 @@ services:
       - ./frontend:/app/frontend
       - certs_data:/app/certs
       - logs_data:/app/logs
+      - ./.env:/app/.env
     depends_on:
       postgres:
         condition: service_healthy

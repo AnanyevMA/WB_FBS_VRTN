@@ -241,14 +241,13 @@ async def prepare_batch_documents_for_signing(
     # Формируем только для тех КИЗ, которые еще не выведены (needs_withdrawal == True)
     for w in withdrawals:
         kiz = w.get("kiz_code")
-        if not kiz:
+        # Никогда не формируем документ вывода для КИЗ, который уже выведен
+        if w.get("needs_withdrawal") is False or w.get("is_already_withdrawn") is True:
             continue
 
         if selected_kiz_set is not None:
             if kiz not in selected_kiz_set:
                 continue
-        elif not w.get("needs_withdrawal", True):
-            continue
 
         price_kop = w.get("price_kopecks") or int((w.get("price") or 0) * 100)
         receipt_num = w.get("receipt_number")
@@ -282,11 +281,13 @@ async def prepare_batch_documents_for_signing(
         if not kiz:
             continue
 
+        # Никогда не формируем документ возврата для КИЗ, который уже в обороте
+        if r.get("needs_cz_return") is False or r.get("is_already_in_circulation") is True:
+            continue
+
         if selected_kiz_set is not None:
             if kiz not in selected_kiz_set:
                 continue
-        elif not r.get("needs_cz_return", False):
-            continue
 
         doc = client.build_return_payload(
             kiz_codes=[kiz],
@@ -467,8 +468,12 @@ async def submit_signed_batch(
 
                 if ord_obj and str(ord_obj.seller_id) == str(seller_id):
                     if action == "WITHDRAWAL":
+                        ord_obj.kiz_status = KizStatus.WITHDRAWN
+                        ord_obj.kiz_cz_status = "RETIRED"
                         ord_obj.cz_withdrawal_doc_id = doc_id
                     elif action == "RETURN":
+                        ord_obj.kiz_status = KizStatus.RETURNED
+                        ord_obj.kiz_cz_status = "INTRODUCED"
                         ord_obj.cz_return_doc_id = doc_id
                     ord_obj.cz_doc_status = "IN_PROGRESS"
                     ord_obj.updated_at = now

@@ -139,6 +139,7 @@ async def collect_auto_kiz_candidates(
         Order.seller_id == seller.id,
         Order.kiz_code.isnot(None),
         Order.kiz_status != KizStatus.WITHDRAWN,
+        Order.cz_withdrawal_doc_id.is_(None),  # Не отбираем заказы, у которых уже есть отправленный документ вывода
         or_(
             Order.wb_status == "sold",
             and_(Order.status == OrderStatus.DELIVERED, Order.wb_status.is_(None)),
@@ -222,13 +223,17 @@ async def verify_candidates_against_cz(
         )
     except Exception as e:
         logger.warning(f"[Auto KIZ] True API verification failed for seller {seller.id}: {e}")
-        return withdrawals, returns
+        # При сбое верификации в True API (например, истек токен ЧЗ) нельзя добавлять непроверенные заказы "вслепую",
+        # чтобы избежать повторной отправки уже списанных кодов маркировки.
+        return [], []
 
     final_withdrawals = []
     now = datetime.now(timezone.utc)
 
     for order in withdrawals:
-        kinfo = verified_map.get(order.kiz_code)
+        parsed_order_cis = parse_kiz_code(order.kiz_code)
+        clean_code = parsed_order_cis.get("clean_cis") or order.kiz_code
+        kinfo = verified_map.get(order.kiz_code) or verified_map.get(clean_code)
         if kinfo:
             is_withdrawn_flag, _ = is_kiz_withdrawn(
                 status=kinfo.cz_status,
@@ -236,7 +241,7 @@ async def verify_candidates_against_cz(
                 raw_payload=kinfo.raw_cz_payload or {},
             )
             if is_withdrawn_flag:
-                # КИЗ уже выбыл в ГИС МТ (например, списан вручную) — синхронизируем БД и не включаем в пакет
+                # КИЗ уже выбыл в ГИС МТ (например, списан ранее) — синхронизируем БД и не включаем в пакет
                 order.kiz_status = KizStatus.WITHDRAWN
                 order.kiz_cz_status = kinfo.cz_status or "RETIRED"
                 order.updated_at = now
@@ -245,7 +250,9 @@ async def verify_candidates_against_cz(
 
     final_returns = []
     for order in returns:
-        kinfo = verified_map.get(order.kiz_code)
+        parsed_order_cis = parse_kiz_code(order.kiz_code)
+        clean_code = parsed_order_cis.get("clean_cis") or order.kiz_code
+        kinfo = verified_map.get(order.kiz_code) or verified_map.get(clean_code)
         if kinfo:
             is_withdrawn_flag, _ = is_kiz_withdrawn(
                 status=kinfo.cz_status,

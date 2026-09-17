@@ -702,6 +702,7 @@ async def sync_kiz_status_record(
     doc_id: Optional[str] = None,
     is_valid: Optional[bool] = None,
     validation_message: Optional[str] = None,
+    target_order_id: Optional[int] = None,
 ) -> Optional[KizProductInfo]:
     """
     Единый канонический метод синхронизации статуса КИЗ в БД (Single Source of Truth).
@@ -779,7 +780,7 @@ async def sync_kiz_status_record(
             o.kiz_cz_status = normalized_cz_status
             o.kiz_cz_status_updated_at = now
 
-        if doc_id:
+        if doc_id and (target_order_id is None or o.id == target_order_id):
             o.cz_withdrawal_doc_id = doc_id
 
         # Обновление локального жизненного цикла КИЗ в заказе

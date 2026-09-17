@@ -431,6 +431,7 @@ async def submit_signed_batch(
                             cz_status=target_cz_status,
                             seller_id=str(seller.id),
                             doc_id=doc_id if action == "WITHDRAWAL" else None,
+                            target_order_id=ord_obj.id,
                         )
 
             elif is_confirmed is False:

@@ -28,8 +28,8 @@
 - **PostgreSQL 16**: Ограничен буфер памяти (`shared_buffers=64MB`, `max_connections=30`, cgroup limit 180MB).
 - **Redis 7**: Ограничен лимит памяти до 64 MB с политикой вытеснения `allkeys-lru` (cgroup limit 64MB).
 - **FastAPI (Uvicorn)**: 1 асинхронный воркер с лимитом соединений (cgroup limit 200MB).
-- **Celery Worker**: Запускается с `--concurrency=1`, `--max-tasks-per-child=50` и `--max-memory-per-child=100000` (100 МБ на дочерний процесс для предотвращения утечек памяти, cgroup limit 290MB).
-- **Celery Beat (Scheduler)**: Планировщик периодических задач (cgroup limit 165MB).
+- **Celery Worker**: Запускается с `--concurrency=1`, `--max-tasks-per-child=200` и `--max-memory-per-child=100000` (100 МБ на дочерний процесс для предотвращения утечек памяти, cgroup limit 290MB).
+- **Celery Beat (Scheduler)**: Планировщик периодических задач (cgroup limit 165MB). Базовые фоновые проверки оптимизированы до интервала 300с для защиты от fork storm.
 - **Telegram Bot**: Асинхронный сервис уведомлений и команд бота (cgroup limit 135MB, предотвращает OOM kill).
 - **Nginx**: cgroup limit 48MB.
 - **Certbot**: cgroup limit 32MB.

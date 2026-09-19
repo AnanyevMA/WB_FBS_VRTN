@@ -128,14 +128,19 @@ else
     docker compose -f docker-compose.prod.yml logs --tail=20 nginx || true
 fi
 
-# 8. Очистка старых Docker слоев
-echo "🧹 Очистка старых Docker слоев..."
-docker image prune -f
+# 8. Очистка старых Docker слоев и кэша сборки
+echo "🧹 Очистка старых Docker слоев и кэша сборщика..."
+docker image prune -f || true
+docker builder prune -f || true
 
-# 8. Статус всех сервисов
+# 9. Статус всех сервисов и потребление ресурсов
 echo ""
 echo "📊 Статус сервисов:"
 docker compose -f docker-compose.prod.yml ps
+
+echo ""
+echo "📈 Использование памяти контейнерами:"
+docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.PIDs}}"
 
 echo ""
 echo "================================================================="

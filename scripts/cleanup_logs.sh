@@ -20,6 +20,10 @@ if [ -d "$LOGS_DIR" ]; then
     if [ -f "$LOGS_DIR/cleanup.log" ] && [ $(stat -c%s "$LOGS_DIR/cleanup.log" 2>/dev/null || stat -f%z "$LOGS_DIR/cleanup.log" 2>/dev/null || echo 0) -gt 5242880 ]; then
         tail -n 1000 "$LOGS_DIR/cleanup.log" > "$LOGS_DIR/cleanup.log.tmp" && mv "$LOGS_DIR/cleanup.log.tmp" "$LOGS_DIR/cleanup.log"
     fi
+    # Усечение файла watchdog.log если он превысил 5MB
+    if [ -f "$LOGS_DIR/watchdog.log" ] && [ $(stat -c%s "$LOGS_DIR/watchdog.log" 2>/dev/null || stat -f%z "$LOGS_DIR/watchdog.log" 2>/dev/null || echo 0) -gt 5242880 ]; then
+        tail -n 1000 "$LOGS_DIR/watchdog.log" > "$LOGS_DIR/watchdog.log.tmp" && mv "$LOGS_DIR/watchdog.log.tmp" "$LOGS_DIR/watchdog.log"
+    fi
 fi
 
 # ─── 2. Усечение тяжелых Docker json-логов ──────────────────────────────────
@@ -38,9 +42,10 @@ if command -v docker &> /dev/null; then
     done
 
     # ─── 3. Очистка неиспользуемых Docker слоев и временных объектов ───────────
-    echo "3. Очистка временных Docker слоев и висячих образов..."
+    echo "3. Очистка временных Docker слоев, кэша сборки и висячих образов..."
     docker image prune -f --filter "until=72h" || true
     docker container prune -f --filter "until=72h" || true
+    docker builder prune -f --filter "until=72h" || true
 fi
 
 # ─── 4. Очистка старых записей аудита в БД PostgreSQL ────────────────────────

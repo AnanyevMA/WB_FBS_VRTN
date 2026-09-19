@@ -102,16 +102,16 @@ celery_app.conf.update(
             "schedule": 1800.0,  # every 30 minutes
             "options": {"queue": "qa_testing"},
         },
-        # Runs every 60s; the agent checks each seller's configured local time and sends digest on-time
+        # Runs every 5 min; the agent checks each seller's configured local time and sends digest on-time
         "morning-digest-check": {
             "task": "app.agents.morning_digest.send_morning_digest",
-            "schedule": 60.0,  # every 60 seconds for precise on-minute delivery
+            "schedule": 300.0,  # every 5 minutes (±5 min delivery precision is acceptable)
             "options": {"queue": "notifications"},
         },
-        # Runs every 60s to check sellers with notification_mode='scheduled' against their schedule
+        # Runs every 5 min to check sellers with notification_mode='scheduled' against their schedule
         "scheduled-orders-digest-check": {
             "task": "app.agents.notifier.send_scheduled_orders_digest",
-            "schedule": 60.0,  # every 60 seconds for scheduled batch delivery
+            "schedule": 300.0,  # every 5 minutes for scheduled batch delivery
             "options": {"queue": "notifications"},
         },
         # Runs every 6 hours to maintain and validate knowledge base docs and indexes
@@ -126,16 +126,16 @@ celery_app.conf.update(
             "schedule": crontab(minute=15, hour="*/6"),
             "options": {"queue": "maintenance"},
         },
-        # Runs every 60s to check sellers requiring archive upload reminder (every 2 days at configured time, e.g. 14:00)
+        # Runs every 5 min to check sellers requiring archive upload reminder (every 2 days at configured time)
         "check-archive-reminders": {
             "task": "app.agents.archive_processor.check_archive_reminders",
-            "schedule": 60.0,  # every 60 seconds for on-minute delivery
+            "schedule": 300.0,  # every 5 minutes for on-time delivery
             "options": {"queue": "notifications"},
         },
-        # Runs every 60s to check sellers requiring daily auto KIZ queue (by default at 17:00 local time)
+        # Runs every 5 min to check sellers requiring daily auto KIZ queue (by default at 17:00 local time)
         "daily-auto-kiz-queue-check": {
             "task": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
-            "schedule": 60.0,  # every 60 seconds for on-minute delivery
+            "schedule": 300.0,  # every 5 minutes (grace window 3h, ±5 min is fine)
             "options": {"queue": "cz_operations"},
         },
     },

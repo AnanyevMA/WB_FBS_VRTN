@@ -97,11 +97,6 @@ celery_app.conf.update(
             "schedule": crontab(hour=4, minute=0, day_of_week=0),  # weekly on Sunday at 04:00
             "options": {"queue": "maintenance"},
         },
-        "qa-system-regression-tests": {
-            "task": "app.agents.qa_test_agent.run_system_regression_tests",
-            "schedule": 1800.0,  # every 30 minutes
-            "options": {"queue": "qa_testing"},
-        },
         # Runs every 5 min; the agent checks each seller's configured local time and sends digest on-time
         "morning-digest-check": {
             "task": "app.agents.morning_digest.send_morning_digest",

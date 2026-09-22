@@ -9,7 +9,7 @@
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$PROJECT_DIR/docker-compose.prod.yml"
-THRESHOLD=92
+THRESHOLD=96
 
 # Ensure logs dir exists
 mkdir -p "$PROJECT_DIR/logs"

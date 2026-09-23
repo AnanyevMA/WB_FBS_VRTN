@@ -396,3 +396,168 @@ async def test_signature_batch_rejection_handling():
             assert updated_order.cz_doc_status == "CHECKED_NOT_OK"
             assert "06: Код идентификации не найден" in (updated_order.cz_rejection_reason or "")
 
+
+@pytest.mark.asyncio
+async def test_signature_batch_notification_filters_group_chats():
+    """
+    Проверяет, что уведомления об обработке пакетов отправляются только в личные чаты,
+    а групповые чаты (chat_id < 0) полностью исключаются из рассылки.
+    """
+    await init_db()
+
+    async with AsyncSessionLocal() as session:
+        admin_user = await ensure_initial_admin(session)
+        auth_token = create_access_token(
+            data={"sub": admin_user.id, "username": admin_user.username, "role": "admin", "is_superuser": True}
+        )
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Group Filter Seller",
+            wb_api_token_encrypted=encrypt("wb_test_token"),
+            cz_token_encrypted=encrypt("cz_test_token"),
+            cz_inn="7700998811",
+            telegram_bot_token_encrypted=encrypt("mock_tg_token"),
+            telegram_chat_ids=["411702261", "-1002498223661"],
+            auto_kiz_manager_chat_id="411702261",
+            is_active=True,
+        )
+        session.add(seller)
+
+        order_id = int(str(uuid.uuid4().int)[:9])
+        order = Order(
+            id=order_id,
+            seller_id=seller.id,
+            name="Товар для теста",
+            article="art-1",
+            price=1500,
+            status=OrderStatus.DELIVERING,
+            kiz_required=True,
+            kiz_code="0104630199251318215TEST",
+            kiz_status=KizStatus.ATTACHED,
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(order)
+
+        batch = KizSignatureBatch(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            filename="test_filter.xlsx",
+            source="telegram",
+            status=BatchStatus.PENDING_SIGNATURE,
+            sales_count=1,
+            returns_count=0,
+            already_withdrawn_count=0,
+            total_count=1,
+            data_payload={
+                "withdrawals": [{
+                    "order_id": order_id,
+                    "kiz_code": "0104630199251318215TEST",
+                    "receipt_number": "ЧЕК-111",
+                    "receipt_date": "2026-08-25",
+                    "price": 1500,
+                    "price_kopecks": 150000,
+                }],
+                "returns": [],
+                "summary": {"sales": 1, "returns": 0, "total_processed": 1}
+            }
+        )
+        session.add(batch)
+        await session.commit()
+        batch_id = batch.id
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"Authorization": f"Bearer {auth_token}"}) as ac:
+        with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit, \
+             patch("app.services.cz_client.CZClient.wait_for_document", new_callable=AsyncMock) as mock_wait, \
+             patch("app.services.telegram_service.TelegramService.send_text", new_callable=AsyncMock) as mock_send_text:
+
+            mock_submit.return_value = "doc-uuid-success"
+            mock_wait.return_value = {"status": "CHECKED_OK"}
+            mock_send_text.return_value = True
+
+            res_submit = await ac.post(
+                f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/submit-signed",
+                json={
+                    "sign_mode": "client_cades",
+                    "cert_subject": "Иванов И.И.",
+                    "signed_documents": [{
+                        "action": "WITHDRAWAL",
+                        "type": "LK_RECEIPT",
+                        "order_id": order_id,
+                        "kiz_code": "0104630199251318215TEST",
+                        "document_base64": "bW9jaw==",
+                        "signature_base64": "mock-sig",
+                    }]
+                }
+            )
+            assert res_submit.status_code == 200
+
+            # Verify send_text was called with ONLY private chat '411702261', and NOT '-1002498223661'
+            assert mock_send_text.called
+            call_args = mock_send_text.call_args[0]
+            target_chat_ids = call_args[0]
+            assert target_chat_ids == ["411702261"]
+            assert "-1002498223661" not in target_chat_ids
+
+    # Case 2: Seller has only group chat configured -> send_text should NOT be called at all
+    async with AsyncSessionLocal() as session:
+        seller_group_only = await session.get(Seller, seller_id)
+        seller_group_only.auto_kiz_manager_chat_id = None
+        seller_group_only.telegram_chat_ids = ["-1002498223661"]
+
+        batch2 = KizSignatureBatch(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            filename="test_group_only.xlsx",
+            source="telegram",
+            status=BatchStatus.PENDING_SIGNATURE,
+            sales_count=1,
+            returns_count=0,
+            already_withdrawn_count=0,
+            total_count=1,
+            data_payload={
+                "withdrawals": [{
+                    "order_id": order_id,
+                    "kiz_code": "0104630199251318215TEST",
+                    "receipt_number": "ЧЕК-222",
+                    "receipt_date": "2026-08-25",
+                    "price": 1500,
+                    "price_kopecks": 150000,
+                }],
+                "returns": [],
+                "summary": {"sales": 1, "returns": 0, "total_processed": 1}
+            }
+        )
+        session.add(batch2)
+        await session.commit()
+        batch2_id = batch2.id
+
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"Authorization": f"Bearer {auth_token}"}) as ac:
+        with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit, \
+             patch("app.services.cz_client.CZClient.wait_for_document", new_callable=AsyncMock) as mock_wait, \
+             patch("app.services.telegram_service.TelegramService.send_text", new_callable=AsyncMock) as mock_send_text:
+
+            mock_submit.return_value = "doc-uuid-success-2"
+            mock_wait.return_value = {"status": "CHECKED_OK"}
+
+            res_submit2 = await ac.post(
+                f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch2_id}/submit-signed",
+                json={
+                    "sign_mode": "client_cades",
+                    "cert_subject": "Иванов И.И.",
+                    "signed_documents": [{
+                        "action": "WITHDRAWAL",
+                        "type": "LK_RECEIPT",
+                        "order_id": order_id,
+                        "kiz_code": "0104630199251318215TEST",
+                        "document_base64": "bW9jaw==",
+                        "signature_base64": "mock-sig",
+                    }]
+                }
+            )
+            assert res_submit2.status_code == 200
+            # mock_send_text must not be called because there are no private chats
+            assert not mock_send_text.called
+

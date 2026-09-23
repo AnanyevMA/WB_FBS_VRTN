@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-17T14:36:12.016153+00:00",
+  "updated_at": "2026-09-23T15:55:20.732444+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 128,
+  "total_files": 129,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2345,7 +2345,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "8711484cf411",
+      "hash": "9a29c4a312e6",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2481,7 +2481,6 @@
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.telegram_service",
-        "asyncio",
         "copy",
         "datetime",
         "fastapi",
@@ -3674,7 +3673,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "6eed78941243",
+      "hash": "2db3b4713b81",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3691,7 +3690,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "30844c0ee385",
+      "hash": "9a03a5e53cd2",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -3723,7 +3722,8 @@
       "imports": [
         "functools",
         "pydantic_settings",
-        "socket"
+        "socket",
+        "typing"
       ]
     },
     {
@@ -5137,7 +5137,7 @@
     {
       "file": "app/services/auto_kiz_queue_service.py",
       "layer": "services",
-      "hash": "3493f63d7570",
+      "hash": "64c36857927f",
       "docstring": "Auto KIZ Queue Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5624,7 +5624,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "e9eec04b6788",
+      "hash": "3438936d50c5",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -5660,6 +5660,42 @@
           ],
           "decorators": [],
           "docstring": "Factory function."
+        },
+        {
+          "name": "is_group_chat",
+          "is_async": false,
+          "args": [
+            "chat_id"
+          ],
+          "decorators": [],
+          "docstring": "Проверяет, является ли chat_id идентификатором группы, супергруппы или канала."
+        },
+        {
+          "name": "is_private_chat",
+          "is_async": false,
+          "args": [
+            "chat_id"
+          ],
+          "decorators": [],
+          "docstring": "Проверяет, является ли chat_id идентификатором личного чата пользователя."
+        },
+        {
+          "name": "filter_private_chats",
+          "is_async": false,
+          "args": [
+            "chat_ids"
+          ],
+          "decorators": [],
+          "docstring": "Возвращает только ID личных чатов (исключает группы, супергруппы и каналы)."
+        },
+        {
+          "name": "get_personal_manager_chats",
+          "is_async": false,
+          "args": [
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": "Определяет список личных чатов ответственных менеджеров для продавца."
         }
       ],
       "endpoints": [],
@@ -8654,7 +8690,7 @@
     {
       "file": "tests/test_kiz_signature_batches.py",
       "layer": "tests",
-      "hash": "0a00c3d3ba02",
+      "hash": "7c78b2d7f621",
       "docstring": "Integration & Unit Tests for KIZ Signature Batches and Dashboard Signing Queue",
       "classes": [],
       "functions": [
@@ -8684,6 +8720,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Проверяет корректную обработку отказа ГИС МТ (CHECKED_NOT_OK / CZDocumentError)"
+        },
+        {
+          "name": "test_signature_batch_notification_filters_group_chats",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет, что уведомления об обработке пакетов отправляются только в личные чаты,"
         }
       ],
       "endpoints": [],
@@ -9612,6 +9657,50 @@
         "sys",
         "unittest.mock",
         "xml.etree.ElementTree"
+      ]
+    },
+    {
+      "file": "tests/test_telegram_chat_filters.py",
+      "layer": "tests",
+      "hash": "770131daf656",
+      "docstring": "Unit tests for Telegram chat filtering and manager chat routing",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_is_group_chat",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_is_private_chat",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_filter_private_chats",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_get_personal_manager_chats",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.telegram_service",
+        "types"
       ]
     },
     {

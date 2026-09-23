@@ -467,13 +467,10 @@ async def process_auto_kiz_queue_for_seller(
         try:
             tg_token = decrypt(seller.telegram_bot_token_encrypted)
             # Manager selection logic:
-            # 1. Prefer seller.auto_kiz_manager_chat_id
-            # 2. Fallback to first chat in seller.telegram_chat_ids if manager not explicitly set
-            target_chats = []
-            if seller.auto_kiz_manager_chat_id and str(seller.auto_kiz_manager_chat_id).strip():
-                target_chats = [str(seller.auto_kiz_manager_chat_id).strip()]
-            elif seller.telegram_chat_ids and len(seller.telegram_chat_ids) > 0:
-                target_chats = [seller.telegram_chat_ids[0]]
+            # Strictly personal manager chats (group chats < 0 excluded)
+            from app.services.telegram_service import get_personal_manager_chats
+            manager_chats = get_personal_manager_chats(seller)
+            target_chats = [manager_chats[0]] if manager_chats else []
 
             if target_chats:
                 tg = TelegramService(tg_token)

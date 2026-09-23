@@ -524,34 +524,40 @@ async def submit_signed_batch(
 
     await db.commit()
 
-    # Отправка уведомления менеджеру в Telegram об успешном подписании
-    if seller.telegram_bot_token_encrypted and seller.telegram_chat_ids:
+    # Отправка уведомления менеджеру в Telegram об обработке пакета (строго в личные чаты, без спама в группы)
+    if seller.telegram_bot_token_encrypted:
         try:
-            from app.services.telegram_service import TelegramService
-            bot_token = decrypt(seller.telegram_bot_token_encrypted)
-            tg = TelegramService(bot_token)
-            status_emoji = "✅" if failed_submissions == 0 else ("⚠️" if successful_submissions > 0 else "❌")
-            tg_text = (
-                f"{status_emoji} <b>Пакет отчёта №<code>{batch.id[:8]}</code> обработан!</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🏪 <b>Магазин:</b> {seller.name}\n"
-                f"👤 <b>Подписал:</b> {batch.signed_by}\n"
-            )
-            if successful_submissions > 0:
-                tg_text += f"✅ <b>Успешно подтверждено ГИС МТ:</b> {successful_submissions} документов\n"
-            if failed_submissions > 0:
-                tg_text += f"❌ <b>Отклонено ГИС МТ:</b> {failed_submissions} документов\n"
-                failed_items = [r for r in results if r.get("status") == "FAILED"]
-                for fi in failed_items[:3]:
-                    f_kiz = fi.get('kiz_code') or 'Без КИЗ'
-                    f_err = fi.get('error') or 'Ошибка валидации ГИС МТ'
-                    tg_text += f"• <code>{f_kiz}</code>: {f_err}\n"
-                if len(failed_items) > 3:
-                    tg_text += f"• ... и ещё {len(failed_items) - 3} ошибок\n"
+            from app.services.telegram_service import TelegramService, get_personal_manager_chats
+            target_chats = get_personal_manager_chats(seller)
+            if target_chats:
+                bot_token = decrypt(seller.telegram_bot_token_encrypted)
+                tg = TelegramService(bot_token)
+                status_emoji = "✅" if failed_submissions == 0 else ("⚠️" if successful_submissions > 0 else "❌")
+                tg_text = (
+                    f"{status_emoji} <b>Пакет отчёта №<code>{batch.id[:8]}</code> обработан!</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🏪 <b>Магазин:</b> {seller.name}\n"
+                    f"👤 <b>Подписал:</b> {batch.signed_by}\n"
+                )
+                if successful_submissions > 0:
+                    tg_text += f"✅ <b>Успешно подтверждено ГИС МТ:</b> {successful_submissions} документов\n"
+                if failed_submissions > 0:
+                    tg_text += f"❌ <b>Отклонено ГИС МТ:</b> {failed_submissions} документов\n"
+                    failed_items = [r for r in results if r.get("status") == "FAILED"]
+                    for fi in failed_items[:3]:
+                        f_kiz = fi.get('kiz_code') or 'Без КИЗ'
+                        f_err = fi.get('error') or 'Ошибка валидации ГИС МТ'
+                        tg_text += f"• <code>{f_kiz}</code>: {f_err}\n"
+                    if len(failed_items) > 3:
+                        tg_text += f"• ... и ещё {len(failed_items) - 3} ошибок\n"
 
-            import asyncio
-            await tg.send_text(seller.telegram_chat_ids, tg_text.strip())
-            await tg.close()
+                await tg.send_text(target_chats, tg_text.strip())
+                await tg.close()
+            else:
+                logger.info(
+                    f"Skipping telegram notification for batch {batch_id}: "
+                    f"no personal manager chat found for seller {seller.id} (group chats excluded)"
+                )
         except Exception as tg_err:
             logger.error(f"Failed to send telegram confirmation for batch {batch_id}: {tg_err}")
 

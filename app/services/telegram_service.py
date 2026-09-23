@@ -5,7 +5,7 @@ Telegram Notification Service — отправка Push-уведомлений �
 import asyncio
 import html
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from aiogram import Bot
 try:
@@ -524,3 +524,72 @@ class TelegramService:
 def get_telegram_service(bot_token: str) -> TelegramService:
     """Factory function."""
     return TelegramService(bot_token)
+
+
+def is_group_chat(chat_id: Any) -> bool:
+    """
+    Проверяет, является ли chat_id идентификатором группы, супергруппы или канала.
+    В Telegram Bot API идентификаторы групп и каналов всегда отрицательные (начинаются с '-').
+    """
+    if chat_id is None:
+        return False
+    s = str(chat_id).strip()
+    if not s or s.lower() == "none":
+        return False
+    return s.startswith("-")
+
+
+def is_private_chat(chat_id: Any) -> bool:
+    """
+    Проверяет, является ли chat_id идентификатором личного чата пользователя.
+    В Telegram Bot API личные чаты всегда имеют положительный ID (не начинаются с '-').
+    """
+    if chat_id is None:
+        return False
+    s = str(chat_id).strip()
+    if not s or s.lower() == "none":
+        return False
+    try:
+        return int(s) > 0
+    except ValueError:
+        return not s.startswith("-")
+
+
+def filter_private_chats(chat_ids: list[str | int] | None) -> list[str]:
+    """
+    Возвращает только ID личных чатов (исключает группы, супергруппы и каналы).
+    Результат нормализуется в виде списка уникальных строк.
+    """
+    seen = set()
+    result = []
+    for cid in chat_ids or []:
+        if cid is None:
+            continue
+        s = str(cid).strip()
+        if s and is_private_chat(s) and s not in seen:
+            seen.add(s)
+            result.append(s)
+    return result
+
+
+def get_personal_manager_chats(seller: Any) -> list[str]:
+    """
+    Определяет список личных чатов ответственных менеджеров для продавца.
+    Приоритет:
+    1. seller.auto_kiz_manager_chat_id (если задан и является личным чатом)
+    2. Личные чаты из seller.telegram_chat_ids (только chat_id > 0)
+    Все групповые чаты (chat_id < 0) гарантированно исключаются.
+    """
+    chats: list[str] = []
+
+    manager_chat_id = getattr(seller, "auto_kiz_manager_chat_id", None)
+    if manager_chat_id and is_private_chat(manager_chat_id):
+        chats.append(str(manager_chat_id).strip())
+
+    seller_chats = getattr(seller, "telegram_chat_ids", None) or []
+    for cid in seller_chats:
+        s = str(cid).strip()
+        if s and is_private_chat(s) and s not in chats:
+            chats.append(s)
+
+    return chats

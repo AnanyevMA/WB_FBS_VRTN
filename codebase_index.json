@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-26T17:02:31.618509+00:00",
+  "updated_at": "2026-09-26T17:17:54.891559+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 134,
   "files": [
@@ -1619,7 +1619,7 @@
     {
       "file": "app/agents/wb_warehouse_sales_agent.py",
       "layer": "agents",
-      "hash": "6bf5e308bc15",
+      "hash": "8ab12c167104",
       "docstring": "WB Warehouse Sales Celery Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2556,7 +2556,7 @@
     {
       "file": "app/api/kiz/warehouse_sales.py",
       "layer": "api",
-      "hash": "99dbf222d9e6",
+      "hash": "5acc1e5e674a",
       "docstring": "FastAPI WB Warehouse Sales Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5950,7 +5950,7 @@
     {
       "file": "app/services/wb_analytics_client.py",
       "layer": "services",
-      "hash": "0c80fed1fc06",
+      "hash": "de87b07bb0c0",
       "docstring": "Wildberries Analytics API Client.",
       "classes": [
         {
@@ -5994,6 +5994,7 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "asyncio",
         "httpx",
         "logging",
         "tenacity",
@@ -6115,7 +6116,7 @@
     {
       "file": "app/services/wb_warehouse_sales_service.py",
       "layer": "services",
-      "hash": "b3a7cab45d2f",
+      "hash": "9c3c91009fce",
       "docstring": "WB Warehouse Sales Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -10424,7 +10425,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "f502cff2e19f",
+      "hash": "34cedf68f221",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

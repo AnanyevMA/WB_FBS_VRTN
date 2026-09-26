@@ -20,7 +20,7 @@ router = APIRouter()
 @router.post("/warehouse-sales/sync")
 async def sync_warehouse_sales(
     seller_id: str,
-    days: int = Query(default=14, ge=1, le=90, description="Период в днях для выборки отчета"),
+    days: int = Query(default=30, ge=1, le=90, description="Период в днях для выборки отчета (1-90)"),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """

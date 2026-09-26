@@ -2,6 +2,7 @@
 Wildberries Analytics API Client.
 Handles requests to https://seller-analytics-api.wildberries.ru for excise report & marked goods.
 """
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 import httpx
@@ -75,9 +76,18 @@ class WBAnalyticsClient:
         try:
             resp = await client.post(url, headers=self.headers, params=params, json=body)
             if resp.status_code == 429:
-                logger.warning("[WB Analytics] 429 Rate limit hit on excise-report")
-                raise WBAnalyticsRateLimitError("Rate limit exceeded (429)")
-            elif resp.status_code == 401:
+                retry_header = (
+                    resp.headers.get("x-ratelimit-retry")
+                    or resp.headers.get("X-RateLimit-Retry")
+                    or resp.headers.get("Retry-After")
+                )
+                wait_sec = int(retry_header) if retry_header and retry_header.isdigit() else 35
+                logger.warning(f"[WB Analytics] 429 Rate limit hit, waiting {wait_sec}s per server header...")
+                await asyncio.sleep(wait_sec + 2)
+                resp = await client.post(url, headers=self.headers, params=params, json=body)
+                if resp.status_code == 429:
+                    raise WBAnalyticsRateLimitError(f"Rate limit exceeded (429) after {wait_sec}s wait")
+            if resp.status_code == 401:
                 logger.error("[WB Analytics] 401 Unauthorized on excise-report")
                 raise WBAnalyticsUnauthorizedError("WB token invalid or expired (401)")
             elif resp.status_code >= 400:

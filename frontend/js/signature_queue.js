@@ -442,7 +442,7 @@ function renderEmptyBatchState() {
                 Все операции обработаны. Пакеты формируются автоматически 1 раз в сутки (в 17:00), а также при загрузке <code>archive.xlsx</code> или по кнопке ниже.
             </p>
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(14)" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB и выявить продажи со склада WB (FBO)">
+                <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(30)" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB и выявить продажи со склада WB (FBO)">
                     <span>🏭</span> Сверить склад WB (FBO)
                 </button>
                 <button class="btn btn-primary" onclick="triggerAutoBatchNow()" style="background: linear-gradient(135deg, #10b981, #059669);">
@@ -1010,7 +1010,7 @@ async function triggerAutoBatchNow() {
     }
 }
 
-async function triggerWarehouseSalesSync(days = 14) {
+async function triggerWarehouseSalesSync(days = 30) {
     if (!currentSellerId && currentSellersList && currentSellersList.length > 0) {
         currentSellerId = currentSellersList[0].id;
     }

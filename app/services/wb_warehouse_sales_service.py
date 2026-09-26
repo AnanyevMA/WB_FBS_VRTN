@@ -114,7 +114,7 @@ def build_warehouse_sale_item(
 async def process_warehouse_sales_for_seller(
     seller: Seller,
     db: AsyncSession,
-    days: int = 14,
+    days: int = 30,
 ) -> Dict[str, Any]:
     """
     Основной метод обработки продаж со склада WB:

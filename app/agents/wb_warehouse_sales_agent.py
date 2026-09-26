@@ -50,7 +50,7 @@ def sync_all_sellers_warehouse_sales(self) -> Dict[str, Any]:
 
     dispatched = 0
     for sid in target_seller_ids:
-        sync_seller_warehouse_sales.delay(seller_id=sid, days=14)
+        sync_seller_warehouse_sales.delay(seller_id=sid, days=30)
         dispatched += 1
 
     return {"checked_at": now_utc.isoformat(), "dispatched": dispatched}
@@ -63,7 +63,7 @@ def sync_all_sellers_warehouse_sales(self) -> Dict[str, Any]:
     max_retries=2,
     default_retry_delay=120,
 )
-def sync_seller_warehouse_sales(self, seller_id: str, days: int = 14) -> Dict[str, Any]:
+def sync_seller_warehouse_sales(self, seller_id: str, days: int = 30) -> Dict[str, Any]:
     """
     Фоновая задача обработки продаж со склада WB для конкретного продавца.
     """

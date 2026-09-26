@@ -96,35 +96,41 @@ async def list_products(
     stmt = stmt.order_by(desc(ProductCard.created_at)).offset(offset).limit(limit)
     result = await db.execute(stmt)
     cards = list(result.scalars().all())
-    need_commit = False
+
+    # Build Pydantic responses eagerly while inside session context
+    response_items = []
     for c in cards:
-        if _auto_fill_tnved_from_attrs(c):
-            need_commit = True
-    if need_commit:
-        try:
-            await db.commit()
-        except Exception:
-            pass
-    return cards
+        pydantic_item = ProductCardResponse.model_validate(c)
+        if not pydantic_item.tnved:
+            fallback = _extract_tnved_from_attrs(c.attributes)
+            if fallback:
+                pydantic_item.tnved = fallback
+        response_items.append(pydantic_item)
+
+    return response_items
+
+
+def _extract_tnved_from_attrs(attrs: Optional[list]) -> Optional[str]:
+    """Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959)."""
+    if not attrs or not isinstance(attrs, list):
+        return None
+    for a in attrs:
+        if isinstance(a, dict):
+            aid = str(a.get("attr_id"))
+            val = str(a.get("attr_value") or "").strip()
+            if val and aid in ("13933", "10609", "3959"):
+                return val[:20]
+    return None
 
 
 def _auto_fill_tnved_from_attrs(card: ProductCard) -> bool:
     """Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959), если поле tnved пусто."""
     if card.tnved and card.tnved.strip():
         return False
-    attrs = card.attributes or []
-    if isinstance(attrs, list):
-        for a in attrs:
-            if isinstance(a, dict):
-                aid = str(a.get("attr_id"))
-                val = str(a.get("attr_value") or "").strip()
-                if val:
-                    if aid in ("13933", "10609"):
-                        card.tnved = val[:20]
-                        return True
-                    elif aid == "3959" and not card.tnved:
-                        card.tnved = val[:20]
-                        return True
+    val = _extract_tnved_from_attrs(card.attributes)
+    if val:
+        card.tnved = val
+        return True
     return False
 
 
@@ -432,7 +438,10 @@ async def get_product(
     card = (await db.execute(stmt)).scalar_one_or_none()
     if not card:
         raise HTTPException(status_code=404, detail="Карточка товара не найдена")
-    return card
+    resp = ProductCardResponse.model_validate(card)
+    if not resp.tnved:
+        resp.tnved = _extract_tnved_from_attrs(card.attributes)
+    return resp
 
 
 @router.put("/sellers/{seller_id}/national-catalog/products/{product_id}", response_model=ProductCardResponse)

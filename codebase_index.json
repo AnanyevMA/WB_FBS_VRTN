@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-26T03:42:17.438243+00:00",
+  "updated_at": "2026-09-26T15:49:50.546350+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 129,
   "files": [
@@ -4245,7 +4245,7 @@
     {
       "file": "app/national_catalog/router.py",
       "layer": "core",
-      "hash": "567414e77ae9",
+      "hash": "4a816b01d285",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4283,6 +4283,15 @@
             "router.get('/sellers/{seller_id}/national-catalog/products')"
           ],
           "docstring": "Получение списка карточек товаров для указанного продавца."
+        },
+        {
+          "name": "_extract_tnved_from_attrs",
+          "is_async": false,
+          "args": [
+            "attrs"
+          ],
+          "decorators": [],
+          "docstring": "Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959)."
         },
         {
           "name": "_auto_fill_tnved_from_attrs",

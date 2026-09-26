@@ -469,7 +469,7 @@ function renderActiveBatch(batch) {
 
     const totalToSign = sales_needing + returns_needing;
     const dateStr = batch.created_at ? new Date(batch.created_at).toLocaleString('ru-RU') : '—';
-    const sourceIcon = batch.source === 'auto' ? '⚡ Автоматически (WB API)' : (batch.source === 'telegram' ? '📱 Telegram-бот' : '🌐 Веб-загрузка');
+    const sourceIcon = batch.source === 'auto' ? '⚡ Автоматически (WB API)' : (batch.source === 'telegram' ? '📱 Telegram-бот' : (batch.source === 'wb_warehouse_sale' ? '🏭 Склад WB (FBO)' : '🌐 Веб-загрузка'));
 
     container.innerHTML = `
         <div class="glass-card" style="border: 1px solid rgba(124, 58, 237, 0.4); box-shadow: 0 4px 20px rgba(124, 58, 237, 0.1);">
@@ -797,7 +797,7 @@ function renderBatchesHistory(batches) {
 
     tbody.innerHTML = batches.map(b => {
         const dateStr = b.created_at ? new Date(b.created_at).toLocaleString('ru-RU') : '—';
-        const sourceBadge = b.source === 'auto' ? '⚡ Авто (WB API)' : (b.source === 'telegram' ? '📱 Telegram' : '🌐 Web');
+        const sourceBadge = b.source === 'auto' ? '⚡ Авто (WB API)' : (b.source === 'telegram' ? '📱 Telegram' : (b.source === 'wb_warehouse_sale' ? '🏭 Склад WB' : '🌐 Web'));
         
         let statusBadge = '<span class="badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">Ожидает ЭЦП</span>';
         if (b.status === 'COMPLETED') {
@@ -1007,6 +1007,40 @@ async function triggerAutoBatchNow() {
     }
 }
 
+async function triggerWarehouseSalesSync(days = 14) {
+    if (!currentSellerId && currentSellersList && currentSellersList.length > 0) {
+        currentSellerId = currentSellersList[0].id;
+    }
+    if (!currentSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активный магазин в верхнем меню', 'error');
+    }
+    showToast('Сверка со складом WB', `Запрос отчета маркировки WB за последние ${days} дн...`, 'info');
+    try {
+        const token = authToken || localStorage.getItem('wbfbs_auth_token') || localStorage.getItem('token');
+        const res = await fetch(`${API_BASE}/sellers/${currentSellerId}/warehouse-sales/sync?days=${days}`, {
+            method: 'POST',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                'X-Seller-ID': currentSellerId,
+            }
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Ошибка сервера (${res.status})`);
+        }
+        const data = await res.json();
+        if (data.created) {
+            showToast('Успех', data.message || `Сформирован пакет на ${data.sales_count} товаров`, 'success');
+            await loadSignatureBatches();
+        } else {
+            showToast('Сверка со складом WB', data.message || 'Все товары уже выведены из оборота в ГИС МТ', 'info');
+            await loadSignatureBatches();
+        }
+    } catch (e) {
+        showToast('Ошибка сверки со складом WB', e.message, 'error');
+    }
+}
+
 // Global window bindings for inline HTML onclick handlers
 window.openArchiveFileInput = openArchiveFileInput;
 window.handleArchiveFileSelect = handleArchiveFileSelect;
@@ -1027,5 +1061,7 @@ window.cancelBatchAction = cancelBatchAction;
 window.switchBatchTab = switchBatchTab;
 window.viewBatchDetailsModal = viewBatchDetailsModal;
 window.triggerAutoBatchNow = triggerAutoBatchNow;
+window.triggerWarehouseSalesSync = triggerWarehouseSalesSync;
+
 
 

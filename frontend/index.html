@@ -253,6 +253,9 @@
                         <p class="page-subtitle">Сканирование DataMatrix, привязка КИЗ, загрузка архива WB и операции с Честным Знаком.</p>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(14)" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB и выявить продажи со склада WB (FBO)">
+                            🏭 Сверить склад WB
+                        </button>
                         <button class="btn btn-primary" onclick="triggerAutoBatchNow()" id="triggerAutoBatchBtnKiz" style="background: linear-gradient(135deg, #10b981, #059669);" title="Сформировать пакет вывода и возврата из API WB без файла">
                             ⚡ Сформировать пакет за сегодня
                         </button>
@@ -331,6 +334,9 @@
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="loadSignatureBatches()">
                             <span>🔄</span> Обновить очередь
+                        </button>
+                        <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(14)" id="triggerWarehouseSyncBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB и выявить продажи со склада WB (FBO)">
+                            <span>🏭</span> Сверить склад WB (FBO)
                         </button>
                         <button class="btn btn-primary" onclick="triggerAutoBatchNow()" id="triggerAutoBatchBtn" style="background: linear-gradient(135deg, #10b981, #059669);" title="Сформировать пакет вывода и возврата из API WB без файла">
                             <span>⚡</span> Сформировать пакет за сегодня
@@ -1630,7 +1636,7 @@
 <script src="js/cadesplugin_api.js?v=1.1.0"></script>
 <script src="js/cryptopro.js?v=1.1.0"></script>
 <script src="js/kiz.js?v=1.1.0"></script>
-<script src="js/signature_queue.js?v=1.2.0"></script>
+<script src="js/signature_queue.js?v=1.3.0"></script>
 <script src="js/supplies.js?v=1.1.0"></script>
 <script src="js/sellers.js?v=1.2.0"></script>
 <script src="js/national_catalog.js?v=1.3.0"></script>

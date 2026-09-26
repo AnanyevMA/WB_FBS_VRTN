@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-26 15:49:50 UTC | **Файлов проиндексировано**: 129  
+> **Дата актуализации**: 2026-09-26 16:37:38 UTC | **Файлов проиндексировано**: 134  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -43,6 +43,7 @@
 | [`app/api/kiz/auto_queue.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz/auto_queue.py) | — | `POST /kiz/auto-batch/trigger` → `trigger_auto_kiz_batch_now`<br>`GET /kiz/auto-batch/settings` → `get_auto_kiz_settings`<br>`PATCH /kiz/auto-batch/settings` → `update_auto_kiz_settings` | FastAPI Auto KIZ Queue Endpoints — WB FBS Manager |
 | [`app/api/kiz/documents.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz/documents.py) | — | `POST /kiz/withdraw` → `withdraw_kiz`<br>`POST /kiz/return` → `return_kiz`<br>`POST /kiz/prepare-document` → `prepare_kiz_document`<br>`POST /kiz/submit-signed-document` → `submit_signed_kiz_document`<br>`GET /kiz/documents/{doc_id}/status` → `get_cz_document_status` | FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager |
 | [`app/api/kiz/signature_batches.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz/signature_batches.py) | — | `GET /kiz/signature-batches` → `list_signature_batches`<br>`GET /kiz/signature-batches/{batch_id}` → `get_signature_batch`<br>`POST /kiz/signature-batches/{batch_id}/sync-cz` → `sync_signature_batch_cz`<br>`POST /kiz/signature-batches/{batch_id}/prepare-documents` → `prepare_batch_documents_for_signing`<br>`POST /kiz/signature-batches/{batch_id}/submit-signed` → `submit_signed_batch`<br>`DELETE /kiz/signature-batches/{batch_id}` → `cancel_signature_batch` | FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager |
+| [`app/api/kiz/warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/kiz/warehouse_sales.py) | — | `POST /warehouse-sales/sync` → `sync_warehouse_sales`<br>`GET /warehouse-sales/batches` → `list_warehouse_sales_batches` | FastAPI WB Warehouse Sales Endpoints — WB FBS Manager |
 | [`app/api/orders.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/orders.py) | — | `GET /stats` → `get_dashboard_stats`<br>`GET ` → `list_orders`<br>`GET /{order_id}` → `get_order`<br>`POST /{order_id}/retry-withdrawal` → `retry_order_cz_withdrawal`<br>`POST /{order_id}/kiz-check` → `check_order_kiz_status`<br>`POST /{order_id}/cancel` → `cancel_order`<br>`POST /{order_id}/mark-assembling` → `mark_assembling`<br>`GET /{order_id}/sticker` → `get_sticker`<br>`POST /sync-cz` → `sync_all_orders_cz_status`<br>`POST /sync-cz-all` → `sync_all_orders_cz_status`<br>`POST /sync` → `refresh_orders`<br>`POST /refresh` → `refresh_orders` | Модуль кодовой базы |
 | [`app/api/qa.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/qa.py) | — | `POST /run-tests` → `run_qa_tests` | QA Router — Эндпоинты запуска автоматического тестировщика |
 | [`app/api/sellers.py`](file:///D:/PyCharm_Projects/WB FBS/app/api/sellers.py) | — | `POST ` → `create_seller`<br>`GET ` → `list_sellers`<br>`GET /{seller_id}` → `get_seller`<br>`PATCH /{seller_id}` → `update_seller`<br>`DELETE /{seller_id}` → `delete_seller`<br>`POST /{seller_id}/toggle-active` → `toggle_active`<br>`POST /{seller_id}/test-connection` → `test_connection`<br>`POST /{seller_id}/toggle-polling` → `toggle_polling`<br>`GET /{seller_id}/time` → `get_seller_time`<br>`GET /{seller_id}/pending-summary` → `get_pending_summary`<br>`GET /{seller_id}/cz-challenge` → `get_cz_auth_challenge`<br>`POST /{seller_id}/cz-signin` → `cz_signin_with_signature`<br>`GET /{seller_id}/cz-token-status` → `get_cz_token_status` | Модуль кодовой базы |
@@ -64,7 +65,9 @@
 | [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `is_kiz_withdrawn`, `extract_cz_item_info`, `normalize_kiz_light_industry`, `parse_kiz_code`, +еще 4 | Модуль кодовой базы |
 | [`app/services/telegram_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/telegram_service.py) | `TelegramService` | `get_telegram_service`, `is_group_chat`, `is_private_chat`, `filter_private_chats`, +еще 1 | Telegram Notification Service — отправка Push-уведомлений менеджерам |
 | [`app/services/time_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/time_service.py) | — | `resolve_timezone`, `get_server_time_info`, `get_now_in_timezone`, `get_seller_local_time`, +еще 2 | Time & Timezone Management Service — WB FBS Manager |
+| [`app/services/wb_analytics_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_analytics_client.py) | `WBAnalyticsAPIError`, `WBAnalyticsRateLimitError`, `WBAnalyticsUnauthorizedError`, `WBAnalyticsClient` | — | Wildberries Analytics API Client. |
 | [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `parse_wb_token_expiration`, `get_wb_token_status`, `is_kiz_required` | Wildberries Marketplace API Client. |
+| [`app/services/wb_warehouse_sales_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_warehouse_sales_service.py) | — | `fetch_wb_excise_data`, `get_already_queued_cises`, `build_warehouse_sale_item`, `process_warehouse_sales_for_seller`, +еще 1 | WB Warehouse Sales Service — WB FBS Manager |
 
 ### 🤖 Мультиагентный Слой Celery (`app/agents/`)
 
@@ -84,6 +87,7 @@
 | [`app/agents/qa_test_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/qa_test_agent.py) | `QATestingError` | ⚙️ `app.agents.qa_test_agent.run_system_regression_tests` | QA Testing Agent — Автоматический агент-тестировщик системы |
 | [`app/agents/security_audit_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/security_audit_agent.py) | — | ⚙️ `app.agents.security_audit_agent.run_security_audit` | Security Audit Agent — WB FBS Manager |
 | [`app/agents/supply_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/supply_agent.py) | — | ⚙️ `app.agents.supply_agent.create_supply_for_seller` | Supply Manager Agent — создание и управление поставками WB FBS |
+| [`app/agents/wb_warehouse_sales_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/wb_warehouse_sales_agent.py) | — | ⚙️ `app.agents.wb_warehouse_sales_agent.sync_all_sellers_warehouse_sales`<br>⚙️ `app.agents.wb_warehouse_sales_agent.sync_seller_warehouse_sales` | WB Warehouse Sales Celery Agent — WB FBS Manager |
 
 ### 🧠 Ядро Системы & Конфигурация (`app/`)
 
@@ -158,6 +162,7 @@
 | [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
 | [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 6 | Модуль кодовой базы |
+| [`tests/test_wb_warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales.py) | — | `test_wb_analytics_client_success`, `test_wb_analytics_client_unauthorized`, `test_warehouse_sales_no_token`, `test_warehouse_sales_already_retired`, +еще 4 | Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing. |
 
 ### 📄 Системные Конфигурации & Скрипты
 

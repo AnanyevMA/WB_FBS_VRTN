@@ -38,6 +38,11 @@ from app.api.kiz.auto_queue import (
     get_auto_kiz_settings,
     update_auto_kiz_settings,
 )
+from app.api.kiz.warehouse_sales import (
+    router as warehouse_sales_router,
+    sync_warehouse_sales,
+    list_warehouse_sales_batches,
+)
 
 router = APIRouter(prefix="/sellers/{seller_id}", tags=["kiz"])
 
@@ -47,6 +52,7 @@ router.include_router(documents_router)
 router.include_router(archive_router)
 router.include_router(signature_batches_router)
 router.include_router(auto_queue_router)
+router.include_router(warehouse_sales_router)
 
 __all__ = [
     "router",

@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-26T15:49:50.546350+00:00",
+  "updated_at": "2026-09-26T16:37:38.234449+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 129,
+  "total_files": 134,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1617,6 +1617,67 @@
       ]
     },
     {
+      "file": "app/agents/wb_warehouse_sales_agent.py",
+      "layer": "agents",
+      "hash": "6bf5e308bc15",
+      "docstring": "WB Warehouse Sales Celery Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_all_sellers_warehouse_sales",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Периодическая задача Celery Beat (ежедневно ночью, например в 04:30)."
+        },
+        {
+          "name": "sync_seller_warehouse_sales",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "days"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Фоновая задача обработки продаж со склада WB для конкретного продавца."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.wb_warehouse_sales_agent.sync_all_sellers_warehouse_sales",
+          "function": "sync_all_sellers_warehouse_sales",
+          "docstring": "Периодическая задача Celery Beat (ежедневно ночью, например в 04:30)."
+        },
+        {
+          "name": "app.agents.wb_warehouse_sales_agent.sync_seller_warehouse_sales",
+          "function": "sync_seller_warehouse_sales",
+          "docstring": "Фоновая задача обработки продаж со склада WB для конкретного продавца."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models.seller",
+        "app.services.wb_warehouse_sales_service",
+        "asyncio",
+        "concurrent.futures",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing"
+      ]
+    },
+    {
       "file": "app/api/__init__.py",
       "layer": "api",
       "hash": "f7ff302fd49c",
@@ -1905,7 +1966,7 @@
     {
       "file": "app/api/kiz/__init__.py",
       "layer": "api",
-      "hash": "353e1308055b",
+      "hash": "b8f3684f39f7",
       "docstring": "FastAPI KIZ Router Package — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -1918,6 +1979,7 @@
         "app.api.kiz.auto_queue",
         "app.api.kiz.documents",
         "app.api.kiz.signature_batches",
+        "app.api.kiz.warehouse_sales",
         "fastapi"
       ]
     },
@@ -2488,6 +2550,68 @@
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "sqlalchemy.orm.attributes",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/kiz/warehouse_sales.py",
+      "layer": "api",
+      "hash": "99dbf222d9e6",
+      "docstring": "FastAPI WB Warehouse Sales Endpoints — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_warehouse_sales",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "days",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/warehouse-sales/sync')"
+          ],
+          "docstring": "Запуск сверки продаж со склада WB (FBO / остатки после возвратов):"
+        },
+        {
+          "name": "list_warehouse_sales_batches",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "limit",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/warehouse-sales/batches')"
+          ],
+          "docstring": "Получение списка пакетов, сформированных по продажам со склада WB."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/warehouse-sales/sync",
+          "handler": "sync_warehouse_sales",
+          "docstring": "Запуск сверки продаж со склада WB (FBO / остатки после возвратов):"
+        },
+        {
+          "method": "GET",
+          "path": "/warehouse-sales/batches",
+          "handler": "list_warehouse_sales_batches",
+          "docstring": "Получение списка пакетов, сформированных по продажам со склада WB."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.services.wb_warehouse_sales_service",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
         "typing"
       ]
     },
@@ -3673,7 +3797,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "2db3b4713b81",
+      "hash": "b2762301121c",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -5824,6 +5948,59 @@
       ]
     },
     {
+      "file": "app/services/wb_analytics_client.py",
+      "layer": "services",
+      "hash": "0c80fed1fc06",
+      "docstring": "Wildberries Analytics API Client.",
+      "classes": [
+        {
+          "name": "WBAnalyticsAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Base exception for WB Analytics API.",
+          "methods": []
+        },
+        {
+          "name": "WBAnalyticsRateLimitError",
+          "bases": [
+            "WBAnalyticsAPIError"
+          ],
+          "docstring": "429 Too Many Requests.",
+          "methods": []
+        },
+        {
+          "name": "WBAnalyticsUnauthorizedError",
+          "bases": [
+            "WBAnalyticsAPIError"
+          ],
+          "docstring": "401 Unauthorized.",
+          "methods": []
+        },
+        {
+          "name": "WBAnalyticsClient",
+          "bases": [],
+          "docstring": "Client for Wildberries Seller Analytics API.",
+          "methods": [
+            "__init__",
+            "__aenter__",
+            "__aexit__",
+            "get_excise_report"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "httpx",
+        "logging",
+        "tenacity",
+        "typing"
+      ]
+    },
+    {
       "file": "app/services/wb_client.py",
       "layer": "services",
       "hash": "902f37e85fb6",
@@ -5932,6 +6109,87 @@
         "json",
         "logging",
         "tenacity",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_warehouse_sales_service.py",
+      "layer": "services",
+      "hash": "642752e95725",
+      "docstring": "WB Warehouse Sales Service — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "fetch_wb_excise_data",
+          "is_async": true,
+          "args": [
+            "seller",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "Получает данные отчета по маркированным товарам из WB Analytics API."
+        },
+        {
+          "name": "get_already_queued_cises",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Возвращает множество КИЗ, уже находящихся в очереди неподписанных пакетов."
+        },
+        {
+          "name": "build_warehouse_sale_item",
+          "is_async": false,
+          "args": [
+            "record",
+            "clean_cis",
+            "matched_order"
+          ],
+          "decorators": [],
+          "docstring": "Формирует структуру элемента вывода для пакета ЭЦП."
+        },
+        {
+          "name": "process_warehouse_sales_for_seller",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "Основной метод обработки продаж со склада WB:"
+        },
+        {
+          "name": "_send_telegram_notification",
+          "is_async": true,
+          "args": [
+            "seller",
+            "count",
+            "total_sum",
+            "batch_id"
+          ],
+          "decorators": [],
+          "docstring": "Отправляет уведомление менеджеру в Telegram."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.telegram_service",
+        "app.services.wb_analytics_client",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
         "typing"
       ]
     },
@@ -10045,9 +10303,110 @@
       ]
     },
     {
+      "file": "tests/test_wb_warehouse_sales.py",
+      "layer": "tests",
+      "hash": "387080679fdd",
+      "docstring": "Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_wb_analytics_client_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_wb_analytics_client_unauthorized",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_sales_no_token",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_sales_already_retired",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_sales_creates_signature_batch",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_sales_deduplication",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_sales_celery_tasks",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_sales_api_endpoints",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.wb_warehouse_sales_agent",
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "app.services.wb_analytics_client",
+        "app.services.wb_warehouse_sales_service",
+        "datetime",
+        "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "e2874635a5ef",
+      "hash": "6ddb3bc0aa70",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

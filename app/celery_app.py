@@ -29,6 +29,7 @@ celery_app = Celery(
         "app.agents.kb_sync_agent",
         "app.agents.security_audit_agent",
         "app.agents.auto_kiz_queue_agent",
+        "app.agents.wb_warehouse_sales_agent",
     ],
 )
 
@@ -69,6 +70,7 @@ celery_app.conf.update(
         "app.agents.security_audit_agent.*": {"queue": "maintenance"},
         "app.agents.qa_test_agent.*": {"queue": "qa_testing"},
         "app.agents.auto_kiz_queue_agent.*": {"queue": "cz_operations"},
+        "app.agents.wb_warehouse_sales_agent.*": {"queue": "cz_operations"},
     },
     # Periodic Tasks Beat Schedule matching agents_config.json
     beat_schedule={
@@ -131,6 +133,12 @@ celery_app.conf.update(
         "daily-auto-kiz-queue-check": {
             "task": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
             "schedule": 300.0,  # every 5 minutes (grace window 3h, ±5 min is fine)
+            "options": {"queue": "cz_operations"},
+        },
+        # Runs daily at 04:30 to sync repeat sales from WB warehouse (FBO / returns)
+        "sync-warehouse-sales-daily": {
+            "task": "app.agents.wb_warehouse_sales_agent.sync_all_sellers_warehouse_sales",
+            "schedule": crontab(hour=4, minute=30),  # daily at 04:30 Moscow time
             "options": {"queue": "cz_operations"},
         },
     },

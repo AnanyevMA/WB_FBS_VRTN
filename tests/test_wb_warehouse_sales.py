@@ -172,11 +172,11 @@ async def test_warehouse_sales_creates_signature_batch():
             }
         ]
 
-        # Mock True API returning INTRODUCED (needs withdrawal)
+        # Mock True API returning INTRODUCED on seller's balance
         mock_kinfo = MagicMock()
         mock_kinfo.cz_status = "INTRODUCED"
         mock_kinfo.cz_status_ex = None
-        mock_kinfo.raw_cz_payload = {}
+        mock_kinfo.raw_cz_payload = {"ownerInn": "7700112233"}
 
         with patch("app.services.wb_warehouse_sales_service.fetch_wb_excise_data", new_callable=AsyncMock) as mock_fetch, \
              patch("app.services.wb_warehouse_sales_service.batch_verify_and_sync_cises", new_callable=AsyncMock) as mock_verify, \
@@ -248,7 +248,7 @@ async def test_warehouse_sales_deduplication():
         mock_kinfo = MagicMock()
         mock_kinfo.cz_status = "INTRODUCED"
         mock_kinfo.cz_status_ex = None
-        mock_kinfo.raw_cz_payload = {}
+        mock_kinfo.raw_cz_payload = {"ownerInn": "7700112233"}
 
         with patch("app.services.wb_warehouse_sales_service.fetch_wb_excise_data", new_callable=AsyncMock) as mock_fetch, \
              patch("app.services.wb_warehouse_sales_service.batch_verify_and_sync_cises", new_callable=AsyncMock) as mock_verify:
@@ -259,6 +259,52 @@ async def test_warehouse_sales_deduplication():
             # Already queued -> nothing new to create
             assert res["created"] is False
             assert res["needs_withdrawal_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_warehouse_sales_skips_wb_owned_kiz():
+    """Verify that KIZ codes on WB balance (ownerInn=9714053621) are skipped."""
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="WB Owner Test Seller",
+            wb_api_token_encrypted=encrypt("wb_tok"),
+            cz_inn="7700112233",
+            is_active=True,
+        )
+        session.add(seller)
+        await session.commit()
+
+        mock_excise_rows = [
+            {
+                "barcode": "2044967817804",
+                "excise_short": "0104630199251332215+gIUHbTKIpgQ",
+                "fiscal_doc_number": 145211,
+                "price": 3194,
+            }
+        ]
+        mock_kinfo = MagicMock()
+        mock_kinfo.cz_status = "INTRODUCED"
+        mock_kinfo.cz_status_ex = None
+        mock_kinfo.raw_cz_payload = {
+            "cisInfo": {
+                "ownerInn": "9714053621",  # ООО "РВБ" (Wildberries)
+                "ownerName": "ООО РВБ",
+            }
+        }
+
+        with patch("app.services.wb_warehouse_sales_service.fetch_wb_excise_data", new_callable=AsyncMock) as mock_fetch, \
+             patch("app.services.wb_warehouse_sales_service.batch_verify_and_sync_cises", new_callable=AsyncMock) as mock_verify:
+            mock_fetch.return_value = mock_excise_rows
+            mock_verify.return_value = {"0104630199251332215+gIUHbTKIpgQ": mock_kinfo}
+
+            res = await process_warehouse_sales_for_seller(seller, session, days=14)
+            assert res["created"] is False
+            assert res["needs_withdrawal_count"] == 0
+            assert res["other_owner_count"] == 1
+            assert "ООО «РВБ»" in res["message"]
 
 
 @pytest.mark.asyncio

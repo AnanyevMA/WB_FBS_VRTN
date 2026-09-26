@@ -63,6 +63,15 @@ async def get_already_queued_cises(seller_id: str, db: AsyncSession) -> Set[str]
     return queued
 
 
+def extract_owner_inn(payload: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Извлекает ИНН текущего владельца КИЗ из ответа True API."""
+    if not payload or not isinstance(payload, dict):
+        return None
+    c_info = payload.get("cisInfo") if isinstance(payload.get("cisInfo"), dict) else payload
+    inn = c_info.get("ownerInn") or c_info.get("owner_inn") or payload.get("ownerInn")
+    return str(inn).strip() if inn else None
+
+
 def build_warehouse_sale_item(
     record: Dict[str, Any],
     clean_cis: str,
@@ -162,9 +171,11 @@ async def process_warehouse_sales_for_seller(
     )
 
     already_queued = await get_already_queued_cises(seller.id, db)
+    seller_inn = str(seller.cz_inn or "").strip()
     now = datetime.now(timezone.utc)
     batch_withdrawals: List[Dict[str, Any]] = []
     already_retired_count = 0
+    other_owner_count = 0
     total_sales_sum = 0.0
 
     for clean_cis, record in kiz_to_record.items():
@@ -185,7 +196,18 @@ async def process_warehouse_sales_for_seller(
                 matched_order.updated_at = now
             continue
 
-        # Товар числится в обороте (INTRODUCED) — требует вывода по чеку WB
+        # Проверяем принадлежность: выводить может ТОЛЬКО текущий владелец кода
+        owner_inn = extract_owner_inn(raw_pl)
+        if owner_inn and seller_inn and owner_inn != seller_inn:
+            # Товар передан на баланс Wildberries (ООО "РВБ" 9714053621) или другого участника
+            other_owner_count += 1
+            logger.info(
+                f"[Warehouse Sales] KIZ {clean_cis} owner is {owner_inn} (seller is {seller_inn}). "
+                "Skipping withdrawal batch (responsible for withdrawal: current owner)."
+            )
+            continue
+
+        # Товар числится в обороте на балансе ИП — требует вывода по чеку WB
         if clean_cis in already_queued:
             logger.debug(f"[Warehouse Sales] KIZ {clean_cis} already in pending signature batch")
             continue
@@ -197,14 +219,21 @@ async def process_warehouse_sales_for_seller(
     await db.commit()
 
     if not batch_withdrawals:
+        details = []
+        if already_retired_count:
+            details.append(f"{already_retired_count} уже выведены из оборота")
+        if other_owner_count:
+            details.append(f"{other_owner_count} на балансе Wildberries (ООО «РВБ»)")
+        msg_details = ", ".join(details) if details else "нет товаров на балансе ИП"
         return {
             "success": True,
             "seller_id": seller.id,
             "created": False,
-            "message": "Все товары из отчета уже выведены из оборота в ГИС МТ",
+            "message": f"Сверка завершена: {msg_details}",
             "total_wb_records": len(excise_rows),
             "needs_withdrawal_count": 0,
             "already_retired_count": already_retired_count,
+            "other_owner_count": other_owner_count,
         }
 
     # 4. Формирование KizSignatureBatch
@@ -214,6 +243,7 @@ async def process_warehouse_sales_for_seller(
         "sales_count": len(batch_withdrawals),
         "sales_needing_withdrawal": len(batch_withdrawals),
         "sales_already_withdrawn": already_retired_count,
+        "other_owner_count": other_owner_count,
         "returns_count": 0,
         "returns_needing_cz_return": 0,
         "total_sales_sum": total_sales_sum,
@@ -249,6 +279,7 @@ async def process_warehouse_sales_for_seller(
         payload={
             "sales_count": len(batch_withdrawals),
             "already_retired_count": already_retired_count,
+            "other_owner_count": other_owner_count,
             "total_sales_sum": total_sales_sum,
         },
     )
@@ -265,6 +296,7 @@ async def process_warehouse_sales_for_seller(
         "batch_id": batch.id,
         "sales_count": len(batch_withdrawals),
         "already_retired_count": already_retired_count,
+        "other_owner_count": other_owner_count,
         "total_sales_sum": total_sales_sum,
         "status": batch.status.value,
         "message": f"Сформирован пакет на вывод {len(batch_withdrawals)} товаров со склада WB",

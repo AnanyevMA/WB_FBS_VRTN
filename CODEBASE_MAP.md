@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-26 16:37:38 UTC | **Файлов проиндексировано**: 134  
+> **Дата актуализации**: 2026-09-26 17:02:31 UTC | **Файлов проиндексировано**: 134  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -67,7 +67,7 @@
 | [`app/services/time_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/time_service.py) | — | `resolve_timezone`, `get_server_time_info`, `get_now_in_timezone`, `get_seller_local_time`, +еще 2 | Time & Timezone Management Service — WB FBS Manager |
 | [`app/services/wb_analytics_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_analytics_client.py) | `WBAnalyticsAPIError`, `WBAnalyticsRateLimitError`, `WBAnalyticsUnauthorizedError`, `WBAnalyticsClient` | — | Wildberries Analytics API Client. |
 | [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `parse_wb_token_expiration`, `get_wb_token_status`, `is_kiz_required` | Wildberries Marketplace API Client. |
-| [`app/services/wb_warehouse_sales_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_warehouse_sales_service.py) | — | `fetch_wb_excise_data`, `get_already_queued_cises`, `build_warehouse_sale_item`, `process_warehouse_sales_for_seller`, +еще 1 | WB Warehouse Sales Service — WB FBS Manager |
+| [`app/services/wb_warehouse_sales_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_warehouse_sales_service.py) | — | `fetch_wb_excise_data`, `get_already_queued_cises`, `extract_owner_inn`, `build_warehouse_sale_item`, +еще 2 | WB Warehouse Sales Service — WB FBS Manager |
 
 ### 🤖 Мультиагентный Слой Celery (`app/agents/`)
 
@@ -162,7 +162,7 @@
 | [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
 | [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 6 | Модуль кодовой базы |
-| [`tests/test_wb_warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales.py) | — | `test_wb_analytics_client_success`, `test_wb_analytics_client_unauthorized`, `test_warehouse_sales_no_token`, `test_warehouse_sales_already_retired`, +еще 4 | Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing. |
+| [`tests/test_wb_warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales.py) | — | `test_wb_analytics_client_success`, `test_wb_analytics_client_unauthorized`, `test_warehouse_sales_no_token`, `test_warehouse_sales_already_retired`, +еще 5 | Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing. |
 
 ### 📄 Системные Конфигурации & Скрипты
 

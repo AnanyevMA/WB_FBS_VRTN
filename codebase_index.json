@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-26T16:37:38.234449+00:00",
+  "updated_at": "2026-09-26T17:02:31.618509+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 134,
   "files": [
@@ -6115,7 +6115,7 @@
     {
       "file": "app/services/wb_warehouse_sales_service.py",
       "layer": "services",
-      "hash": "642752e95725",
+      "hash": "b3a7cab45d2f",
       "docstring": "WB Warehouse Sales Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6138,6 +6138,15 @@
           ],
           "decorators": [],
           "docstring": "Возвращает множество КИЗ, уже находящихся в очереди неподписанных пакетов."
+        },
+        {
+          "name": "extract_owner_inn",
+          "is_async": false,
+          "args": [
+            "payload"
+          ],
+          "decorators": [],
+          "docstring": "Извлекает ИНН текущего владельца КИЗ из ответа True API."
         },
         {
           "name": "build_warehouse_sale_item",
@@ -10305,7 +10314,7 @@
     {
       "file": "tests/test_wb_warehouse_sales.py",
       "layer": "tests",
-      "hash": "387080679fdd",
+      "hash": "c27a3ce4d1cb",
       "docstring": "Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing.",
       "classes": [],
       "functions": [
@@ -10364,6 +10373,15 @@
           "docstring": ""
         },
         {
+          "name": "test_warehouse_sales_skips_wb_owned_kiz",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that KIZ codes on WB balance (ownerInn=9714053621) are skipped."
+        },
+        {
           "name": "test_warehouse_sales_celery_tasks",
           "is_async": true,
           "args": [],
@@ -10406,7 +10424,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "6ddb3bc0aa70",
+      "hash": "f502cff2e19f",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

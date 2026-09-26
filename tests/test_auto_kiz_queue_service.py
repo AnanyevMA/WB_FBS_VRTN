@@ -207,13 +207,12 @@ async def test_process_auto_kiz_queue_flow():
             res = {}
             for c in cises:
                 info = KizProductInfo(
-                    cis=c,
+                    kiz_code=c,
+                    clean_cis=c,
                     gtin="04630199251318",
-                    sgtin="215DDDDD",
+                    serial_number="215DDDDD",
                     cz_status="INTRODUCED",
                     cz_status_ex="IN_CIRCULATION",
-                    is_valid=True,
-                    is_withdrawn=False,
                 )
                 res[c] = info
             return res

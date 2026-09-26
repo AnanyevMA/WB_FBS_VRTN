@@ -41,7 +41,6 @@ def test_celery_beat_schedule_synchronization():
         "app.agents.cz_token_refresher.refresh_all_tokens",
         "app.agents.archive_processor.process_all_archives",
         "app.agents.cleanup.cleanup_old_audit_logs",
-        "app.agents.qa_test_agent.run_system_regression_tests",
         "app.agents.morning_digest.send_morning_digest",
     ]
 

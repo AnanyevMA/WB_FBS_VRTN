@@ -30,6 +30,7 @@ celery_app = Celery(
         "app.agents.security_audit_agent",
         "app.agents.auto_kiz_queue_agent",
         "app.agents.wb_warehouse_sales_agent",
+        "app.agents.wb_finance_agent",
     ],
 )
 
@@ -71,6 +72,7 @@ celery_app.conf.update(
         "app.agents.qa_test_agent.*": {"queue": "qa_testing"},
         "app.agents.auto_kiz_queue_agent.*": {"queue": "cz_operations"},
         "app.agents.wb_warehouse_sales_agent.*": {"queue": "cz_operations"},
+        "app.agents.wb_finance_agent.*": {"queue": "cz_operations"},
     },
     # Periodic Tasks Beat Schedule matching agents_config.json
     beat_schedule={
@@ -139,6 +141,12 @@ celery_app.conf.update(
         "sync-warehouse-sales-daily": {
             "task": "app.agents.wb_warehouse_sales_agent.sync_all_sellers_warehouse_sales",
             "schedule": crontab(hour=4, minute=30),  # daily at 04:30 Moscow time
+            "options": {"queue": "cz_operations"},
+        },
+        # Runs daily at 05:00 to sync detailed sales reports from WB Finance API and audit returns
+        "sync-financial-reports-daily": {
+            "task": "app.agents.wb_finance_agent.sync_all_sellers_financial_reports",
+            "schedule": crontab(hour=5, minute=0),  # daily at 05:00 Moscow time
             "options": {"queue": "cz_operations"},
         },
     },

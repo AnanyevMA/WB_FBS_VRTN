@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-26T17:17:54.891559+00:00",
+  "updated_at": "2026-09-26T17:55:37.456791+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 134,
+  "total_files": 140,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1617,6 +1617,67 @@
       ]
     },
     {
+      "file": "app/agents/wb_finance_agent.py",
+      "layer": "agents",
+      "hash": "2a3d35033b31",
+      "docstring": "WB Finance Celery Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_all_sellers_financial_reports",
+          "is_async": false,
+          "args": [
+            "self"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Периодическая задача Celery Beat (ежедневно ночью в 05:00 МСК)."
+        },
+        {
+          "name": "sync_seller_financial_reports_task",
+          "is_async": false,
+          "args": [
+            "self",
+            "seller_id",
+            "days"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Фоновая задача загрузки финансового отчета реализации WB для конкретного продавца."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.wb_finance_agent.sync_all_sellers_financial_reports",
+          "function": "sync_all_sellers_financial_reports",
+          "docstring": "Периодическая задача Celery Beat (ежедневно ночью в 05:00 МСК)."
+        },
+        {
+          "name": "app.agents.wb_finance_agent.sync_seller_financial_reports_task",
+          "function": "sync_seller_financial_reports_task",
+          "docstring": "Фоновая задача загрузки финансового отчета реализации WB для конкретного продавца."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models.seller",
+        "app.services.wb_finance_service",
+        "asyncio",
+        "concurrent.futures",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing"
+      ]
+    },
+    {
       "file": "app/agents/wb_warehouse_sales_agent.py",
       "layer": "agents",
       "hash": "8ab12c167104",
@@ -1961,6 +2022,90 @@
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "uuid"
+      ]
+    },
+    {
+      "file": "app/api/finance.py",
+      "layer": "api",
+      "hash": "2bc8bd7906e4",
+      "docstring": "FastAPI WB Finance Endpoints — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_financial_reports",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "days",
+            "verify_cz",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/sync')"
+          ],
+          "docstring": "Запуск синхронизации детального финансового отчета реализации WB:"
+        },
+        {
+          "name": "get_financial_summary",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/summary')"
+          ],
+          "docstring": "Возвращает общую финансовую статистику по магазину из сохраненных строк отчетов реализации."
+        },
+        {
+          "name": "list_financial_returns",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "page",
+            "limit",
+            "kiz_only",
+            "seller_owned_only",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/returns')"
+          ],
+          "docstring": "Возвращает список возвращенных товаров с информацией о коде маркировки и статусе в Честном Знаке."
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/sync",
+          "handler": "sync_financial_reports",
+          "docstring": "Запуск синхронизации детального финансового отчета реализации WB:"
+        },
+        {
+          "method": "GET",
+          "path": "/summary",
+          "handler": "get_financial_summary",
+          "docstring": "Возвращает общую финансовую статистику по магазину из сохраненных строк отчетов реализации."
+        },
+        {
+          "method": "GET",
+          "path": "/returns",
+          "handler": "list_financial_returns",
+          "docstring": "Возвращает список возвращенных товаров с информацией о коде маркировки и статусе в Честном Знаке."
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.wb_finance_service",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
       ]
     },
     {
@@ -3797,7 +3942,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "b2762301121c",
+      "hash": "2d0b21ad54c0",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3897,7 +4042,7 @@
     {
       "file": "app/main.py",
       "layer": "core",
-      "hash": "de6753be9432",
+      "hash": "4dce037a4a93",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3978,7 +4123,7 @@
     {
       "file": "app/models/__init__.py",
       "layer": "models",
-      "hash": "d518cf9fc4fd",
+      "hash": "32d8caf62796",
       "docstring": "",
       "classes": [],
       "functions": [],
@@ -3992,6 +4137,7 @@
         "app.models.seller",
         "app.models.supply",
         "app.models.user",
+        "app.models.wb_finance",
         "app.national_catalog.models"
       ]
     },
@@ -4257,6 +4403,38 @@
         "app.database",
         "datetime",
         "enum",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/models/wb_finance.py",
+      "layer": "models",
+      "hash": "fa534bd15e19",
+      "docstring": "WB Finance Data Models — WB FBS Manager",
+      "classes": [
+        {
+          "name": "WbSalesReportRow",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "Строка детального финансового отчета реализации WB.",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "wb_sales_report_rows"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "decimal",
         "sqlalchemy",
         "sqlalchemy.orm",
         "sqlalchemy.sql",
@@ -5950,7 +6128,7 @@
     {
       "file": "app/services/wb_analytics_client.py",
       "layer": "services",
-      "hash": "de87b07bb0c0",
+      "hash": "291fbcfb9dde",
       "docstring": "Wildberries Analytics API Client.",
       "classes": [
         {
@@ -6111,6 +6289,162 @@
         "logging",
         "tenacity",
         "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_finance_client.py",
+      "layer": "services",
+      "hash": "a9077c293f75",
+      "docstring": "Wildberries Finance API Client.",
+      "classes": [
+        {
+          "name": "WBFinanceAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Base exception for WB Finance API.",
+          "methods": []
+        },
+        {
+          "name": "WBFinanceRateLimitError",
+          "bases": [
+            "WBFinanceAPIError"
+          ],
+          "docstring": "429 Too Many Requests.",
+          "methods": []
+        },
+        {
+          "name": "WBFinanceUnauthorizedError",
+          "bases": [
+            "WBFinanceAPIError"
+          ],
+          "docstring": "401 Unauthorized.",
+          "methods": []
+        },
+        {
+          "name": "WBFinanceClient",
+          "bases": [],
+          "docstring": "Client for Wildberries Finance API (Realization sales reports).",
+          "methods": [
+            "__init__",
+            "__aenter__",
+            "__aexit__",
+            "get_sales_reports_page",
+            "fetch_all_sales_reports"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "asyncio",
+        "httpx",
+        "logging",
+        "tenacity",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_finance_service.py",
+      "layer": "services",
+      "hash": "9ca56346fa03",
+      "docstring": "WB Finance Service — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_parse_iso_datetime",
+          "is_async": false,
+          "args": [
+            "val"
+          ],
+          "decorators": [],
+          "docstring": "Безопасно парсит дату-время ISO/RFC3339."
+        },
+        {
+          "name": "_parse_iso_date",
+          "is_async": false,
+          "args": [
+            "val"
+          ],
+          "decorators": [],
+          "docstring": "Безопасно парсит дату ISO (YYYY-MM-DD)."
+        },
+        {
+          "name": "_parse_decimal",
+          "is_async": false,
+          "args": [
+            "val",
+            "default"
+          ],
+          "decorators": [],
+          "docstring": "Безопасно преобразует число или строку в Decimal."
+        },
+        {
+          "name": "_map_raw_row_to_dict",
+          "is_async": false,
+          "args": [
+            "row",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": "Нормализует сырую строку отчета WB (camelCase/snake_case) в словарь модели WbSalesReportRow."
+        },
+        {
+          "name": "_upsert_sales_report_rows",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "row_dicts"
+          ],
+          "decorators": [],
+          "docstring": "Идемпотентно сохраняет пачку строк отчета (PostgreSQL / SQLite). Возвращает (inserted, updated)."
+        },
+        {
+          "name": "_verify_and_update_return_cises",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "returned_cises"
+          ],
+          "decorators": [],
+          "docstring": "Проверяет принадлежность КИЗ из возвратов через True API."
+        },
+        {
+          "name": "sync_seller_financial_reports",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "days",
+            "verify_cz"
+          ],
+          "decorators": [],
+          "docstring": "Загружает еженедельные детальные отчеты реализации WB, сохраняет в БД и верифицирует КИЗ возвратов."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.wb_finance_client",
+        "datetime",
+        "decimal",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.dialects.postgresql",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
       ]
     },
     {
@@ -10192,6 +10526,91 @@
         "datetime",
         "pytest",
         "types"
+      ]
+    },
+    {
+      "file": "tests/test_wb_finance.py",
+      "layer": "tests",
+      "hash": "12e6e1e8815b",
+      "docstring": "Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_helpers_parsing",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_wb_finance_client_page_and_stream",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sync_seller_financial_reports_and_ownership",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_api_finance_endpoints",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_celery_finance_agent_dispatch",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.wb_finance_agent",
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "app.services.wb_finance_client",
+        "app.services.wb_finance_service",
+        "datetime",
+        "decimal",
+        "fastapi.testclient",
+        "httpx",
+        "pytest",
+        "sqlalchemy",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {

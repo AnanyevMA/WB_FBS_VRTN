@@ -5,11 +5,14 @@ from app.models.kiz import KizOperation, KizOperationType, KizProductInfo, KizSi
 from app.models.audit import AuditLog
 from app.models.user import User, UserRole
 from app.national_catalog.models import ProductCard
+from app.models.wb_finance import WbSalesReportRow
 
 __all__ = [
     "Seller", "Order", "OrderStatus", "KizStatus",
     "Supply", "SupplyStatus",
     "KizOperation", "KizOperationType", "KizProductInfo",
     "KizSignatureBatch", "BatchStatus",
-    "AuditLog", "User", "UserRole", "ProductCard"
+    "AuditLog", "User", "UserRole", "ProductCard",
+    "WbSalesReportRow"
 ]
+

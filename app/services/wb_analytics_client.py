@@ -82,6 +82,8 @@ class WBAnalyticsClient:
                     or resp.headers.get("Retry-After")
                 )
                 wait_sec = int(retry_header) if retry_header and retry_header.isdigit() else 35
+                if wait_sec > 60:
+                    raise WBAnalyticsRateLimitError(f"Лимит запросов WB исчерпан. Сервер вернет доступ через {wait_sec} сек.")
                 logger.warning(f"[WB Analytics] 429 Rate limit hit, waiting {wait_sec}s per server header...")
                 await asyncio.sleep(wait_sec + 2)
                 resp = await client.post(url, headers=self.headers, params=params, json=body)

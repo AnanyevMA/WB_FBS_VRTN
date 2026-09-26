@@ -298,6 +298,7 @@ async def sync_seller_financial_reports(
                         return_cises_to_verify.append(clean_cis)
 
             ins, upd = await _upsert_sales_report_rows(db, seller.id, row_dicts)
+            await db.commit()
             total_inserted += ins
             total_updated += upd
             total_rows += len(row_dicts)
@@ -310,6 +311,7 @@ async def sync_seller_financial_reports(
             db=db,
             returned_cises=return_cises_to_verify,
         )
+        await db.commit()
 
     # Запись в аудит
     audit = AuditLog(

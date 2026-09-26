@@ -23,6 +23,7 @@ async def sync_financial_reports(
     seller_id: str,
     days: int = Query(default=30, ge=1, le=180, description="Период в днях для выборки отчета (1-180)"),
     verify_cz: bool = Query(default=True, description="Выполнять ли онлайн-сверку принадлежности КИЗ возвратов в Честном Знаке"),
+    background: bool = Query(default=False, description="Запустить асинхронно через очередь Celery"),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -37,6 +38,16 @@ async def sync_financial_reports(
 
     if not seller.wb_api_token_encrypted:
         raise HTTPException(status_code=400, detail="Токен WB API не настроен для данного продавца")
+
+    if background:
+        from app.agents.wb_finance_agent import sync_seller_financial_reports_task
+        sync_seller_financial_reports_task.delay(seller_id=seller_id, days=days)
+        return {
+            "success": True,
+            "dispatched": True,
+            "seller_id": seller_id,
+            "message": "Синхронизация финансового отчета успешно запущена в фоновом режиме",
+        }
 
     try:
         result = await sync_seller_financial_reports(

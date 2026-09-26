@@ -85,5 +85,7 @@ const STATUS_MAP_NK = {
     'notsigned': 'Ожидает подписи',
     'published': 'Опубликован',
     'rejected': 'Отклонен',
-    'error': 'Ошибка'
+    'error': 'Ошибка',
+    'errors': 'Ошибка'
 };
+

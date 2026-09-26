@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-26T03:27:47.700043+00:00",
+  "updated_at": "2026-09-26T03:39:59.813054+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 129,
   "files": [
@@ -4158,7 +4158,7 @@
     {
       "file": "app/national_catalog/client.py",
       "layer": "core",
-      "hash": "3fcb7795ac4f",
+      "hash": "5f450061541c",
       "docstring": "",
       "classes": [
         {
@@ -4245,7 +4245,7 @@
     {
       "file": "app/national_catalog/router.py",
       "layer": "core",
-      "hash": "5e3360a86dfe",
+      "hash": "567414e77ae9",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4283,6 +4283,25 @@
             "router.get('/sellers/{seller_id}/national-catalog/products')"
           ],
           "docstring": "Получение списка карточек товаров для указанного продавца."
+        },
+        {
+          "name": "_auto_fill_tnved_from_attrs",
+          "is_async": false,
+          "args": [
+            "card"
+          ],
+          "decorators": [],
+          "docstring": "Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959), если поле tnved пусто."
+        },
+        {
+          "name": "_extract_feed_errors",
+          "is_async": false,
+          "args": [
+            "feed_data",
+            "gtin"
+          ],
+          "decorators": [],
+          "docstring": "Универсальное извлечение списка ошибок фида из ответа Честного Знака."
         },
         {
           "name": "_build_goods_item",
@@ -8970,7 +8989,7 @@
     {
       "file": "tests/test_national_catalog.py",
       "layer": "tests",
-      "hash": "69214e9bc7a0",
+      "hash": "8d345df34f8a",
       "docstring": "Tests for National Catalog (НКТ) module:",
       "classes": [],
       "functions": [
@@ -9045,6 +9064,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Test creating a series of product cards with sizes, colors, and declaration of conformity in a single feed."
+        },
+        {
+          "name": "test_check_status_feed_rejected_parsing",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test handling Honest Sign Rejected feed status with error list dict."
         }
       ],
       "endpoints": [],
@@ -10010,7 +10038,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "5abafabda1c5",
+      "hash": "e2874635a5ef",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

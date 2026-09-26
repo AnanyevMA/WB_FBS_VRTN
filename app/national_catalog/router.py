@@ -95,15 +95,152 @@ async def list_products(
 
     stmt = stmt.order_by(desc(ProductCard.created_at)).offset(offset).limit(limit)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    cards = list(result.scalars().all())
+    need_commit = False
+    for c in cards:
+        if _auto_fill_tnved_from_attrs(c):
+            need_commit = True
+    if need_commit:
+        try:
+            await db.commit()
+        except Exception:
+            pass
+    return cards
 
 
-def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional[str]]:
+def _auto_fill_tnved_from_attrs(card: ProductCard) -> bool:
+    """Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959), если поле tnved пусто."""
+    if card.tnved and card.tnved.strip():
+        return False
+    attrs = card.attributes or []
+    if isinstance(attrs, list):
+        for a in attrs:
+            if isinstance(a, dict):
+                aid = str(a.get("attr_id"))
+                val = str(a.get("attr_value") or "").strip()
+                if val:
+                    if aid in ("13933", "10609"):
+                        card.tnved = val[:20]
+                        return True
+                    elif aid == "3959" and not card.tnved:
+                        card.tnved = val[:20]
+                        return True
+    return False
+
+
+def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
+    """
+    Универсальное извлечение списка ошибок фида из ответа Честного Знака.
+    Поддерживает форматы:
+    - result: {"0": [...], "1": [...], "totalErrors": 3}
+    - item / items: [{"gtin": "...", "message": "...", "status_message": "..."}]
+    - error_details: {"items": [...], "commonError": {...}}
+    - commonError: {"code": ..., "text": "..."}
+    """
+    errors = []
+    if not isinstance(feed_data, dict):
+        return errors
+
+    clean_gtin = str(gtin).strip() if gtin else ""
+    gtin_no_zero = clean_gtin.lstrip("0") if clean_gtin else ""
+
+    # 1. Формат result: {"0": ["..."], "1": ["..."], "totalErrors": "3"}
+    res_obj = feed_data.get("result")
+    if isinstance(res_obj, dict):
+        matched_for_gtin = []
+        all_res_errors = []
+        for k, v in res_obj.items():
+            if k == "totalErrors":
+                continue
+            err_list = v if isinstance(v, list) else [v]
+            for err in err_list:
+                err_text = str(err)
+                all_res_errors.append(err_text)
+                if clean_gtin and (clean_gtin in err_text or (gtin_no_zero and gtin_no_zero in err_text)):
+                    matched_for_gtin.append(err_text)
+        if matched_for_gtin:
+            return matched_for_gtin
+        if not clean_gtin and all_res_errors:
+            return all_res_errors
+
+    # 2. Формат item: [...]
+    item_list = feed_data.get("item") or feed_data.get("items") or []
+    if isinstance(item_list, list):
+        for it in item_list:
+            if isinstance(it, dict):
+                it_gtin = str(it.get("gtin") or "").strip()
+                msg = it.get("message") or it.get("error_message") or it.get("status_message") or it.get("text")
+                if not msg and it.get("status_code") and it.get("status_code") not in (0, 1, 2, 3):
+                    msg = f"Код ошибки {it['status_code']}"
+                if msg:
+                    text = f"{it.get('attribute_name')}: {msg}" if it.get("attribute_name") else str(msg)
+                    if clean_gtin:
+                        if it_gtin and (it_gtin == clean_gtin or it_gtin == gtin_no_zero):
+                            errors.append(text)
+                    else:
+                        errors.append(text)
+
+    # 3. Формат error_details
+    err_details = feed_data.get("error_details")
+    if isinstance(err_details, dict):
+        ce = err_details.get("commonError")
+        if isinstance(ce, dict) and ce.get("text"):
+            errors.append(str(ce["text"]))
+        ed_items = err_details.get("items") or []
+        if isinstance(ed_items, list):
+            for it in ed_items:
+                if isinstance(it, dict):
+                    it_gtin = str(it.get("gtin") or "").strip()
+                    sub_errors = it.get("errors") or []
+                    if isinstance(sub_errors, dict):
+                        sub_errors = [sub_errors]
+                    for se in sub_errors:
+                        msg = se.get("text") or se.get("message") if isinstance(se, dict) else str(se)
+                        if msg:
+                            if not clean_gtin or (it_gtin in (clean_gtin, gtin_no_zero)):
+                                errors.append(str(msg))
+
+    # 4. Корневой commonError
+    root_ce = feed_data.get("commonError")
+    if isinstance(root_ce, dict) and root_ce.get("text"):
+        errors.append(str(root_ce["text"]))
+
+    # 5. Одиночный error_message / message
+    if not errors and feed_data.get("error_message"):
+        errors.append(str(feed_data["error_message"]))
+
+    # Если для конкретного GTIN ничего точечно не найдено, но в result были общие ошибки
+    if not errors and isinstance(res_obj, dict):
+        for k, v in res_obj.items():
+            if k != "totalErrors":
+                err_list = v if isinstance(v, list) else [v]
+                errors.extend([str(e) for e in err_list])
+
+    return list(dict.fromkeys(errors))
+
+
+def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional[str], Optional[str]]:
     gtin_val = payload.gtin.strip() if payload.gtin else None
     if not payload.is_tech_gtin and not gtin_val:
         raise HTTPException(
             status_code=400,
             detail=f"Для товара '{payload.name}' укажите GTIN (14 цифр) или выберите признак технической карточки (029)."
+        )
+
+    # Валидация и извлечение ТН ВЭД (из payload или из атрибутов 13933 / 10609 / 3959)
+    tnved_val = payload.tnved.strip() if payload.tnved else None
+    if not tnved_val and payload.attributes:
+        for attr in payload.attributes:
+            if attr.attr_id in (13933, 10609, 3959) and attr.attr_value:
+                cand = str(attr.attr_value).strip()
+                if cand:
+                    tnved_val = cand
+                    break
+
+    if payload.moderation and not tnved_val:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Для товара '{payload.name}' обязательно укажите код ТН ВЭД (10 знаков, например: 6206300000)."
         )
 
     goods_item: dict = {
@@ -113,11 +250,11 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
         "good_attrs": [],
         "good_images": [],
     }
+    if tnved_val:
+        goods_item["tnved"] = tnved_val
 
     if payload.brand:
         goods_item["brand"] = payload.brand
-    if payload.tnved:
-        goods_item["tnved"] = payload.tnved
     if payload.category_id:
         goods_item["categories"] = [payload.category_id]
 
@@ -137,16 +274,25 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
             }
         ]
 
+    has_tnved_attr = False
     for attr in payload.attributes:
         attr_dict = {
             "attr_id": attr.attr_id,
             "attr_value": attr.attr_value,
         }
+        if attr.attr_id in (10609, 13933):
+            has_tnved_attr = True
         if attr.attr_value_type:
             attr_dict["attr_value_type"] = attr.attr_value_type
         if attr.attr_value_id:
             attr_dict["attr_value_id"] = attr.attr_value_id
         goods_item["good_attrs"].append(attr_dict)
+
+    if not has_tnved_attr and tnved_val:
+        goods_item["good_attrs"].append({
+            "attr_id": 10609,
+            "attr_value": tnved_val,
+        })
 
     for img in payload.images:
         img_dict = {
@@ -156,7 +302,7 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
         }
         goods_item["good_images"].append(img_dict)
 
-    return goods_item, gtin_val
+    return goods_item, gtin_val, tnved_val
 
 
 @router.post("/sellers/{seller_id}/national-catalog/products", response_model=ProductCardResponse)
@@ -171,7 +317,7 @@ async def create_product(
     seller = await _get_seller_or_404(seller_id, db)
     client = await _get_seller_nk_client(seller)
 
-    goods_item, gtin_val = _build_goods_item(payload)
+    goods_item, gtin_val, tnved_val = _build_goods_item(payload)
 
     # Отправка фида в Национальный каталог
     try:
@@ -186,7 +332,7 @@ async def create_product(
         gtin=gtin_val,
         name=payload.name,
         brand=payload.brand,
-        tnved=payload.tnved,
+        tnved=tnved_val,
         category_id=payload.category_id,
         category_name=payload.category_name,
         is_tech_gtin=payload.is_tech_gtin,
@@ -221,12 +367,14 @@ async def create_products_batch(
 
     goods_items = []
     normalized_gtins = []
+    normalized_tnveds = []
 
     for item in payload.items:
         item.moderation = payload.moderation
-        g_dict, gtin_norm = _build_goods_item(item)
+        g_dict, gtin_norm, tnved_norm = _build_goods_item(item)
         goods_items.append(g_dict)
         normalized_gtins.append(gtin_norm)
+        normalized_tnveds.append(tnved_norm)
 
     try:
         async with client:
@@ -236,13 +384,13 @@ async def create_products_batch(
         raise HTTPException(status_code=e.status_code or 400, detail=e.message)
 
     created_cards = []
-    for item, gtin_val in zip(payload.items, normalized_gtins):
+    for item, gtin_val, tnved_val in zip(payload.items, normalized_gtins, normalized_tnveds):
         card = ProductCard(
             seller_id=seller.id,
             gtin=gtin_val,
             name=item.name,
             brand=item.brand,
-            tnved=item.tnved,
+            tnved=tnved_val,
             category_id=item.category_id,
             category_name=item.category_name,
             is_tech_gtin=item.is_tech_gtin,
@@ -447,14 +595,50 @@ async def sync_products_from_nk(
                     break
                 await asyncio.sleep(0.3)
 
+            # 1. Проверяем статусы фидов для всех локальных незавершенных карточек продавца
+            unfinished_cards = [c for c in existing_cards if c.feed_id and c.status not in ("published", "archived") and not c.good_id]
+            unique_feed_ids = {c.feed_id for c in unfinished_cards}
+            feed_results = {}
+            for fid in unique_feed_ids:
+                try:
+                    st_data = await client.get_feed_status(fid)
+                    feed_results[fid] = st_data
+                except Exception as e:
+                    logger.warning("Ошибка проверки фида %s при синхронизации: %s", fid, e)
+
+            feeds_updated_count = 0
+            for c in unfinished_cards:
+                if c.feed_id in feed_results:
+                    st_data = feed_results[c.feed_id]
+                    st_str = st_data.get("status")
+                    if st_str:
+                        c.feed_status = st_str
+                    c_errors = _extract_feed_errors(st_data, gtin=c.gtin)
+                    if c_errors:
+                        c.error_details = c_errors
+                        c.status = "errors"
+                    elif st_str in ("Rejected", "errors"):
+                        c.status = "errors"
+                        c.error_details = _extract_feed_errors(st_data)
+                    elif st_str == "Moderated":
+                        c.status = "notsigned"
+                    elif st_str == "Signed":
+                        c.status = "published"
+                    _auto_fill_tnved_from_attrs(c)
+                    c.updated_at = datetime.now(timezone.utc)
+                    feeds_updated_count += 1
+
+            if feed_results:
+                await db.commit()
+
             if not all_remote_goods:
                 return SyncNKResponse(
                     success=True,
                     total_remote=total_remote,
-                    synced_count=0,
+                    synced_count=len(existing_cards),
                     created_count=0,
-                    updated_count=0,
-                    message="В Национальном каталоге не найдено карточек товаров для данного ИНН.",
+                    updated_count=feeds_updated_count,
+                    message="В Национальном каталоге не найдено опубликованных карточек товаров для данного ИНН. Статусы отправленных пакетов (фидов) обновлены.",
                 )
 
             # Определяем товары для детального запроса:
@@ -489,15 +673,6 @@ async def sync_products_from_nk(
                     return None
 
             details = await asyncio.gather(*(fetch_detail(g) for g in goods_to_fetch)) if goods_to_fetch else []
-
-            # Проверяем статусы фидов для локальных карточек без good_id
-            for c in existing_cards:
-                if c.feed_id and c.status not in ("published", "archived") and not c.good_id:
-                    try:
-                        st_data = await client.get_feed_status(c.feed_id)
-                        c.feed_status = st_data.get("status")
-                    except Exception as e:
-                        logger.warning("Ошибка проверки фида %s: %s", c.feed_id, e)
 
     except NKAPIError as e:
         logger.error("Ошибка синхронизации с НКТ для продавца %s: %s", seller.id, e)
@@ -661,24 +836,48 @@ async def check_product_status(
             try:
                 feed_data = await client.get_feed_status(card.feed_id)
                 status_str = feed_data.get("status")
-                card.feed_status = status_str
 
-                # Разбираем ошибки фида если есть
-                error_items = feed_data.get("item", [])
-                if error_items:
-                    card.error_details = error_items
-                    if status_str in ("Rejected", "errors"):
-                        card.status = "errors"
+                # Находим все карточки продавца с этим же feed_id (вся серия/пакет)
+                sibling_stmt = select(ProductCard).where(
+                    ProductCard.seller_id == seller_id,
+                    ProductCard.feed_id == card.feed_id
+                )
+                sibling_cards = (await db.execute(sibling_stmt)).scalars().all()
 
-                if status_str in ("Moderated", "Signed"):
-                    card.status = "notsigned" if status_str == "Moderated" else "published"
-                    # Извлекаем присвоенный good_id
-                    for it in error_items:
-                        if isinstance(it, dict) and it.get("good_id"):
-                            try:
-                                card.good_id = int(it["good_id"])
-                            except Exception:
-                                pass
+                item_list = feed_data.get("item") or feed_data.get("items") or []
+
+                for sc in sibling_cards:
+                    if status_str:
+                        sc.feed_status = status_str
+
+                    # Извлекаем ошибки конкретно для sc.gtin
+                    sc_errors = _extract_feed_errors(feed_data, gtin=sc.gtin)
+                    if sc_errors:
+                        sc.error_details = sc_errors
+                        sc.status = "errors"
+                    elif status_str in ("Rejected", "errors"):
+                        sc.status = "errors"
+                        # Если конкретных ошибок для GTIN нет, берем общие ошибки фида
+                        gen_errors = _extract_feed_errors(feed_data)
+                        if gen_errors:
+                            sc.error_details = gen_errors
+
+                    if status_str in ("Moderated", "Signed"):
+                        sc.status = "notsigned" if status_str == "Moderated" else "published"
+                        # Извлекаем good_id строго для соответствующего GTIN
+                        for it in item_list:
+                            if isinstance(it, dict) and it.get("good_id"):
+                                it_gtin = str(it.get("gtin") or "").strip()
+                                sc_gtin = str(sc.gtin or "").strip()
+                                if not it_gtin or it_gtin == sc_gtin or it_gtin.lstrip("0") == sc_gtin.lstrip("0"):
+                                    try:
+                                        sc.good_id = int(it["good_id"])
+                                    except Exception:
+                                        pass
+
+                    _auto_fill_tnved_from_attrs(sc)
+                    sc.updated_at = datetime.now(timezone.utc)
+
             except NKAPIError as e:
                 logger.warning("Ошибка проверки статуса фида %s: %s", card.feed_id, e)
 
@@ -691,8 +890,11 @@ async def check_product_status(
                     if not card.good_id and p.get("good_id"):
                         card.good_id = int(p["good_id"])
                     st_val = p.get("good_status") or p.get("status")
+                    if not st_val and p.get("good_detailed_status") and isinstance(p.get("good_detailed_status"), list):
+                        st_val = p["good_detailed_status"][0]
                     if st_val:
-                        card.status = str(st_val).lower() if str(st_val).lower() in ("draft", "moderation", "notsigned", "published", "errors", "rejected") else str(st_val)
+                        st_lower = str(st_val).lower()
+                        card.status = st_lower if st_lower in ("draft", "moderation", "notsigned", "published", "errors", "rejected") else str(st_val)
                     if p.get("good_mark_flag") is not None:
                         card.good_mark_flag = bool(p["good_mark_flag"])
                     if p.get("good_turn_flag") is not None:
@@ -700,6 +902,7 @@ async def check_product_status(
             except NKAPIError:
                 pass
 
+    _auto_fill_tnved_from_attrs(card)
     card.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(card)

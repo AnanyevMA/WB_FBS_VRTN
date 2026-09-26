@@ -178,10 +178,17 @@ class NKClient:
     async def get_feed_status(self, feed_id: int) -> Dict[str, Any]:
         """
         Получение статуса ранее отправленного фида (GET /nk/feed-status?feed_id=...).
+        Возвращает полный словарь ответа ЧЗ с сохранением полей status, result, error_details.
         """
         res = await self._request("GET", "/nk/feed-status", params={"feed_id": feed_id})
         if isinstance(res, dict):
-            return res.get("result", res)
+            out = dict(res)
+            # Если result является словарем, добавим его ключи в корень, не перезаписывая корневые поля
+            if isinstance(res.get("result"), dict):
+                for k, v in res["result"].items():
+                    if k not in out:
+                        out[k] = v
+            return out
         return {"status": "Processing", "feed_id": feed_id}
 
     # ================= 2. Чтение карточек товаров =================

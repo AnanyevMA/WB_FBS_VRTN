@@ -6,6 +6,90 @@
 let nkCardsList = [];
 let currentEditingCardId = null;
 let currentCardToSign = null;
+let nkPageSize = 20; // 10 | 20 | 50
+let nkCurrentPage = 1;
+
+/**
+ * Переключение размера страницы (10 / 20 / 50)
+ */
+function changeNkPageSize(newSize) {
+    nkPageSize = parseInt(newSize, 10) || 20;
+    nkCurrentPage = 1;
+    renderProductCards(nkCardsList);
+}
+
+/**
+ * Переход на указанную страницу
+ */
+function goToNkPage(pageNum) {
+    nkCurrentPage = parseInt(pageNum, 10) || 1;
+    renderProductCards(nkCardsList);
+}
+
+/**
+ * Отрисовка панели пагинации
+ */
+function renderNkPagination(totalItems, startIndex, endIndex, totalPages) {
+    const infoEl = document.getElementById('nkPaginationInfo');
+    const navEl = document.getElementById('nkPaginationNav');
+    const selectEl = document.getElementById('nkPageSizeSelect');
+
+    if (selectEl && String(selectEl.value) !== String(nkPageSize)) {
+        selectEl.value = String(nkPageSize);
+    }
+
+    if (infoEl) {
+        if (totalItems === 0) {
+            infoEl.textContent = 'Показано 0 из 0 карточек';
+        } else {
+            infoEl.textContent = `Показано ${startIndex + 1}–${endIndex} из ${totalItems} карточек (стр. ${nkCurrentPage} из ${totalPages})`;
+        }
+    }
+
+    if (!navEl) return;
+    if (totalItems === 0 || totalPages <= 1) {
+        navEl.innerHTML = '';
+        return;
+    }
+
+    let buttonsHtml = '';
+
+    // Кнопки «Первая» и «Назад»
+    buttonsHtml += `<button class="nk-page-btn" ${nkCurrentPage <= 1 ? 'disabled' : ''} onclick="goToNkPage(1)" title="Первая страница">«</button>`;
+    buttonsHtml += `<button class="nk-page-btn" ${nkCurrentPage <= 1 ? 'disabled' : ''} onclick="goToNkPage(${nkCurrentPage - 1})" title="Предыдущая страница">‹</button>`;
+
+    // Номера страниц (с плавающим окном 5 страниц)
+    const maxButtons = 5;
+    let startPage = Math.max(1, nkCurrentPage - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    if (endPage - startPage + 1 < maxButtons) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    if (startPage > 1) {
+        buttonsHtml += `<button class="nk-page-btn" onclick="goToNkPage(1)">1</button>`;
+        if (startPage > 2) {
+            buttonsHtml += `<span class="nk-page-ellipsis">...</span>`;
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        buttonsHtml += `<button class="nk-page-btn ${p === nkCurrentPage ? 'active' : ''}" onclick="goToNkPage(${p})">${p}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            buttonsHtml += `<span class="nk-page-ellipsis">...</span>`;
+        }
+        buttonsHtml += `<button class="nk-page-btn" onclick="goToNkPage(${totalPages})">${totalPages}</button>`;
+    }
+
+    // Кнопки «Вперёд» и «Последняя»
+    buttonsHtml += `<button class="nk-page-btn" ${nkCurrentPage >= totalPages ? 'disabled' : ''} onclick="goToNkPage(${nkCurrentPage + 1})" title="Следующая страница">›</button>`;
+    buttonsHtml += `<button class="nk-page-btn" ${nkCurrentPage >= totalPages ? 'disabled' : ''} onclick="goToNkPage(${totalPages})" title="Последняя страница">»</button>`;
+
+    navEl.innerHTML = buttonsHtml;
+}
 
 /**
  * Загрузка списка карточек товаров выбранного продавца
@@ -35,19 +119,31 @@ async function loadProductCards(showSilent = false) {
 }
 
 /**
- * Отрисовка таблицы карточек с учетом фильтров
+ * Отрисовка таблицы карточек с учетом фильтров и пагинации (10 / 20 / 50)
  */
-function renderProductCards(cards) {
+function renderProductCards(cards, resetPage = false) {
     const tbody = document.getElementById('nk-cards-table-body');
     if (!tbody) return;
+
+    if (resetPage) {
+        nkCurrentPage = 1;
+    }
+
+    const items = Array.isArray(cards) ? cards : nkCardsList;
 
     const searchInput = document.getElementById('nkSearchInput');
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
     const statusFilter = document.getElementById('nkStatusFilter')?.value || 'all';
 
-    let filtered = cards;
+    let filtered = items;
     if (statusFilter !== 'all') {
-        filtered = filtered.filter(c => (c.status || '').toLowerCase() === statusFilter.toLowerCase());
+        filtered = filtered.filter(c => {
+            const st = (c.status || '').toLowerCase();
+            if (statusFilter === 'errors') {
+                return st === 'errors' || st === 'rejected' || (Array.isArray(c.error_details) && c.error_details.length > 0);
+            }
+            return st === statusFilter.toLowerCase();
+        });
     }
     if (query) {
         filtered = filtered.filter(c => {
@@ -60,14 +156,25 @@ function renderProductCards(cards) {
         });
     }
 
-    if (filtered.length === 0) {
+    const totalItems = filtered.length;
+    const totalPages = Math.ceil(totalItems / nkPageSize) || 1;
+    if (nkCurrentPage > totalPages) nkCurrentPage = totalPages;
+    if (nkCurrentPage < 1) nkCurrentPage = 1;
+
+    const startIndex = (nkCurrentPage - 1) * nkPageSize;
+    const endIndex = Math.min(startIndex + nkPageSize, totalItems);
+    const pageItems = filtered.slice(startIndex, endIndex);
+
+    renderNkPagination(totalItems, startIndex, endIndex, totalPages);
+
+    if (totalItems === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">
-            ${cards.length === 0 ? 'Карточек товаров пока нет. Создайте первую карточку или запустите синхронизацию с НКТ.' : 'По заданным фильтрам карточки не найдены.'}
+            ${items.length === 0 ? 'Карточек товаров пока нет. Создайте первую карточку или запустите синхронизацию с НКТ.' : 'По заданным фильтрам карточки не найдены.'}
         </td></tr>`;
         return;
     }
 
-    tbody.innerHTML = filtered.map(c => {
+    tbody.innerHTML = pageItems.map(c => {
         const gtinDisplay = c.gtin ? `<span style="font-family:monospace; font-weight:600; color: #a5b4fc;">${escapeHtml(c.gtin)}</span>` : '<span style="color:var(--text-muted); font-size:12px;">(Не присвоен)</span>';
         const goodIdBadge = c.good_id ? `<span class="badge" style="background:rgba(59,130,246,0.12); color:#60a5fa; font-size:11px; margin-left:6px;">ID: ${c.good_id}</span>` : '';
         const feedIdBadge = c.feed_id ? `<span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; font-size:10px; margin-top:2px;">feed: ${c.feed_id}</span>` : '';
@@ -256,7 +363,7 @@ async function editProductCard(cardId) {
         attrs.forEach(a => {
             const attrId = a.attr_id;
             const val = a.attr_value || a.value || '';
-            if (attrId === 10609 || attrId === '10609') {
+            if (attrId === 10609 || attrId === '10609' || attrId === 13933 || attrId === '13933' || attrId === 3959 || attrId === '3959') {
                 if (!document.getElementById('nk_card_tnved').value) document.getElementById('nk_card_tnved').value = val;
             } else if (attrId === 10610 || attrId === '10610') composition = val;
             else if (attrId === 10611 || attrId === '10611') country = val;
@@ -327,11 +434,15 @@ async function saveProductCard(sendToModeration = false) {
     const tnved = document.getElementById('nk_card_tnved').value.trim();
 
     if (!name) return showToast('Ошибка', 'Укажите наименование товара', 'error');
+    if (!tnved) return showToast('Ошибка', 'Укажите код ТН ВЭД (10 цифр, например 6206300000)', 'error');
 
     // Build attributes list
     const attributes = [];
     if (article) attributes.push({ attr_id: 10001, attr_value: article });
-    if (tnved) attributes.push({ attr_id: 10609, attr_value: tnved });
+    if (tnved) {
+        attributes.push({ attr_id: 10609, attr_value: tnved });
+        attributes.push({ attr_id: 13933, attr_value: tnved });
+    }
     const composition = document.getElementById('nk_card_composition').value.trim();
     if (composition) attributes.push({ attr_id: 10610, attr_value: composition });
     const country = document.getElementById('nk_card_country').value.trim();
@@ -422,7 +533,11 @@ async function checkCardStatus(cardId) {
         const res = await apiFetch(`/sellers/${currentSellerId}/national-catalog/products/${cardId}/check-status`, {
             method: 'POST'
         });
-        showToast('Статус НКТ', `Статус карточки: ${res.status}`, res.status === 'error' ? 'warning' : 'success');
+        const isErr = res.status === 'errors' || res.status === 'error';
+        const msg = res.error_details 
+            ? `Статус: ${STATUS_MAP_NK[res.status] || res.status}. Ошибка: ${res.error_details}`
+            : `Статус карточки: ${STATUS_MAP_NK[res.status] || res.status}`;
+        showToast('Статус НКТ', msg, isErr ? 'error' : 'success');
         await loadProductCards(true);
     } catch (err) {
         showToast('Ошибка проверки', err.message, 'error');
@@ -682,6 +797,7 @@ function populateMatrixFromDonor(card) {
     let donorSize = card.size || '';
     let donorDeclaration = '';
     let donorTechReg = '';
+    let donorTnved = card.tnved || '';
 
     attrs.forEach(a => {
         const id = a.attr_id;
@@ -702,6 +818,8 @@ function populateMatrixFromDonor(card) {
             donorDeclaration = val;
         } else if (id === 13836) {
             donorTechReg = val;
+        } else if (id === 13933 || id === 10609 || id === 3959) {
+            if (!donorTnved) donorTnved = String(val).trim();
         }
     });
 
@@ -721,7 +839,7 @@ function populateMatrixFromDonor(card) {
     document.getElementById('matrix_base_name').value = cleanName || card.name || '';
     document.getElementById('matrix_base_article').value = cleanArticle || '';
     document.getElementById('matrix_brand').value = card.brand || '';
-    document.getElementById('matrix_tnved').value = card.tnved || '';
+    document.getElementById('matrix_tnved').value = donorTnved || card.tnved || '';
     document.getElementById('matrix_category_id').value = card.category_id || '20000003';
     document.getElementById('matrix_composition').value = donorComposition || '';
     document.getElementById('matrix_country').value = donorCountry || 'Россия';
@@ -1115,6 +1233,7 @@ async function submitMatrixBatch() {
     if (!baseName) return showToast('Ошибка', 'Укажите базовое наименование товара', 'error');
     if (!baseArticle) return showToast('Ошибка', 'Укажите базовый артикул (модель)', 'error');
     if (!composition) return showToast('Ошибка', 'Укажите состав / материал ткани', 'error');
+    if (!tnved) return showToast('Ошибка', 'Укажите код ТН ВЭД (10 цифр, например 6206300000)', 'error');
 
     const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : 20000003;
     const checkedRows = matrixCombinations.filter(r => r.checked);
@@ -1136,7 +1255,7 @@ async function submitMatrixBatch() {
     const donorAttrs = Array.isArray(matrixDonorCard?.attributes) ? matrixDonorCard.attributes : [];
 
     // Filter donor custom attributes that should be preserved across all cards
-    const excludedAttrIds = [13914, 10001, 2478, 35, 10613, 36, 10612, 2483, 10610, 2480, 10611, 10609, 23557, 23561, 13836];
+    const excludedAttrIds = [13914, 10001, 2478, 35, 10613, 36, 10612, 2483, 10610, 2480, 10611, 10609, 13933, 3959, 23557, 23561, 13836];
     const inheritedCustomAttrs = donorAttrs.filter(a => !excludedAttrIds.includes(a.attr_id));
 
     for (const row of checkedRows) {
@@ -1175,6 +1294,7 @@ async function submitMatrixBatch() {
         // 6. TNVED attribute
         if (tnved) {
             itemAttrs.push({ attr_id: 10609, attr_value: tnved });
+            itemAttrs.push({ attr_id: 13933, attr_value: tnved });
         }
 
         // 7. Declaration of Conformity (attr 23557)

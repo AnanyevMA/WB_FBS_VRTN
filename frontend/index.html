@@ -430,17 +430,17 @@
                 <!-- Filters & Search -->
                 <div class="filter-bar" style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
                     <div style="flex: 1; min-width: 240px;">
-                        <input type="text" class="form-control" id="nkSearchInput" placeholder="Поиск по названию, артикулу, бренду или GTIN..." oninput="renderProductCards(nkCardsList)">
+                        <input type="text" class="form-control" id="nkSearchInput" placeholder="Поиск по названию, артикулу, бренду или GTIN..." oninput="renderProductCards(nkCardsList, true)">
                     </div>
                     <div style="min-width: 180px;">
-                        <select class="form-control" id="nkStatusFilter" onchange="renderProductCards(nkCardsList)">
+                        <select class="form-control" id="nkStatusFilter" onchange="renderProductCards(nkCardsList, true)">
                             <option value="all">Все статусы</option>
                             <option value="draft">Черновик</option>
                             <option value="moderation">На модерации</option>
                             <option value="notsigned">Ожидает подписи</option>
                             <option value="published">Опубликован</option>
                             <option value="rejected">Отклонен</option>
-                            <option value="error">Ошибка</option>
+                            <option value="errors">Ошибки (НКТ)</option>
                         </select>
                     </div>
                 </div>
@@ -461,6 +461,24 @@
                             <tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Загрузка карточек товаров...</td></tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- National Catalog Pagination -->
+                <div id="nkPaginationContainer" class="nk-pagination-bar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; flex-wrap: wrap; gap: 12px; padding: 10px 16px; background: var(--bg-surface); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <span id="nkPaginationInfo" style="font-size: 13px; color: var(--text-muted);">Показано 0–0 из 0 карточек</span>
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted);">
+                            <span>Лист:</span>
+                            <select id="nkPageSizeSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px; height: 32px;" onchange="changeNkPageSize(this.value)">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="nkPaginationNav" class="nk-pagination-nav" style="display: flex; align-items: center; gap: 4px;">
+                        <!-- Generated page buttons -->
+                    </div>
                 </div>
             </div>
 

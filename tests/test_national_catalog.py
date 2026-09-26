@@ -214,6 +214,7 @@ async def test_product_card_api_crud_and_status_cycle():
                 json={
                     "name": "Носки хлопковые",
                     "gtin": "04670001234599",
+                    "tnved": "6115969900",
                     "moderation": False
                 },
                 headers=headers
@@ -480,3 +481,77 @@ async def test_batch_create_product_cards():
         cards = list_res.json()
         assert any(c["gtin"] == "04603702055201" and c["feed_id"] == 555888 for c in cards)
         assert any(c["gtin"] == "04603702055202" and c["feed_id"] == 555888 for c in cards)
+
+
+@pytest.mark.asyncio
+async def test_check_status_feed_rejected_parsing():
+    """Test handling Honest Sign Rejected feed status with error list dict."""
+    await init_db()
+    seller_id = f"test-nk-rej-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="НК Тест Ошибки Магазин",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="7701234567",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        with patch.object(NKClient, "create_or_update_feed", new_callable=AsyncMock) as mock_feed:
+            mock_feed.return_value = 467261367
+
+            create_payload = {
+                "name": "Тестовая блузка",
+                "gtin": "04630199255538",
+                "tnved": "6206300000",
+                "category_id": 20000003,
+                "moderation": True
+            }
+
+            res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products",
+                json=create_payload,
+                headers=headers
+            )
+            assert res.status_code == 200
+            card_id = res.json()["id"]
+
+        # Mock get_feed_status returning the real CZ rejection response
+        with patch.object(NKClient, "get_feed_status", new_callable=AsyncMock) as mock_st:
+            mock_st.return_value = {
+                "feed_id": 467261367,
+                "status": "Rejected",
+                "status_id": 0,
+                "result": {
+                    "0": ["Для gtin 4630199255538 отсутствует обязательный параметр tnved"],
+                    "totalErrors": "1"
+                }
+            }
+
+            chk_res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products/{card_id}/check-status",
+                headers=headers
+            )
+            assert chk_res.status_code == 200
+            data = chk_res.json()
+            assert data["status"] == "errors"
+            assert any("отсутствует обязательный параметр tnved" in str(err) for err in data["error_details"])
+
+        # Check DB directly
+        get_res = await client.get(
+            f"/api/v1/sellers/{seller_id}/national-catalog/products/{card_id}",
+            headers=headers
+        )
+        assert get_res.status_code == 200
+        card_data = get_res.json()
+        assert card_data["status"] == "errors"
+        assert any("отсутствует обязательный параметр tnved" in str(err) for err in card_data["error_details"])
+

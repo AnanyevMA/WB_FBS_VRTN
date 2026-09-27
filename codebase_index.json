@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T05:24:19.616112+00:00",
+  "updated_at": "2026-09-27T07:01:00.936194+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 147,
   "files": [
@@ -5677,7 +5677,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "4c64f26cf91e",
+      "hash": "9fc4ef8fd912",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -5869,7 +5869,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "bbd3c6c541ab",
+      "hash": "d831930357cc",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -9463,7 +9463,7 @@
     {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
-      "hash": "5fcc336664f2",
+      "hash": "0bc474e0c04e",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -9580,6 +9580,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Проверка сценария: в archive.xlsx строка с \"Тип операции\": \"Возврат\" и номером чека \"217837\"."
+        },
+        {
+          "name": "test_cz_client_get_cises_info_chunking",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify get_cises_info chunks large lists (> 1000 items) to prevent True API 400 error."
         }
       ],
       "endpoints": [],

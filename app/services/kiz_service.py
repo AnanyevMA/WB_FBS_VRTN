@@ -819,12 +819,14 @@ async def batch_verify_and_sync_cises(
 
     # Сначала проверяем локальный кэш, если force_refresh=False
     if not force_refresh:
-        stmt = select(KizProductInfo).where(
-            KizProductInfo.kiz_code.in_(unique_codes)
-        )
-        res = await db.execute(stmt)
-        for row in res.scalars().all():
-            results[row.kiz_code] = row
+        for i in range(0, len(unique_codes), 500):
+            chunk = unique_codes[i:i + 500]
+            stmt = select(KizProductInfo).where(
+                KizProductInfo.kiz_code.in_(chunk)
+            )
+            res = await db.execute(stmt)
+            for row in res.scalars().all():
+                results[row.kiz_code] = row
 
     missing_codes = [c for c in unique_codes if c not in results]
     if not missing_codes or not seller.cz_inn:

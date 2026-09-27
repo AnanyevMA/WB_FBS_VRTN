@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-27 05:24:19 UTC | **Файлов проиндексировано**: 147  
+> **Дата актуализации**: 2026-09-27 07:01:00 UTC | **Файлов проиндексировано**: 147  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -155,7 +155,7 @@
 | [`tests/test_kiz_dashboard_retry_r3.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_dashboard_retry_r3.py) | — | `mock_celery_apply`, `test_order_model_cz_columns`, `test_order_serialization_in_list_and_get_orders`, `test_retry_withdrawal_endpoint_cleans_cis_and_resets_status`, +еще 4 | Модуль кодовой базы |
 | [`tests/test_kiz_heuristics_r2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_heuristics_r2.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_is_kiz_required_sgtin_in_required_meta_precedence`, +еще 10 | Unit and integration tests for Milestone 2 (R2): |
 | [`tests/test_kiz_normalization_m1.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_normalization_m1.py) | — | `test_normalize_kiz_light_industry_clean_31`, `test_normalize_kiz_light_industry_spaces_tail`, `test_normalize_kiz_light_industry_space_key_no_space_sig`, `test_normalize_kiz_light_industry_gs_delimiters`, +еще 22 | Milestone M1 Test Suite: Guaranteed KIZ Normalization & Ingestion Integrity. |
-| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_parse_kiz_code_with_double_single_quotes_from_wb`, +еще 10 | Модуль кодовой базы |
+| [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_parse_kiz_code_with_double_single_quotes_from_wb`, +еще 11 | Модуль кодовой базы |
 | [`tests/test_kiz_signature_batches.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signature_batches.py) | — | `test_signature_batches_api_flow`, `test_signature_batch_cz_status_filtering_and_sync`, `test_signature_batch_rejection_handling`, `test_signature_batch_notification_filters_group_chats` | Integration & Unit Tests for KIZ Signature Batches and Dashboard Signing Queue |
 | [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
 | [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_golden_schema_withdrawal_and_return_with_receipts`, `test_return_document_building`, +еще 3 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |

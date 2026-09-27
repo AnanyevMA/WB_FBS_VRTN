@@ -1002,10 +1002,11 @@ class CZClient:
         return cleaned if cleaned else raw_code.strip()
 
 
-    async def get_cises_info(self, cises: list[str]) -> list[dict]:
+    async def get_cises_info(self, cises: list[str], chunk_size: int = 500) -> list[dict]:
         """
         Онлайн-валидация кодов маркировки через True API (POST /api/v3/true-api/cises/info).
         Возвращает полную информацию о статусе КИЗ (INTRODUCED, EMITTED, RETIRED, WITHDRAWN), владельце и блокировках ОГВ (ogvs).
+        Автоматически разбивает запрос на порции (по умолчанию <= 500) согласно лимиту ГИС МТ (не более 1000 КИ в запросе).
         """
         if not cises:
             return []
@@ -1018,16 +1019,30 @@ class CZClient:
             cleaned_cises = [c.strip() for c in cises if c and c.strip()]
 
         path = "/api/v3/true-api/cises/info"
-        res = await self._request("POST", path, json_body=cleaned_cises, sign_request=False)
-        if isinstance(res, list):
-            return res
-        elif isinstance(res, dict) and "cises" in res:
-            return res.get("cises", [])
-        return [res] if res else []
+        if len(cleaned_cises) <= chunk_size:
+            res = await self._request("POST", path, json_body=cleaned_cises, sign_request=False)
+            if isinstance(res, list):
+                return res
+            elif isinstance(res, dict) and "cises" in res:
+                return res.get("cises", [])
+            return [res] if res else []
 
-    async def get_cises_short_list(self, cises: list[str]) -> list[dict]:
+        all_results = []
+        for i in range(0, len(cleaned_cises), chunk_size):
+            chunk = cleaned_cises[i:i + chunk_size]
+            res = await self._request("POST", path, json_body=chunk, sign_request=False)
+            if isinstance(res, list):
+                all_results.extend(res)
+            elif isinstance(res, dict) and "cises" in res:
+                all_results.extend(res.get("cises", []))
+            elif res:
+                all_results.append(res)
+        return all_results
+
+    async def get_cises_short_list(self, cises: list[str], chunk_size: int = 500) -> list[dict]:
         """
         Метод получения краткой информации о КИ по списку (True API v719.0 Секция 5.1.4 /cises/short/list).
+        Автоматически разбивает запрос на порции (по умолчанию <= 500) согласно лимиту ГИС МТ.
         """
         if not cises:
             return []
@@ -1040,12 +1055,25 @@ class CZClient:
             cleaned_cises = [c.strip() for c in cises if c and c.strip()]
 
         path = "/api/v3/true-api/cises/short/list"
-        res = await self._request("POST", path, json_body=cleaned_cises, sign_request=False)
-        if isinstance(res, list):
-            return res
-        elif isinstance(res, dict) and "cises" in res:
-            return res.get("cises", [])
-        return [res] if res else []
+        if len(cleaned_cises) <= chunk_size:
+            res = await self._request("POST", path, json_body=cleaned_cises, sign_request=False)
+            if isinstance(res, list):
+                return res
+            elif isinstance(res, dict) and "cises" in res:
+                return res.get("cises", [])
+            return [res] if res else []
+
+        all_results = []
+        for i in range(0, len(cleaned_cises), chunk_size):
+            chunk = cleaned_cises[i:i + chunk_size]
+            res = await self._request("POST", path, json_body=chunk, sign_request=False)
+            if isinstance(res, list):
+                all_results.extend(res)
+            elif isinstance(res, dict) and "cises" in res:
+                all_results.extend(res.get("cises", []))
+            elif res:
+                all_results.append(res)
+        return all_results
 
     async def get_document_receipt(self, doc_id: str) -> dict:
         """

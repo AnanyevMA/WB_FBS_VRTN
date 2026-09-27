@@ -664,5 +664,29 @@ async def test_archive_analysis_returns_with_receipt_and_introduced_kiz():
         assert "Уже в обороте" in ret["action_recommended"]
 
 
+@pytest.mark.asyncio
+async def test_cz_client_get_cises_info_chunking():
+    """Verify get_cises_info chunks large lists (> 1000 items) to prevent True API 400 error."""
+    from unittest.mock import AsyncMock, patch
+    from app.services.cz_client import CZClient
+
+    client = CZClient(inn="190207495060", token="mock_token")
+    mock_codes = [f"0104630199251318215MOCK{i:05d}" for i in range(1150)]
+
+    call_chunks = []
+    async def mock_request(method, path, json_body=None, **kwargs):
+        call_chunks.append(json_body)
+        return [{"cis": c, "status": "INTRODUCED"} for c in json_body]
+
+    with patch.object(client, "_request", side_effect=mock_request):
+        results = await client.get_cises_info(mock_codes, chunk_size=500)
+        assert len(results) == 1150
+        assert len(call_chunks) == 3
+        assert len(call_chunks[0]) == 500
+        assert len(call_chunks[1]) == 500
+        assert len(call_chunks[2]) == 150
+
+
+
 
 

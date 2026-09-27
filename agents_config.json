@@ -729,6 +729,47 @@
       "dependencies": [
         "cz_token_refresher"
       ]
+    },
+    {
+      "id": "wb_finance",
+      "name": "WB Financial Reports & Return KIZ Audit Agent",
+      "role": "Polls WB detailed sales reports API daily, stores financial rows, and audits True API ownership for return KIZs.",
+      "celery_task": "app.agents.wb_finance_agent.sync_all_sellers_financial_reports",
+      "queue": "cz_operations",
+      "schedule": "daily at 05:00",
+      "timeout_seconds": 600,
+      "max_retries": 2,
+      "concurrency_limit": 1,
+      "arbitration_priority": 60,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/wb_finance_agent.py",
+          "app/services/wb_finance_client.py",
+          "app/services/wb_finance_service.py"
+        ],
+        "allowed_write_paths": [
+          "logs/wb_finance.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "wb_sales_report_rows": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_FINANCE_API",
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "READ_TOKEN"
+      },
+      "dependencies": [
+        "cz_token_refresher"
+      ]
     }
   ],
   "arbitration_rules": {

@@ -240,9 +240,15 @@ async def process_wb_archive(
                     continue
 
                 if needs_cz:
+                    receipt_num = str(item.get("receipt_number") or order_id or "1").strip()
+                    receipt_dt = str(item.get("receipt_date") or "").strip() or None
+                    primary_doc_tp = item.get("primary_document_type") or ("RECEIPT" if receipt_num.isdigit() else "OTHER")
                     unsigned_doc = client.build_return_payload(
                         kiz_codes=[kiz_code],
                         wb_order_id=order_id,
+                        receipt_number=receipt_num,
+                        receipt_date=receipt_dt,
+                        primary_document_type=primary_doc_tp,
                     )
                     cades_payloads.append({
                         "action": "RETURN",

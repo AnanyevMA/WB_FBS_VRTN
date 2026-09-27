@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import Optional, Any, Union
 
 try:
@@ -541,32 +541,36 @@ class CZClient:
         """
         if document_date is None:
             doc_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        elif isinstance(document_date, datetime):
+        elif isinstance(document_date, (datetime, date)):
             doc_date_str = document_date.strftime("%Y-%m-%d")
         else:
             doc_date_str = str(document_date).strip()
+            if not doc_date_str:
+                doc_date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        resolved_doc_type = primary_document_type or ("RECEIPT" if primary_document_number else "OTHER")
+        doc_num_fallback = str(primary_document_number or "1").strip()
+        doc_tp_fallback = primary_document_type or ("RECEIPT" if doc_num_fallback.isdigit() else "OTHER")
 
         products_list = []
         if items:
             for it in items:
                 raw_ki = it.get("ki") or it.get("kiz_code") or ""
                 clean_ki = self._clean_cis_for_true_api(raw_ki) or raw_ki
-                doc_num = str(it.get("primary_document_number") or it.get("receipt_number") or primary_document_number or "").strip()
+                doc_num = str(it.get("primary_document_number") or it.get("receipt_number") or doc_num_fallback).strip()
                 doc_dt = str(it.get("primary_document_date") or it.get("receipt_date") or doc_date_str).strip()
                 doc_tp = it.get("primary_document_type") or it.get("document_type") or (
-                    "RECEIPT" if (it.get("receipt_number") or it.get("primary_document_number")) else resolved_doc_type
+                    "RECEIPT" if doc_num.isdigit() else doc_tp_fallback
                 )
                 prod_obj = {
                     "ki": clean_ki,
+                    "primary_document_type": doc_tp,
+                    "primary_document_number": doc_num,
+                    "primary_document_date": doc_dt,
                 }
-                if doc_num:
-                    prod_obj["primary_document_type"] = doc_tp
-                    prod_obj["primary_document_number"] = doc_num
-                    prod_obj["primary_document_date"] = doc_dt
-                    if doc_tp == "OTHER":
-                        prod_obj["primary_document_custom_name"] = it.get("primary_document_custom_name", "Возврат от покупателя Wildberries FBS")
+                if doc_tp == "OTHER":
+                    prod_obj["primary_document_custom_name"] = it.get(
+                        "primary_document_custom_name", "Возврат от покупателя Wildberries FBS"
+                    )
 
                 cert_tp = it.get("certificate_type") or certificate_type
                 cert_num = it.get("certificate_number") or certificate_number
@@ -581,13 +585,12 @@ class CZClient:
                 clean_ki = self._clean_cis_for_true_api(kiz_code) or kiz_code
                 prod_obj = {
                     "ki": clean_ki,
+                    "primary_document_type": doc_tp_fallback,
+                    "primary_document_number": doc_num_fallback,
+                    "primary_document_date": doc_date_str,
                 }
-                if primary_document_number:
-                    prod_obj["primary_document_type"] = resolved_doc_type
-                    prod_obj["primary_document_number"] = str(primary_document_number).strip()
-                    prod_obj["primary_document_date"] = doc_date_str
-                    if resolved_doc_type == "OTHER":
-                        prod_obj["primary_document_custom_name"] = "Возврат от покупателя Wildberries FBS"
+                if doc_tp_fallback == "OTHER":
+                    prod_obj["primary_document_custom_name"] = "Возврат от покупателя Wildberries FBS"
                 if certificate_type and certificate_number and certificate_date:
                     prod_obj["certificate_type"] = certificate_type
                     prod_obj["certificate_number"] = certificate_number
@@ -891,12 +894,13 @@ class CZClient:
         items: Optional[list[dict]] = None,
     ) -> dict:
         """Построение структуры и Base64-данных документа возврата для клиентского подписания."""
-        doc_num = receipt_number or (str(wb_order_id) if wb_order_id else "")
+        doc_num = str(receipt_number or (wb_order_id if wb_order_id else "") or "1").strip()
+        doc_tp = primary_document_type or ("RECEIPT" if (receipt_number or wb_order_id) else "OTHER")
         doc = self._build_return_document(
             kiz_codes=kiz_codes,
             document_date=receipt_date,
             primary_document_number=doc_num,
-            primary_document_type=primary_document_type or ("RECEIPT" if receipt_number else "OTHER"),
+            primary_document_type=doc_tp,
             certificate_type=certificate_type,
             certificate_number=certificate_number,
             certificate_date=certificate_date,
@@ -969,12 +973,13 @@ class CZClient:
         if not kiz_codes and not items:
             raise ValueError("kiz_codes cannot be empty")
 
-        doc_num = receipt_number or (str(wb_order_id) if wb_order_id else "")
+        doc_num = str(receipt_number or (wb_order_id if wb_order_id else "") or "1").strip()
+        doc_tp = primary_document_type or ("RECEIPT" if (receipt_number or wb_order_id) else "OTHER")
         document = self._build_return_document(
             kiz_codes=kiz_codes,
             document_date=receipt_date,
             primary_document_number=doc_num,
-            primary_document_type=primary_document_type or ("RECEIPT" if receipt_number else "OTHER"),
+            primary_document_type=doc_tp,
             certificate_type=certificate_type,
             certificate_number=certificate_number,
             certificate_date=certificate_date,

@@ -171,9 +171,15 @@ async def prepare_kiz_document(
             wb_order_id=orders[0].id if len(orders) == 1 else None,
         )
     elif action == "RETURN":
+        first_order = orders[0] if orders else None
+        receipt_num = str(first_order.id) if first_order else "1"
+        receipt_dt = first_order.created_at.strftime("%Y-%m-%d") if first_order and first_order.created_at else None
         doc_payload = client.build_return_payload(
             kiz_codes=kiz_codes,
-            wb_order_id=orders[0].id if len(orders) == 1 else None,
+            wb_order_id=first_order.id if first_order else None,
+            receipt_number=payload.get("receipt_number") or receipt_num,
+            receipt_date=payload.get("receipt_date") or receipt_dt,
+            primary_document_type=payload.get("primary_document_type") or ("RECEIPT" if receipt_num.isdigit() else "OTHER"),
         )
     else:
         raise HTTPException(status_code=400, detail=f"Неизвестный тип действия: {action}")

@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T03:42:43.906868+00:00",
+  "updated_at": "2026-09-27T04:00:12.968395+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 141,
+  "total_files": 142,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2153,7 +2153,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "40200cb0d663",
+      "hash": "fc3496414943",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2446,7 +2446,7 @@
     {
       "file": "app/api/kiz/documents.py",
       "layer": "api",
-      "hash": "b0a9752c3f3a",
+      "hash": "cbafc84d0bbe",
       "docstring": "FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2574,7 +2574,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "9a29c4a312e6",
+      "hash": "c24655232e1b",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5666,7 +5666,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "80c9196c85a7",
+      "hash": "4c64f26cf91e",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -10703,6 +10703,62 @@
         "random",
         "sqlalchemy",
         "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_wb_finance_signing.py",
+      "layer": "tests",
+      "hash": "a5d6ea5488ba",
+      "docstring": "Unit tests for WB Finance Return Signature Batch Document Preparation.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_cz_client_build_return_payload_with_receipt",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that build_return_payload with receipt_number sets RECEIPT type and number."
+        },
+        {
+          "name": "test_cz_client_build_return_payload_fallback",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify that build_return_payload without order_id or receipt has safe fallback."
+        },
+        {
+          "name": "test_prepare_batch_documents_for_signing_finance_returns",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that prepare_batch_documents_for_signing correctly populates primary doc attributes."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz.signature_batches",
+        "app.database",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.cz_client",
+        "datetime",
+        "json",
+        "pytest",
         "uuid"
       ]
     },

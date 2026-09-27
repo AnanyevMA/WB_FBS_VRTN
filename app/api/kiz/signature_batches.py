@@ -289,15 +289,24 @@ async def prepare_batch_documents_for_signing(
             if kiz not in selected_kiz_set:
                 continue
 
+        receipt_num = str(r.get("receipt_number") or r.get("order_id") or "1").strip()
+        receipt_dt = str(r.get("receipt_date") or "").strip() or None
+        primary_doc_tp = r.get("primary_document_type") or ("RECEIPT" if receipt_num.isdigit() else "OTHER")
+
         doc = client.build_return_payload(
             kiz_codes=[kiz],
             wb_order_id=r.get("order_id"),
+            receipt_number=receipt_num,
+            receipt_date=receipt_dt,
+            primary_document_type=primary_doc_tp,
         )
         cades_payloads.append({
             "action": "RETURN",
             "kiz_code": kiz,
             "order_id": r.get("order_id"),
             "sticker_id": r.get("sticker_id"),
+            "receipt_number": receipt_num,
+            "receipt_date": receipt_dt,
             "type": doc["type"],
             "inner_json": doc["inner_json"],
             "document_base64": doc["document_base64"],

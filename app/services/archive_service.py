@@ -302,7 +302,8 @@ async def analyze_archive_data(
         elif is_return:
             # For returns: needs CZ return only if it was previously withdrawn and not yet returned,
             # AND the KIZ belongs to the seller (otherwise foreign owner -> remarking required)
-            kinfo_owner = (kinfo_record.owner_inn if kinfo_record else None) or ""
+            raw_cz = (kinfo_record.raw_cz_payload or {}) if kinfo_record else {}
+            kinfo_owner = (kinfo_record.cz_owner_inn if kinfo_record else None) or raw_cz.get("ownerInn") or ""
             is_foreign_owner = bool(kinfo_owner and seller.cz_inn and kinfo_owner.strip() != seller.cz_inn.strip())
             needs_cz_return = is_already_withdrawn and not is_foreign_owner
             needs_remarking = is_foreign_owner and is_already_withdrawn

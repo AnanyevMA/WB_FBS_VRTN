@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T04:45:30.869892+00:00",
+  "updated_at": "2026-09-27T05:06:21.032660+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 146,
   "files": [
@@ -5327,7 +5327,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "9a6884e5ba43",
+      "hash": "4912b2c6dba3",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -5988,7 +5988,7 @@
     {
       "file": "app/services/signature_batch_executor.py",
       "layer": "services",
-      "hash": "3a33c15e661c",
+      "hash": "57203ba01cea",
       "docstring": "Signature Batch Executor Service.",
       "classes": [],
       "functions": [
@@ -6037,7 +6037,7 @@
     {
       "file": "app/services/signature_batch_submitter.py",
       "layer": "services",
-      "hash": "1b3e8454a2f3",
+      "hash": "520990d89749",
       "docstring": "Signature Batch Submitter Service.",
       "classes": [],
       "functions": [
@@ -6250,7 +6250,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "ddb9cf5a0a95",
+      "hash": "40322af4c1d9",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -10771,7 +10771,7 @@
     {
       "file": "tests/test_unified_kiz_batch.py",
       "layer": "tests",
-      "hash": "7691a1244f0c",
+      "hash": "05bdd418a73b",
       "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
       "classes": [],
       "functions": [

@@ -592,13 +592,21 @@ function renderActiveBatch(batch) {
                                 withdrawals.map((w, idx) => {
                                     const needsWithdrawal = Boolean(w.needs_withdrawal);
                                     const isSelected = w.selected !== false && needsWithdrawal;
-                                    const statusBadge = needsWithdrawal
-                                        ? `<span class="badge badge-warning">⚠️ Требует выбытия</span>`
-                                        : `<span class="badge badge-delivered">✅ Выведен</span>`;
+                                    let statusBadge = '';
+                                    if (w.is_already_withdrawn) {
+                                        statusBadge = `<span class="badge badge-delivered">✅ Выведен</span>`;
+                                    } else if (w.is_wb_owned) {
+                                        statusBadge = `<span class="badge" style="background:rgba(124,58,237,0.18); color:#c4b5fd; font-weight:600;">🏢 Баланс ООО «РВБ»</span>`;
+                                    } else if (needsWithdrawal) {
+                                        statusBadge = `<span class="badge badge-warning">⚠️ Требует выбытия</span>`;
+                                    } else {
+                                        statusBadge = `<span class="badge" style="background:rgba(148,163,184,0.15); color:#cbd5e1;">Сторонний владелец</span>`;
+                                    }
+                                    const subDesc = w.action_recommended || (w.is_wb_owned ? 'Вывод осуществляет WB' : (w.cz_status_desc || ''));
                                     const safeKiz = (w.kiz_code || '').replace(/"/g, '&quot;');
                                     return `
-                                        <tr>
-                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${safeKiz}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
+                                        <tr style="${!needsWithdrawal ? 'opacity: 0.75;' : ''}">
+                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${safeKiz}" ${isSelected ? 'checked' : ''} ${!needsWithdrawal ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onchange="updateBatchSelectedCount()"></td>
                                             <td style="font-weight:600;">#${w.order_id || '—'}</td>
                                             <td><code>${w.sticker_id || '—'}</code></td>
                                             <td style="font-family: monospace; font-size: 11px;">${w.kiz_code || '—'}</td>
@@ -608,7 +616,7 @@ function renderActiveBatch(batch) {
                                             <td>
                                                 <div style="display:flex; flex-direction:column; gap:2px;">
                                                     ${statusBadge}
-                                                    ${w.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${w.cz_status_desc}</span>` : ''}
+                                                    ${subDesc ? `<span style="font-size:10px; color:var(--text-muted); max-width:220px;">${subDesc}</span>` : ''}
                                                 </div>
                                             </td>
                                         </tr>

@@ -50,6 +50,11 @@ async def sync_batch_with_cz_data(
             force_refresh=True,
         )
 
+        seller_inn = (seller.cz_inn or "").strip()
+        seller_sales_direct = 0
+        wb_sales_count = 0
+        foreign_sales_count = 0
+
         for w in withdrawals:
             code = w.get("kiz_code")
             parsed = parse_kiz_code(code) if code else {}
@@ -61,13 +66,49 @@ async def sync_batch_with_cz_data(
                     status_ex=kinfo.cz_status_ex,
                     raw_payload=kinfo.raw_cz_payload or {},
                 )
+                raw_info = kinfo.raw_cz_payload or {}
+                owner_inn = (raw_info.get("ownerInn") or w.get("cz_owner_inn") or "").strip()
+                owner_name = raw_info.get("ownerName") or w.get("cz_owner_name") or ""
+                producer_inn = (raw_info.get("producerInn") or raw_info.get("manufacturerInn") or w.get("cz_producer_inn") or "").strip()
+
+                is_seller = (owner_inn == seller_inn) if seller_inn else False
+                is_wb = (owner_inn == "9714053621")
+                is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
+
                 w["cz_status"] = kinfo.cz_status
                 w["cz_status_desc"] = CZ_STATUS_DESCRIPTIONS.get(kinfo.cz_status or "", kinfo.cz_status or "Не проверен")
+                w["cz_owner_inn"] = owner_inn
+                w["cz_owner_name"] = owner_name
+                w["cz_producer_inn"] = producer_inn
+                w["is_seller_owner"] = is_seller
+                w["is_wb_owned"] = is_wb
                 w["is_already_withdrawn"] = withdrawn
-                w["needs_withdrawal"] = not withdrawn
-                w["selected"] = (not withdrawn) and bool(code)
 
-        seller_inn = (seller.cz_inn or "").strip()
+                if withdrawn:
+                    w["needs_withdrawal"] = False
+                    w["selected"] = False
+                    w["action_recommended"] = "✅ Уже выбыл из оборота"
+                elif is_seller:
+                    w["needs_withdrawal"] = True
+                    w["selected"] = bool(code)
+                    w["action_recommended"] = "✅ Баланс продавца (ИП). Готов к выводу из оборота!"
+                    seller_sales_direct += 1
+                elif is_wb:
+                    w["needs_withdrawal"] = False
+                    w["selected"] = False
+                    w["action_recommended"] = "🏢 Баланс ООО «РВБ». Вывод из оборота осуществляет Wildberries."
+                    wb_sales_count += 1
+                elif is_foreign:
+                    w["needs_withdrawal"] = False
+                    w["selected"] = False
+                    w["action_recommended"] = f"⛔ Экспорт в РБ ({owner_name or 'Белбланкавыд'}). Вывод продавцом невозможен."
+                    foreign_sales_count += 1
+                else:
+                    w["needs_withdrawal"] = False
+                    w["selected"] = False
+                    w["action_recommended"] = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Вывод продавцом невозможен."
+                    foreign_sales_count += 1
+
         seller_owned_direct = 0
         wb_owned_remarking = 0
         foreign_remarking = 0
@@ -193,6 +234,11 @@ def build_batch_signing_payloads(
     for w in withdrawals:
         kiz = w.get("kiz_code")
         if w.get("needs_withdrawal") is False or w.get("is_already_withdrawn") is True:
+            continue
+        if w.get("is_seller_owner") is False:
+            continue
+        owner_inn = (w.get("cz_owner_inn") or "").strip()
+        if owner_inn and seller.cz_inn and owner_inn != seller.cz_inn.strip():
             continue
         if selected_set is not None and kiz not in selected_set:
             continue

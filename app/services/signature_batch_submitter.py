@@ -182,6 +182,11 @@ async def execute_signed_batch_submission(
             kiz = w.get("kiz_code")
             oid = w.get("order_id")
             if kiz and w.get("needs_withdrawal", True):
+                if w.get("is_seller_owner") is False:
+                    continue
+                owner_inn = (w.get("cz_owner_inn") or "").strip()
+                if owner_inn and seller.cz_inn and owner_inn != seller.cz_inn.strip():
+                    continue
                 withdraw_order_kiz.delay(
                     seller_id=str(seller.id),
                     order_id=oid,

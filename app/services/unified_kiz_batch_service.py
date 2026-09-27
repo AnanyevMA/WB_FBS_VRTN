@@ -150,9 +150,11 @@ async def create_unified_kiz_signature_batch(
                 chunk = all_cises[i:i + chunk_size]
                 info_list = await client.get_cises_info(chunk)
                 for item in info_list:
-                    cis_key = item.get("cis")
-                    if cis_key:
-                        cz_info_map[cis_key] = item
+                    info = item.get("cisInfo") or item.get("result") or item
+                    if isinstance(info, dict):
+                        req_cis = item.get("requestedCis") or info.get("requestedCis") or info.get("cis") or item.get("cis")
+                        if req_cis:
+                            cz_info_map[req_cis] = info
         except Exception as e:
             logger.error(f"Failed to batch query True API for unified reconciliation: {e}")
 
@@ -160,17 +162,42 @@ async def create_unified_kiz_signature_batch(
     withdrawals_payload = []
     sales_needing_count = 0
     sales_already_withdrawn_count = 0
+    sales_wb_owned_count = 0
+    sales_foreign_count = 0
 
     for cis, ev in sales_candidates.items():
         cz_item = cz_info_map.get(cis, {})
         cz_status = cz_item.get("status")
         withdrawn, _ = is_kiz_withdrawn(status=cz_status, status_ex=cz_item.get("statusEx"), raw_payload=cz_item) if cz_status else (False, "")
 
-        needs_withdrawal = not withdrawn
-        if needs_withdrawal:
-            sales_needing_count += 1
-        else:
+        owner_inn = (cz_item.get("ownerInn") or "").strip()
+        owner_name = cz_item.get("ownerName") or ""
+        producer_inn = (cz_item.get("producerInn") or cz_item.get("manufacturerInn") or "").strip()
+
+        is_seller = (owner_inn == seller_inn) if seller_inn else False
+        is_wb = (owner_inn == "9714053621")
+        is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
+
+        if withdrawn:
+            needs_withdrawal, selected = False, False
+            action_rec = "✅ Уже выбыл из оборота"
             sales_already_withdrawn_count += 1
+        elif is_seller:
+            needs_withdrawal, selected = True, True
+            action_rec = "✅ Баланс продавца (ИП). Готов к выводу из оборота!"
+            sales_needing_count += 1
+        elif is_wb:
+            needs_withdrawal, selected = False, False
+            action_rec = "🏢 Баланс ООО «РВБ». Вывод из оборота осуществляет Wildberries."
+            sales_wb_owned_count += 1
+        elif is_foreign:
+            needs_withdrawal, selected = False, False
+            action_rec = f"⛔ Экспорт в РБ ({owner_name or 'Белбланкавыд'}). Вывод продавцом невозможен."
+            sales_foreign_count += 1
+        else:
+            needs_withdrawal, selected = False, False
+            action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Вывод продавцом невозможен."
+            sales_foreign_count += 1
 
         fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
         price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
@@ -192,9 +219,15 @@ async def create_unified_kiz_signature_batch(
             "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
             "cz_status": cz_status or "UNKNOWN",
             "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
+            "cz_owner_inn": owner_inn,
+            "cz_owner_name": owner_name,
+            "cz_producer_inn": producer_inn,
+            "is_seller_owner": is_seller,
+            "is_wb_owned": is_wb,
             "is_already_withdrawn": withdrawn,
             "needs_withdrawal": needs_withdrawal,
-            "selected": needs_withdrawal,
+            "action_recommended": action_rec,
+            "selected": selected,
         })
 
     # 7. Формирование возвратов (RETURNS)
@@ -279,6 +312,8 @@ async def create_unified_kiz_signature_batch(
         "sales_candidates_count": len(sales_candidates),
         "sales_needing_withdrawal": sales_needing_count,
         "sales_already_withdrawn": sales_already_withdrawn_count,
+        "sales_wb_owned_count": sales_wb_owned_count,
+        "sales_foreign_count": sales_foreign_count,
         "return_candidates_count": len(return_candidates),
         "resold_after_return_count": resold_after_return_count,
         "returns_needing_cz_return": seller_owned_direct_count,

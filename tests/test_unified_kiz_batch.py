@@ -89,7 +89,18 @@ async def test_unified_reconciliation_ownership_and_chronology():
             rr_date=date.today() - timedelta(days=2),
             retail_amount=700.0,
         )
-        db.add_all([r1, r2, r3_ret, r3_sale])
+        # 4. Row 4: Sale owned by WB (9714053621) - in INTRODUCED status!
+        r4_sale = WbSalesReportRow(
+            seller_id=seller_id,
+            rrd_id=105,
+            clean_cis="0104603702055109215WBSALEITEM1",
+            kiz="0104603702055109215WBSALEITEM1\x1d91EE10\x1d92XYZ",
+            doc_type_name="Продажа",
+            sale_dt=datetime.now(timezone.utc) - timedelta(days=1),
+            rr_date=date.today() - timedelta(days=1),
+            retail_amount=800.0,
+        )
+        db.add_all([r1, r2, r3_ret, r3_sale, r4_sale])
         await db.commit()
 
         # Mock True API responses
@@ -111,6 +122,12 @@ async def test_unified_reconciliation_ownership_and_chronology():
                 "status": "INTRODUCED",
                 "ownerInn": "190207495060",
             },
+            {
+                "cis": "0104603702055109215WBSALEITEM1",
+                "status": "INTRODUCED",
+                "ownerInn": "9714053621",
+                "ownerName": "ООО «РВБ»",
+            },
         ]
 
         with patch("app.services.unified_kiz_batch_service.CZClient") as MockClient, \
@@ -126,12 +143,20 @@ async def test_unified_reconciliation_ownership_and_chronology():
             batch = await db.get(KizSignatureBatch, batch_id)
             assert batch is not None
             assert batch.returns_count == 1  # Only the seller-owned return!
-            assert batch.sales_count == 1    # Resold item is INTRODUCED in True API, needing withdrawal!
+            assert batch.sales_count == 1    # Only the seller-owned resold item, NOT the WB-owned sale!
 
             summary = batch.data_payload["summary"]
             assert summary["resold_after_return_count"] == 1
             assert summary["seller_owned_direct_count"] == 1
             assert summary["wb_owned_remarking_count"] == 1
+            assert summary["sales_wb_owned_count"] == 1
+
+            withdrawals = batch.data_payload["withdrawals"]
+            wb_sale = next(w for w in withdrawals if w["clean_cis"] == "0104603702055109215WBSALEITEM1")
+            assert wb_sale["needs_withdrawal"] is False
+            assert wb_sale["is_wb_owned"] is True
+            assert wb_sale["selected"] is False
+            assert "РВБ" in wb_sale["action_recommended"]
 
             returns = batch.data_payload["returns"]
             wb_item = next(r for r in returns if r["clean_cis"] == "0104603702055109215WBOWNED1234")
@@ -145,17 +170,19 @@ async def test_unified_reconciliation_ownership_and_chronology():
             assert seller_item["needs_remarking"] is False
             assert seller_item["selected"] is True
 
-            # Test build_batch_signing_payloads: WB item must NOT be generated into LP_RETURN
+            # Test build_batch_signing_payloads: WB item must NOT be generated into LP_RETURN or LK_RECEIPT
             seller.cz_token_encrypted = None
             docs = build_batch_signing_payloads(seller=seller, batch=batch)
             assert docs["total_documents"] == 2
             actions = [d["action"] for d in docs["documents"]]
             assert "WITHDRAWAL" in actions
             assert "RETURN" in actions
-            # WB-owned item must be strictly omitted
+            # WB-owned items must be strictly omitted
             codes = [d["kiz_code"] for d in docs["documents"]]
             assert wb_item["kiz_code"] not in codes
+            assert wb_sale["kiz_code"] not in codes
             assert seller_item["kiz_code"] in codes
+
 
 
 @pytest.mark.asyncio
@@ -174,7 +201,13 @@ async def test_sync_batch_with_cz_data_preserves_owner_safety():
             filename="test_sync.xlsx",
             source="test",
             data_payload={
-                "withdrawals": [],
+                "withdrawals": [
+                    {
+                        "kiz_code": "0104603702055109215WBWITHDRAW12",
+                        "clean_cis": "0104603702055109215WBWITHDRAW12",
+                        "order_id": "ord-w1",
+                    }
+                ],
                 "returns": [
                     {
                         "kiz_code": "0104603702055109215WBTEST123456",
@@ -195,8 +228,14 @@ async def test_sync_batch_with_cz_data_preserves_owner_safety():
             cz_status="RETIRED",
             raw_cz_payload={"ownerInn": "9714053621", "ownerName": "ООО «РВБ»"},
         )
+        rec_w = KizProductInfo(
+            kiz_code="0104603702055109215WBWITHDRAW12",
+            clean_cis="0104603702055109215WBWITHDRAW12",
+            cz_status="INTRODUCED",
+            raw_cz_payload={"ownerInn": "9714053621", "ownerName": "ООО «РВБ»"},
+        )
 
-        with patch("app.services.signature_batch_executor.batch_verify_and_sync_cises", return_value={"0104603702055109215WBTEST123456": rec}):
+        with patch("app.services.signature_batch_executor.batch_verify_and_sync_cises", return_value={"0104603702055109215WBTEST123456": rec, "0104603702055109215WBWITHDRAW12": rec_w}):
             sync_res = await sync_batch_with_cz_data(seller=seller, batch=batch, db=db)
             assert sync_res["success"] is True
             assert sync_res["returns_count"] == 0
@@ -206,6 +245,12 @@ async def test_sync_batch_with_cz_data_preserves_owner_safety():
             assert ret_item["needs_remarking"] is True
             assert ret_item["selected"] is False
             assert ret_item["is_wb_owned"] is True
+
+            w_item = sync_res["data_payload"]["withdrawals"][0]
+            assert w_item["needs_withdrawal"] is False
+            assert w_item["selected"] is False
+            assert w_item["is_wb_owned"] is True
+            assert "РВБ" in w_item["action_recommended"]
 
 
 @pytest.mark.asyncio

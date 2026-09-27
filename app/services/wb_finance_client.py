@@ -38,7 +38,7 @@ class WBFinanceClient:
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
-        self.timeout = timeout
+        self.timeout = httpx.Timeout(timeout, connect=30.0)
         self._client: Optional[httpx.AsyncClient] = None
 
     async def __aenter__(self):
@@ -50,8 +50,8 @@ class WBFinanceClient:
             await self._client.aclose()
 
     @retry(
-        retry=retry_if_exception_type(WBFinanceRateLimitError),
-        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((WBFinanceRateLimitError, httpx.TimeoutException, httpx.NetworkError)),
+        stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=2, min=3, max=35),
         reraise=True,
     )
@@ -122,7 +122,7 @@ class WBFinanceClient:
                 raise WBFinanceRateLimitError("Превышен лимит запросов WB Finance") from e
             raise WBFinanceAPIError(f"HTTP {e.response.status_code}: {e.response.text}") from e
         except Exception as e:
-            if isinstance(e, (WBFinanceRateLimitError, WBFinanceUnauthorizedError)):
+            if isinstance(e, (WBFinanceRateLimitError, WBFinanceUnauthorizedError, httpx.TimeoutException, httpx.NetworkError)):
                 raise
             raise WBFinanceAPIError(f"Ошибка запроса WB Finance API: {e}") from e
         finally:

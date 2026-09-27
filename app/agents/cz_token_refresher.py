@@ -150,7 +150,9 @@ async def sync_active_orders_cz_status_async() -> Dict[str, Any]:
     Асинхронная логика фоновой синхронизации статусов КИЗ Честного Знака для активных заказов.
     Запрашивает актуальный статус в True API без необходимости ручного нажатия «Сверить ЧЗ».
     """
-    from app.database import AsyncSessionLocal
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.pool import NullPool
+    from app.config import settings
     from app.models.order import Order, OrderStatus, KizStatus
 
     results_summary: Dict[str, Any] = {
@@ -162,7 +164,10 @@ async def sync_active_orders_cz_status_async() -> Dict[str, Any]:
         "errors": [],
     }
 
-    async with AsyncSessionLocal() as db:
+    task_engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    TaskSessionLocal = async_sessionmaker(task_engine, expire_on_commit=False)
+    db = TaskSessionLocal()
+    try:
         sellers = (
             await db.execute(
                 select(Seller).where(
@@ -221,6 +226,9 @@ async def sync_active_orders_cz_status_async() -> Dict[str, Any]:
                 err_text = f"Seller {seller.id}: {exc}"
                 results_summary["errors"].append(err_text)
                 logger.error(f"[CZ Background Sync] Error syncing KIZ: {err_text}")
+    finally:
+        await db.close()
+        await task_engine.dispose()
 
     return results_summary
 

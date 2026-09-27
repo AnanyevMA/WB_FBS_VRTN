@@ -407,4 +407,77 @@ async def test_seller_wb_token_properties_and_test_connection_expired():
         assert res["details"]["wb"]["status"] == "error"
 
 
+@pytest.mark.asyncio
+async def test_refresh_orders_with_duplicate_and_existing_supplies():
+    """Verify refresh_orders handles pre-existing and duplicate supply IDs without race condition crashes."""
+    from app.models.supply import Supply, SupplyStatus
+    await init_db()
+
+    seller_id = str(uuid.uuid4())
+    sup_wb_id = f"WB-GI-TEST-{uuid.uuid4().hex[:6]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="Test Supplies Shop",
+            wb_api_token_encrypted=encrypt("valid-token"),
+            is_active=True,
+        )
+        # Pre-create supply in DB
+        existing_supply = Supply(
+            id=uuid.uuid4(),
+            seller_id=seller_id,
+            wb_supply_id=sup_wb_id,
+            name="Existing Supply",
+            status=SupplyStatus.DONE,
+        )
+        session.add(seller)
+        session.add(existing_supply)
+        await session.commit()
+
+        order_id = random.randint(5000000, 9999999)
+        mock_raw_order = {
+            "id": order_id,
+            "article": "ITEM-SUP-1",
+            "createdAt": "2026-09-27T12:00:00Z",
+            "price": 150000,
+            "cargoType": 1,
+            "supplyId": sup_wb_id,
+            "wbStatus": "waiting",
+            "supplierStatus": "confirm",
+        }
+
+        # WB API returns duplicate supply records
+        mock_supplies = {
+            "supplies": [
+                {"id": sup_wb_id, "name": "Existing Supply", "done": True},
+                {"id": sup_wb_id, "name": "Duplicate Entry", "done": True},
+            ]
+        }
+
+        with patch("app.services.wb_client.WBClient.get_new_orders", new_callable=AsyncMock) as mock_new, \
+             patch("app.services.wb_client.WBClient.get_orders", new_callable=AsyncMock) as mock_orders, \
+             patch("app.services.wb_client.WBClient.get_orders_meta", new_callable=AsyncMock) as mock_meta, \
+             patch("app.services.wb_client.WBClient.get_supplies", new_callable=AsyncMock) as mock_sup, \
+             patch("app.services.wb_client.WBClient.get_cards_catalog", new_callable=AsyncMock) as mock_cat, \
+             patch("app.services.wb_client.WBClient.get_orders_status", new_callable=AsyncMock) as mock_st:
+
+            mock_new.return_value = []
+            mock_orders.return_value = [mock_raw_order]
+            mock_meta.return_value = {"orders": []}
+            mock_sup.return_value = mock_supplies
+            mock_cat.return_value = {"by_vendor_code": {}, "by_nm_id": {}, "by_chrt_id": {}}
+            mock_st.return_value = []
+
+            res = await refresh_orders(seller_id=seller_id, db=session)
+            assert res["success"] is True
+            assert res["new_count"] == 1
+
+            saved_order = await session.get(Order, order_id)
+            assert saved_order is not None
+            assert saved_order.supply_id == existing_supply.id
+            assert saved_order.wb_supply_id == sup_wb_id
+
+
+
 

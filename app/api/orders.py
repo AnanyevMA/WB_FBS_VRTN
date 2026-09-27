@@ -885,6 +885,9 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
     if not token:
         raise HTTPException(status_code=400, detail="Токен WB API не настроен для данного продавца")
 
+    seller_brand_default = seller.name or "WB"
+    seller_uuid_str = str(seller.id)
+
     client = WBClient(token)
     new_count = 0
     updated_count = 0
@@ -967,61 +970,67 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
         # 6. Fetch and sync WB supplies
         supplies_by_wb_id = {}
         try:
-            sup_data = await client.get_supplies(limit=100)
-            for s_raw in sup_data.get("supplies", []):
-                wb_sup_id = s_raw.get("id")
-                if not wb_sup_id:
-                    continue
-                res_s = await db.execute(
-                    select(Supply).where(
-                        Supply.seller_id == seller.id,
-                        Supply.wb_supply_id == wb_sup_id
+            async with db.begin_nested():
+                sup_data = await client.get_supplies(limit=100)
+                raw_supplies = sup_data.get("supplies", []) if isinstance(sup_data, dict) else []
+                # Deduplicate and pre-fetch existing supplies by wb_supply_id in a single query
+                wb_sup_ids = list(set([s.get("id") for s in raw_supplies if s.get("id")]))
+                existing_supplies = {}
+                if wb_sup_ids:
+                    res_existing = await db.execute(
+                        select(Supply).where(Supply.wb_supply_id.in_(wb_sup_ids))
                     )
-                )
-                sup_obj = res_s.scalars().first()
-                sup_name = s_raw.get("name") or f"Поставка {wb_sup_id}"
-                is_done = s_raw.get("done", False)
-                closed_at_str = s_raw.get("closedAt")
-                created_at_str = s_raw.get("createdAt")
+                    for sup in res_existing.scalars().all():
+                        existing_supplies[sup.wb_supply_id] = sup
 
-                c_at = None
-                if created_at_str:
-                    try:
-                        c_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                        if c_at.tzinfo is None:
-                            c_at = c_at.replace(tzinfo=timezone.utc)
-                    except Exception:
-                        pass
-                cl_at = None
-                if closed_at_str:
-                    try:
-                        cl_at = datetime.fromisoformat(closed_at_str.replace("Z", "+00:00"))
-                        if cl_at.tzinfo is None:
-                            cl_at = cl_at.replace(tzinfo=timezone.utc)
-                    except Exception:
-                        pass
+                for s_raw in raw_supplies:
+                    wb_sup_id = s_raw.get("id")
+                    if not wb_sup_id or wb_sup_id in supplies_by_wb_id:
+                        continue
+                    sup_name = s_raw.get("name") or f"Поставка {wb_sup_id}"
+                    is_done = s_raw.get("done", False)
+                    closed_at_str = s_raw.get("closedAt")
+                    created_at_str = s_raw.get("createdAt")
 
-                sup_st = SupplyStatus.DONE if is_done else (SupplyStatus.CLOSED if cl_at else SupplyStatus.CREATED)
+                    c_at = None
+                    if created_at_str:
+                        try:
+                            c_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                            if c_at.tzinfo is None:
+                                c_at = c_at.replace(tzinfo=timezone.utc)
+                        except Exception:
+                            pass
+                    cl_at = None
+                    if closed_at_str:
+                        try:
+                            cl_at = datetime.fromisoformat(closed_at_str.replace("Z", "+00:00"))
+                            if cl_at.tzinfo is None:
+                                cl_at = cl_at.replace(tzinfo=timezone.utc)
+                        except Exception:
+                            pass
 
-                if not sup_obj:
-                    sup_obj = Supply(
-                        id=uuid.uuid4(),
-                        seller_id=str(seller.id),
-                        wb_supply_id=wb_sup_id,
-                        name=sup_name,
-                        status=sup_st,
-                        created_at=c_at or now,
-                        closed_at=cl_at,
-                    )
-                    db.add(sup_obj)
-                    await db.flush()
-                else:
-                    sup_obj.status = sup_st
-                    sup_obj.closed_at = cl_at
+                    sup_st = SupplyStatus.DONE if is_done else (SupplyStatus.CLOSED if cl_at else SupplyStatus.CREATED)
 
-                supplies_by_wb_id[wb_sup_id] = sup_obj
+                    sup_obj = existing_supplies.get(wb_sup_id)
+                    if not sup_obj:
+                        sup_obj = Supply(
+                            id=uuid.uuid4(),
+                            seller_id=seller_uuid_str,
+                            wb_supply_id=wb_sup_id,
+                            name=sup_name,
+                            status=sup_st,
+                            created_at=c_at or now,
+                            closed_at=cl_at,
+                        )
+                        db.add(sup_obj)
+                        existing_supplies[wb_sup_id] = sup_obj
+                    else:
+                        sup_obj.status = sup_st
+                        sup_obj.closed_at = cl_at
+
+                    supplies_by_wb_id[wb_sup_id] = sup_obj
+                await db.flush()
         except Exception as e:
-            await db.rollback()
             logger.warning(f"Error syncing supplies for seller {seller_id}: {e}")
 
         by_chrt = catalog.get("by_chrt_id", {})
@@ -1100,7 +1109,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
 
             final_name = prod_name or raw.get("name") or (f"{article} (WB #{oid})" if article else f"Заказ #{oid}")
             final_subj = prod_subj or raw.get("subject") or "Товар"
-            final_brand = prod_brand or raw.get("brand") or seller.name or "WB"
+            final_brand = prod_brand or raw.get("brand") or seller_brand_default or "WB"
 
             # Determine whether KIZ is required
             kiz_req = is_kiz_required(
@@ -1141,7 +1150,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
             if not existing:
                 order = Order(
                     id=oid,
-                    seller_id=seller.id,
+                    seller_id=seller_uuid_str,
                     status=status,
                     wb_status=wb_st,
                     supplier_status=supp_st,
@@ -1182,7 +1191,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                             from app.agents.cz_withdrawal import withdraw_order_kiz
                             price_kop = int((existing.price or 0) * 100)
                             withdraw_order_kiz.delay(
-                                seller_id=str(seller.id),
+                                seller_id=seller_uuid_str,
                                 order_id=existing.id,
                                 kiz_code=existing.kiz_code,
                                 price_kopecks=price_kop,
@@ -1197,7 +1206,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                         try:
                             from app.agents.cz_return import return_order_kiz
                             return_order_kiz.delay(
-                                seller_id=str(seller.id),
+                                seller_id=seller_uuid_str,
                                 order_id=existing.id,
                                 kiz_code=existing.kiz_code,
                             )

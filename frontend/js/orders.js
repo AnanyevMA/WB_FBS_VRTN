@@ -360,7 +360,11 @@ async function submitModalKizAttach() {
 async function syncAllOrdersCzStatus() {
     if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
     const btn = document.getElementById('syncCzOrdersBtn');
-    if (btn) btn.classList.add('loading');
+    if (btn) {
+        if (btn.classList.contains('loading') || btn.disabled) return;
+        btn.classList.add('loading');
+        btn.disabled = true;
+    }
     showToast('Честный Знак', 'Запрос актуальных статусов КИЗ в ГИС МТ...', 'info');
     try {
         let res;
@@ -393,23 +397,33 @@ async function syncAllOrdersCzStatus() {
     } catch (err) {
         showToast('Ошибка Честного Знака', err.message || String(err), 'error');
     } finally {
-        if (btn) btn.classList.remove('loading');
+        if (btn) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
     }
 }
 
 async function syncOrdersFromWB() {
     if (!currentSellerId) return showToast('Ошибка', 'Сначала выберите продавца', 'error');
     const btn = document.getElementById('syncOrdersBtn');
-    if (btn) btn.classList.add('loading');
+    if (btn) {
+        if (btn.classList.contains('loading') || btn.disabled) return;
+        btn.classList.add('loading');
+        btn.disabled = true;
+    }
     try {
         const res = await apiFetch(`/sellers/${currentSellerId}/orders/sync`, { method: 'POST' });
-        showToast('Успех', res.message || 'Синхронизация заказов с WB запущена', 'success');
+        showToast('Успех', res.message || 'Синхронизация заказов с WB завершена', 'success');
         await loadOrders();
         await loadDashboard();
     } catch (err) {
         showToast('Ошибка', err.message || String(err), 'error');
     } finally {
-        if (btn) btn.classList.remove('loading');
+        if (btn) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
     }
 }
 

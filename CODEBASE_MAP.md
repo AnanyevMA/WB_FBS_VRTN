@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-27 07:19:46 UTC | **Файлов проиндексировано**: 147  
+> **Дата актуализации**: 2026-09-27 13:41:38 UTC | **Файлов проиндексировано**: 147  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -174,7 +174,7 @@
 | [`tests/test_unified_kiz_batch.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_batch.py) | — | `setup_test_db`, `test_unified_reconciliation_ownership_and_chronology`, `test_sync_batch_with_cz_data_preserves_owner_safety`, `test_unified_reconcile_api_endpoint`, +еще 1 | Unit tests for Unified KIZ Batch Reconciliation and Owner Validation. |
 | [`tests/test_wb_finance.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance.py) | — | `setup_test_db`, `test_helpers_parsing`, `test_wb_finance_client_page_and_stream`, `test_sync_seller_financial_reports_and_ownership`, +еще 3 | Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit. |
 | [`tests/test_wb_finance_signing.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance_signing.py) | — | `setup_test_db`, `test_cz_client_build_return_payload_with_receipt`, `test_cz_client_build_return_payload_fallback`, `test_prepare_batch_documents_for_signing_finance_returns` | Unit tests for WB Finance Return Signature Batch Document Preparation. |
-| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 6 | Модуль кодовой базы |
+| [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_wb_warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales.py) | — | `test_wb_analytics_client_success`, `test_wb_analytics_client_unauthorized`, `test_warehouse_sales_no_token`, `test_warehouse_sales_already_retired`, +еще 5 | Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing. |
 
 ### 📄 Системные Конфигурации & Скрипты

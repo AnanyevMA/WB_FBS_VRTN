@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T07:19:46.652933+00:00",
+  "updated_at": "2026-09-27T13:41:38.188437+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 147,
   "files": [
@@ -777,7 +777,7 @@
     {
       "file": "app/agents/cz_token_refresher.py",
       "layer": "agents",
-      "hash": "23c030a3fc10",
+      "hash": "36df9d3d13d9",
       "docstring": "Chestny Znak Token Refresher Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -855,7 +855,6 @@
         "app.agents.notifier",
         "app.celery_app",
         "app.config",
-        "app.database",
         "app.models.audit",
         "app.models.order",
         "app.models.seller",
@@ -867,7 +866,9 @@
         "datetime",
         "logging",
         "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
         "sqlalchemy.orm",
+        "sqlalchemy.pool",
         "typing",
         "uuid"
       ]
@@ -2796,7 +2797,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "c64876f5b564",
+      "hash": "799474879e4a",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -11051,7 +11052,7 @@
     {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
-      "hash": "bc4746bd0ff4",
+      "hash": "1c84db16e702",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -11142,6 +11143,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_refresh_orders_with_duplicate_and_existing_supplies",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify refresh_orders handles pre-existing and duplicate supply IDs without race condition crashes."
         }
       ],
       "endpoints": [],
@@ -11154,6 +11164,7 @@
         "app.models.audit",
         "app.models.order",
         "app.models.seller",
+        "app.models.supply",
         "app.services.encryption",
         "app.services.wb_client",
         "base64",

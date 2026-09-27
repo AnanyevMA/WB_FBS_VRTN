@@ -285,6 +285,14 @@ async def prepare_batch_documents_for_signing(
         if r.get("needs_cz_return") is False or r.get("is_already_in_circulation") is True:
             continue
 
+        # В оборот разрешено возвращать ТОЛЬКО те КИЗ, которые принадлежат продавцу в ГИС МТ (ошибка 11)
+        if r.get("is_seller_owner") is False:
+            continue
+
+        owner_inn = (r.get("cz_owner_inn") or "").strip()
+        if owner_inn and seller.cz_inn and owner_inn != seller.cz_inn.strip():
+            continue
+
         if selected_kiz_set is not None:
             if kiz not in selected_kiz_set:
                 continue
@@ -513,6 +521,11 @@ async def submit_signed_batch(
             kiz = r.get("kiz_code")
             oid = r.get("order_id")
             if kiz and r.get("needs_cz_return", False):
+                if r.get("is_seller_owner") is False:
+                    continue
+                owner_inn = (r.get("cz_owner_inn") or "").strip()
+                if owner_inn and seller.cz_inn and owner_inn != seller.cz_inn.strip():
+                    continue
                 return_order_kiz.delay(
                     seller_id=seller_id,
                     order_id=oid,

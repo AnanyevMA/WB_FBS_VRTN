@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T04:00:12.968395+00:00",
+  "updated_at": "2026-09-27T04:15:09.686469+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 142,
   "files": [
@@ -2574,7 +2574,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "c24655232e1b",
+      "hash": "0d9d0190a839",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5316,7 +5316,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "9555721e0805",
+      "hash": "9a6884e5ba43",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -6316,7 +6316,7 @@
     {
       "file": "app/services/wb_finance_batch_service.py",
       "layer": "services",
-      "hash": "37e2f9013e02",
+      "hash": "3304ad80d379",
       "docstring": "WB Finance Return Batch Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -10612,7 +10612,7 @@
     {
       "file": "tests/test_wb_finance.py",
       "layer": "tests",
-      "hash": "9b699ee35608",
+      "hash": "5478d65562f9",
       "docstring": "Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit.",
       "classes": [],
       "functions": [
@@ -10709,7 +10709,7 @@
     {
       "file": "tests/test_wb_finance_signing.py",
       "layer": "tests",
-      "hash": "a5d6ea5488ba",
+      "hash": "c3667e91174c",
       "docstring": "Unit tests for WB Finance Return Signature Batch Document Preparation.",
       "classes": [],
       "functions": [

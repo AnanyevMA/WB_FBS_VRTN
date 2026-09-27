@@ -300,8 +300,17 @@ async def analyze_archive_data(
                 "selected": needs_withdrawal and bool(effective_kiz),
             })
         elif is_return:
-            # For returns: needs CZ return only if it was previously withdrawn and not yet returned
-            needs_cz_return = is_already_withdrawn
+            # For returns: needs CZ return only if it was previously withdrawn and not yet returned,
+            # AND the KIZ belongs to the seller (otherwise foreign owner -> remarking required)
+            kinfo_owner = (kinfo_record.owner_inn if kinfo_record else None) or ""
+            is_foreign_owner = bool(kinfo_owner and seller.cz_inn and kinfo_owner.strip() != seller.cz_inn.strip())
+            needs_cz_return = is_already_withdrawn and not is_foreign_owner
+            needs_remarking = is_foreign_owner and is_already_withdrawn
+            action_rec = (
+                f"⛔ Баланс стороннего владельца ({kinfo_owner}). Требуется Перемаркировка."
+                if is_foreign_owner
+                else ("⚠️ Требует возврата в оборот" if needs_cz_return else "✅ Уже в обороте (готов к привязке)")
+            )
 
             returns.append({
                 "order_id": order_id,
@@ -320,8 +329,11 @@ async def analyze_archive_data(
                 "cz_status": effective_cz_status,
                 "db_cz_status": effective_cz_status,
                 "cz_status_desc": cz_status_desc,
+                "cz_owner_inn": kinfo_owner,
+                "is_seller_owner": not is_foreign_owner,
                 "needs_cz_return": needs_cz_return,
-                "action_recommended": "⚠️ Требует возврата в оборот" if needs_cz_return else "✅ Уже в обороте (готов к привязке)",
+                "needs_remarking": needs_remarking,
+                "action_recommended": action_rec,
                 "selected": needs_cz_return and bool(effective_kiz),
             })
 

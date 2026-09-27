@@ -394,7 +394,7 @@ async def test_create_finance_return_signature_batch():
         session.add_all([row1_sale, row1_return, row2_sale1, row2_return, row2_sale2, row3_sale, order])
         await session.commit()
 
-        # Mock True API get_cises_info
+        # Mock True API get_cises_info: cis1 is owned by the seller (190207495060)
         mock_cz_info = [
             {
                 "cisInfo": {
@@ -402,8 +402,8 @@ async def test_create_finance_return_signature_batch():
                     "cis": cis1,
                     "status": "RETIRED",
                     "withdrawReason": "DISTANCE",
-                    "ownerInn": "9714053621",
-                    "ownerName": 'ООО "РВБ"',
+                    "ownerInn": "190207495060",
+                    "ownerName": 'ИП АНАНЬЕВ М.А.',
                     "producerInn": "190207495060",
                 }
             }
@@ -419,7 +419,8 @@ async def test_create_finance_return_signature_batch():
             summary = res["summary"]
             assert summary["resold_after_return_count"] == 1
             assert summary["return_candidates_count"] == 1
-            assert summary["wb_owned_count"] == 1
+            assert summary["seller_owned_direct_count"] == 1
+            assert summary["returns_needing_cz_return"] == 1
             assert summary["linked_to_fbs_orders"] == 1
 
             # Check KizSignatureBatch
@@ -433,7 +434,8 @@ async def test_create_finance_return_signature_batch():
             assert ret_item["clean_cis"] == cis1
             assert ret_item["order_id"] == random_order_id
             assert ret_item["sticker_id"] == "STK-999888"
-            assert ret_item["is_wb_owned"] is True
+            assert ret_item["is_seller_owner"] is True
             assert ret_item["needs_cz_return"] is True
+            assert ret_item["needs_remarking"] is False
             assert ret_item["selected"] is True
 

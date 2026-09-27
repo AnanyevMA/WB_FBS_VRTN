@@ -167,7 +167,7 @@ async def create_finance_return_signature_batch(
     wb_owned_count = 0
     seller_owned_count = 0
     seller_owned_direct_count = 0
-    wb_owned_producer_count = 0
+    wb_owned_remarking_count = 0
     foreign_remarking_count = 0
     already_in_circ_count = 0
 
@@ -185,9 +185,10 @@ async def create_finance_return_signature_batch(
         is_seller = (owner_inn == seller_inn) if seller_inn else False
         is_wb = (owner_inn == "9714053621")
         is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
-        is_producer = (producer_inn == seller_inn) if seller_inn else False
 
         # Определение режима возврата и рекомендаций
+        # В оборот разрешено возвращать ТОЛЬКО те КИЗ, которые принадлежат продавцу (owner_inn == seller_inn).
+        # По кодам на балансе ООО «РВБ» или сторонних лиц ГИС МТ возвращает ошибку 11 (не принадлежит участнику оборота).
         if is_already_in_circ:
             return_mode = "ALREADY_INTRODUCED"
             needs_cz_return = False
@@ -207,21 +208,21 @@ async def create_finance_return_signature_batch(
             needs_cz_return = True
             needs_remarking = False
             selected = True
-            action_rec = "✅ Баланс ИП Ананьев. Готов к возврату в оборот!"
+            action_rec = "✅ Баланс продавца (ИП). Готов к возврату в оборот!"
             seller_owned_direct_count += 1
-        elif is_wb and is_producer:
-            return_mode = "PRODUCER_RETURN"
-            needs_cz_return = True
-            needs_remarking = False
-            selected = True
-            action_rec = "⚠️ Баланс ООО «РВБ» (ИП — производитель). Возврат через LP_RETURN от производителя. В случае отказа ГИС МТ — Перемаркировка."
-            wb_owned_producer_count += 1
+        elif is_wb:
+            return_mode = "WB_OWNED_REMARKING"
+            needs_cz_return = False
+            needs_remarking = True
+            selected = False
+            action_rec = "⛔ Баланс ООО «РВБ». Прямой возврат невозможен (ошибка 11 ГИС МТ: код не принадлежит участнику). Требуется Перемаркировка (новый КИЗ) или приёмка по ЭДО."
+            wb_owned_remarking_count += 1
         else:
             return_mode = "OTHER_OWNED"
             needs_cz_return = False
             needs_remarking = True
             selected = False
-            action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Требуется Перемаркировка."
+            action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Прямой возврат невозможен. Требуется Перемаркировка."
             foreign_remarking_count += 1
 
         if is_wb:
@@ -272,8 +273,8 @@ async def create_finance_return_signature_batch(
             "selected": selected and bool(row.kiz or cis),
         })
 
-    # Сводка пакета
-    needing_total = seller_owned_direct_count + wb_owned_producer_count
+    # Сводка пакета: к возврату допускаются ТОЛЬКО товары на балансе продавца
+    needing_total = seller_owned_direct_count
     summary = {
         "period_days": days,
         "total_unique_cises_scanned": len(cises_map),
@@ -283,7 +284,7 @@ async def create_finance_return_signature_batch(
         "returns_needing_cz_return": needing_total,
         "returns_already_in_circulation": already_in_circ_count,
         "seller_owned_direct_count": seller_owned_direct_count,
-        "wb_owned_producer_count": wb_owned_producer_count,
+        "wb_owned_remarking_count": wb_owned_remarking_count,
         "foreign_belarus_remarking_count": foreign_remarking_count,
         "wb_owned_count": wb_owned_count,
         "seller_owned_count": seller_owned_count,

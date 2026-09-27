@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T05:06:21.032660+00:00",
+  "updated_at": "2026-09-27T05:24:19.616112+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 146,
+  "total_files": 147,
   "files": [
     {
       "file": "alembic/env.py",
@@ -6250,7 +6250,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "40322af4c1d9",
+      "hash": "d82a9d104b47",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6297,13 +6297,60 @@
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
+        "app.services.unified_kiz_payload_builder",
         "app.services.wb_finance_service",
+        "app.services.wb_warehouse_sales_service",
         "datetime",
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "typing",
         "uuid"
+      ]
+    },
+    {
+      "file": "app/services/unified_kiz_payload_builder.py",
+      "layer": "services",
+      "hash": "9de28acdaa41",
+      "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "build_unified_withdrawals_payload",
+          "is_async": false,
+          "args": [
+            "sales_candidates",
+            "cz_info_map",
+            "fbs_order_lookup",
+            "history_by_cis",
+            "seller_inn",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": "Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца"
+        },
+        {
+          "name": "build_unified_returns_payload",
+          "is_async": false,
+          "args": [
+            "return_candidates",
+            "cz_info_map",
+            "fbs_order_lookup",
+            "seller_inn",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": "Формирует payload возвратов (RETURNS) со строгой проверкой владельца"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.order",
+        "app.services.kiz_service",
+        "datetime",
+        "typing"
       ]
     },
     {
@@ -10771,7 +10818,7 @@
     {
       "file": "tests/test_unified_kiz_batch.py",
       "layer": "tests",
-      "hash": "05bdd418a73b",
+      "hash": "2bef15a5e22a",
       "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
       "classes": [],
       "functions": [
@@ -10810,6 +10857,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify POST /api/v1/sellers/{seller_id}/kiz/signature-batches/unified-reconcile."
+        },
+        {
+          "name": "test_unified_reconciliation_integrates_excise_report",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify excise-report online sales are fetched and enrich withdrawal documents with real fiscal receipts."
         }
       ],
       "endpoints": [],

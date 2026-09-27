@@ -280,3 +280,67 @@ async def test_unified_reconcile_api_endpoint():
                 data = resp.json()
                 assert data["success"] is True
                 assert data["batch_id"] == "mock-batch"
+
+
+@pytest.mark.asyncio
+async def test_unified_reconciliation_integrates_excise_report():
+    """Verify excise-report online sales are fetched and enrich withdrawal documents with real fiscal receipts."""
+    async with AsyncSessionLocal() as db:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Excise Test Seller",
+            wb_api_token_encrypted="mock_token",
+            cz_inn="190207495060",
+            cz_token_encrypted=b"dummy",
+        )
+        db.add(seller)
+        await db.commit()
+
+        mock_excise_rows = [
+            {
+                "barcode": "2049792157460",
+                "excise_short": "0104630199253602215!_x<2R:/KWcL",
+                "fiscal_doc_number": 74808,
+                "fiscal_drive_number": "7380440903834140",
+                "fiscal_dt": "2026-09-25",
+                "price": 5083,
+                "nm_id": 899193428,
+                "srid": "srid-12345",
+            }
+        ]
+        mock_cz_info = [
+            {
+                "cis": "0104630199253602215!_x<2R:/KWcL",
+                "status": "INTRODUCED",
+                "ownerInn": "190207495060",
+                "ownerName": "ИП АНАНЬЕВ",
+            }
+        ]
+
+        with patch("app.services.unified_kiz_batch_service.fetch_wb_excise_data", return_value=mock_excise_rows) as mock_fetch, \
+             patch("app.services.unified_kiz_batch_service.CZClient") as MockClient, \
+             patch("app.services.unified_kiz_batch_service.decrypt", return_value="dummy_token"):
+            instance = MockClient.return_value
+            instance.get_cises_info = AsyncMock(return_value=mock_cz_info)
+
+            res = await create_unified_kiz_signature_batch(seller=seller, db=db, days=30)
+            assert res["success"] is True
+
+            batch_id = res["batch_id"]
+            batch = await db.get(KizSignatureBatch, batch_id)
+            assert batch is not None
+            assert batch.sales_count == 1
+            assert batch.data_payload["summary"]["sales_excise_report_count"] == 1
+
+            withdrawals = batch.data_payload["withdrawals"]
+            assert len(withdrawals) == 1
+            w = withdrawals[0]
+            assert w["clean_cis"] == "0104630199253602215!_x<2R:/KWcL"
+            assert w["receipt_number"] == "74808"
+            assert w["fn_number"] == "7380440903834140"
+            assert w["receipt_date"] == "2026-09-25"
+            assert w["price"] == 5083.0
+            assert w["needs_withdrawal"] is True
+            assert w["selected"] is True
+

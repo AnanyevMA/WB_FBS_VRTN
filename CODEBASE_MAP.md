@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-27 05:06:21 UTC | **Файлов проиндексировано**: 146  
+> **Дата актуализации**: 2026-09-27 05:24:19 UTC | **Файлов проиндексировано**: 147  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -70,6 +70,7 @@
 | [`app/services/telegram_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/telegram_service.py) | `TelegramService` | `get_telegram_service`, `is_group_chat`, `is_private_chat`, `filter_private_chats`, +еще 1 | Telegram Notification Service — отправка Push-уведомлений менеджерам |
 | [`app/services/time_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/time_service.py) | — | `resolve_timezone`, `get_server_time_info`, `get_now_in_timezone`, `get_seller_local_time`, +еще 2 | Time & Timezone Management Service — WB FBS Manager |
 | [`app/services/unified_kiz_batch_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/unified_kiz_batch_service.py) | — | `_is_return_row`, `_is_sale_row`, `create_unified_kiz_signature_batch` | Unified KIZ Batch Reconciliation Service. |
+| [`app/services/unified_kiz_payload_builder.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/unified_kiz_payload_builder.py) | — | `build_unified_withdrawals_payload`, `build_unified_returns_payload` | Unified KIZ Payload Builder — Helper for unified_kiz_batch_service. |
 | [`app/services/wb_analytics_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_analytics_client.py) | `WBAnalyticsAPIError`, `WBAnalyticsRateLimitError`, `WBAnalyticsUnauthorizedError`, `WBAnalyticsClient` | — | Wildberries Analytics API Client. |
 | [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `parse_wb_token_expiration`, `get_wb_token_status`, `is_kiz_required` | Wildberries Marketplace API Client. |
 | [`app/services/wb_finance_batch_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_finance_batch_service.py) | — | `_is_return_row`, `_is_sale_row`, `create_finance_return_signature_batch` | WB Finance Return Batch Service — WB FBS Manager |
@@ -170,7 +171,7 @@
 | [`tests/test_telegram_chat_filters.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_chat_filters.py) | — | `test_is_group_chat`, `test_is_private_chat`, `test_filter_private_chats`, `test_get_personal_manager_chats` | Unit tests for Telegram chat filtering and manager chat routing |
 | [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
-| [`tests/test_unified_kiz_batch.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_batch.py) | — | `setup_test_db`, `test_unified_reconciliation_ownership_and_chronology`, `test_sync_batch_with_cz_data_preserves_owner_safety`, `test_unified_reconcile_api_endpoint` | Unit tests for Unified KIZ Batch Reconciliation and Owner Validation. |
+| [`tests/test_unified_kiz_batch.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_batch.py) | — | `setup_test_db`, `test_unified_reconciliation_ownership_and_chronology`, `test_sync_batch_with_cz_data_preserves_owner_safety`, `test_unified_reconcile_api_endpoint`, +еще 1 | Unit tests for Unified KIZ Batch Reconciliation and Owner Validation. |
 | [`tests/test_wb_finance.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance.py) | — | `setup_test_db`, `test_helpers_parsing`, `test_wb_finance_client_page_and_stream`, `test_sync_seller_financial_reports_and_ownership`, +еще 3 | Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit. |
 | [`tests/test_wb_finance_signing.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance_signing.py) | — | `setup_test_db`, `test_cz_client_build_return_payload_with_receipt`, `test_cz_client_build_return_payload_fallback`, `test_prepare_batch_documents_for_signing_finance_returns` | Unit tests for WB Finance Return Signature Batch Document Preparation. |
 | [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 6 | Модуль кодовой базы |

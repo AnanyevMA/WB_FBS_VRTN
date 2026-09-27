@@ -610,7 +610,10 @@ function renderActiveBatch(batch) {
                                             <td style="font-weight:600;">#${w.order_id || '—'}</td>
                                             <td><code>${w.sticker_id || '—'}</code></td>
                                             <td style="font-family: monospace; font-size: 11px;">${w.kiz_code || '—'}</td>
-                                            <td><span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-weight:600;">🧾 ${w.receipt_number || 'По акту/OTHER'}</span></td>
+                                            <td>
+                                                <span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-weight:600;">🧾 ФД ${w.receipt_number || 'По акту/OTHER'}</span>
+                                                ${w.fn_number ? `<span style="font-size:10px; color:var(--text-muted); display:block; margin-top:2px;">ФН ${w.fn_number}</span>` : ''}
+                                            </td>
                                             <td style="color:var(--text-muted); font-size:12px;">${w.receipt_date || '—'}</td>
                                             <td>${w.price ? w.price.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
                                             <td>

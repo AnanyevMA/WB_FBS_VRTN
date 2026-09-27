@@ -27,6 +27,11 @@ from app.services.kiz_service import parse_kiz_code, is_kiz_withdrawn, CZ_STATUS
 from app.services.cz_client import CZClient
 from app.services.encryption import decrypt
 from app.services.wb_finance_service import sync_seller_financial_reports
+from app.services.wb_warehouse_sales_service import fetch_wb_excise_data
+from app.services.unified_kiz_payload_builder import (
+    build_unified_withdrawals_payload,
+    build_unified_returns_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +125,38 @@ async def create_unified_kiz_signature_batch(
         elif o.status == OrderStatus.CANCELLED or o.kiz_status == KizStatus.RETURNED:
             history_by_cis.setdefault(cis, []).append({"source": "fbs_order", "type": "RETURN", "date": ev_date, "order": o})
 
+    # 2.5. Загрузка оперативных онлайн продаж из WB Analytics excise-report (кассовые чеки)
+    excise_count = 0
+    if seller.wb_api_token_encrypted:
+        try:
+            excise_rows = await fetch_wb_excise_data(seller=seller, days=min(days, 30))
+            excise_count = len(excise_rows)
+            for er in excise_rows:
+                raw_kiz = str(er.get("excise_short") or "").strip()
+                if not raw_kiz:
+                    continue
+                parsed = parse_kiz_code(raw_kiz)
+                cis = parsed.get("clean_cis") or raw_kiz
+                dt_str = str(er.get("fiscal_dt") or "").strip()
+                try:
+                    ev_date = datetime.strptime(dt_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                except Exception:
+                    ev_date = now_utc
+                history_by_cis.setdefault(cis, []).append({
+                    "source": "wb_excise_report",
+                    "type": "SALE",
+                    "date": ev_date,
+                    "receipt_number": str(er.get("fiscal_doc_number") or "").strip(),
+                    "fn_number": str(er.get("fiscal_drive_number") or "").strip(),
+                    "receipt_date": dt_str,
+                    "price": float(er.get("price") or 0.0),
+                    "article": str(er.get("nm_id") or ""),
+                    "raw_kiz": raw_kiz,
+                    "srid": str(er.get("srid") or ""),
+                })
+        except Exception as exc_err:
+            logger.warning(f"Could not load online excise report: {exc_err}")
+
     # 4. Анализ терминального состояния каждого КИЗ
     sales_candidates: Dict[str, Dict[str, Any]] = {}
     return_candidates: Dict[str, Dict[str, Any]] = {}
@@ -159,157 +196,42 @@ async def create_unified_kiz_signature_batch(
             logger.error(f"Failed to batch query True API for unified reconciliation: {e}")
 
     # 6. Формирование выбытий (WITHDRAWALS)
-    withdrawals_payload = []
-    sales_needing_count = 0
-    sales_already_withdrawn_count = 0
-    sales_wb_owned_count = 0
-    sales_foreign_count = 0
-
-    for cis, ev in sales_candidates.items():
-        cz_item = cz_info_map.get(cis, {})
-        cz_status = cz_item.get("status")
-        withdrawn, _ = is_kiz_withdrawn(status=cz_status, status_ex=cz_item.get("statusEx"), raw_payload=cz_item) if cz_status else (False, "")
-
-        owner_inn = (cz_item.get("ownerInn") or "").strip()
-        owner_name = cz_item.get("ownerName") or ""
-        producer_inn = (cz_item.get("producerInn") or cz_item.get("manufacturerInn") or "").strip()
-
-        is_seller = (owner_inn == seller_inn) if seller_inn else False
-        is_wb = (owner_inn == "9714053621")
-        is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
-
-        if withdrawn:
-            needs_withdrawal, selected = False, False
-            action_rec = "✅ Уже выбыл из оборота"
-            sales_already_withdrawn_count += 1
-        elif is_seller:
-            needs_withdrawal, selected = True, True
-            action_rec = "✅ Баланс продавца (ИП). Готов к выводу из оборота!"
-            sales_needing_count += 1
-        elif is_wb:
-            needs_withdrawal, selected = False, False
-            action_rec = "🏢 Баланс ООО «РВБ». Вывод из оборота осуществляет Wildberries."
-            sales_wb_owned_count += 1
-        elif is_foreign:
-            needs_withdrawal, selected = False, False
-            action_rec = f"⛔ Экспорт в РБ ({owner_name or 'Белбланкавыд'}). Вывод продавцом невозможен."
-            sales_foreign_count += 1
-        else:
-            needs_withdrawal, selected = False, False
-            action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Вывод продавцом невозможен."
-            sales_foreign_count += 1
-
-        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
-        price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
-        receipt_num = str(ev.get("rrd_id") or (fbs_order.id if fbs_order else ""))
-        receipt_dt = str(ev.get("rr_date") or now_utc.strftime("%Y-%m-%d"))
-
-        withdrawals_payload.append({
-            "order_id": fbs_order.id if fbs_order else None,
-            "sticker_id": fbs_order.sticker_id if fbs_order else None,
-            "kiz_code": ev.get("raw_kiz") or cis,
-            "clean_cis": cis,
-            "receipt_number": receipt_num,
-            "receipt_date": receipt_dt,
-            "price": price_val,
-            "price_kopecks": int(round(price_val * 100)),
-            "article": ev.get("article") or (fbs_order.article if fbs_order else ""),
-            "name": ev.get("name") or ((fbs_order.name or fbs_order.subject) if fbs_order else "Товар WB"),
-            "task_status": "Продажа WB (выбытие)",
-            "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
-            "cz_status": cz_status or "UNKNOWN",
-            "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
-            "cz_owner_inn": owner_inn,
-            "cz_owner_name": owner_name,
-            "cz_producer_inn": producer_inn,
-            "is_seller_owner": is_seller,
-            "is_wb_owned": is_wb,
-            "is_already_withdrawn": withdrawn,
-            "needs_withdrawal": needs_withdrawal,
-            "action_recommended": action_rec,
-            "selected": selected,
-        })
+    (
+        withdrawals_payload,
+        sales_needing_count,
+        sales_already_withdrawn_count,
+        sales_wb_owned_count,
+        sales_foreign_count,
+    ) = build_unified_withdrawals_payload(
+        sales_candidates=sales_candidates,
+        cz_info_map=cz_info_map,
+        fbs_order_lookup=fbs_order_lookup,
+        history_by_cis=history_by_cis,
+        seller_inn=seller_inn,
+        now_utc=now_utc,
+    )
 
     # 7. Формирование возвратов (RETURNS)
-    returns_payload = []
-    seller_owned_direct_count = 0
-    wb_owned_remarking_count = 0
-    foreign_remarking_count = 0
-    already_in_circ_count = 0
-
-    for cis, ev in return_candidates.items():
-        cz_item = cz_info_map.get(cis, {})
-        cz_status = cz_item.get("status")
-        withdrawn, _ = is_kiz_withdrawn(status=cz_status, status_ex=cz_item.get("statusEx"), raw_payload=cz_item) if cz_status else (True, "")
-
-        owner_inn = (cz_item.get("ownerInn") or "").strip()
-        owner_name = cz_item.get("ownerName") or ""
-        producer_inn = (cz_item.get("producerInn") or "").strip()
-
-        is_seller = (owner_inn == seller_inn) if seller_inn else False
-        is_wb = (owner_inn == "9714053621")
-        is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
-        is_already_in_circ = (not withdrawn) or (cz_status == "INTRODUCED")
-
-        if is_already_in_circ:
-            return_mode, needs_cz_return, needs_remarking, selected = "INTRODUCED", False, False, False
-            action_rec = "✅ Уже в обороте (готов к привязке)"
-            already_in_circ_count += 1
-        elif is_seller:
-            return_mode, needs_cz_return, needs_remarking, selected = "DIRECT_RETURN", True, False, True
-            action_rec = "✅ Баланс продавца (ИП). Готов к возврату в оборот!"
-            seller_owned_direct_count += 1
-        elif is_wb:
-            return_mode, needs_cz_return, needs_remarking, selected = "WB_OWNED_REMARKING", False, True, False
-            action_rec = "⛔ Баланс ООО «РВБ». Прямой возврат невозможен (ошибка 11 ГИС МТ). Требуется Перемаркировка (новый КИЗ)."
-            wb_owned_remarking_count += 1
-        elif is_foreign:
-            return_mode, needs_cz_return, needs_remarking, selected = "FOREIGN_OPERATOR", False, True, False
-            action_rec = f"⛔ Экспорт в РБ ({owner_name or 'Белбланкавыд'}). Требуется Перемаркировка."
-            foreign_remarking_count += 1
-        else:
-            return_mode, needs_cz_return, needs_remarking, selected = "OTHER_OWNED", False, True, False
-            action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Требуется Перемаркировка."
-            foreign_remarking_count += 1
-
-        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
-        price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
-        receipt_num = str(ev.get("rrd_id") or (fbs_order.id if fbs_order else "1"))
-        receipt_dt = str(ev.get("rr_date") or now_utc.strftime("%Y-%m-%d"))
-
-        returns_payload.append({
-            "order_id": fbs_order.id if fbs_order else None,
-            "sticker_id": fbs_order.sticker_id if fbs_order else None,
-            "kiz_code": ev.get("raw_kiz") or cis,
-            "clean_cis": cis,
-            "receipt_number": receipt_num,
-            "receipt_date": receipt_dt,
-            "price": price_val,
-            "price_kopecks": int(round(price_val * 100)),
-            "article": ev.get("article") or (fbs_order.article if fbs_order else ""),
-            "name": ev.get("name") or ((fbs_order.name or fbs_order.subject) if fbs_order else "Товар WB"),
-            "task_status": "Возврат WB",
-            "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
-            "cz_status": cz_status or "UNKNOWN",
-            "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
-            "cz_owner_inn": owner_inn,
-            "cz_owner_name": owner_name,
-            "cz_producer_inn": producer_inn,
-            "return_mode": return_mode,
-            "is_wb_owned": is_wb,
-            "is_seller_owner": is_seller,
-            "needs_cz_return": needs_cz_return,
-            "needs_remarking": needs_remarking,
-            "is_already_in_circulation": is_already_in_circ,
-            "action_recommended": action_rec,
-            "selected": selected,
-        })
+    (
+        returns_payload,
+        seller_owned_direct_count,
+        wb_owned_remarking_count,
+        foreign_remarking_count,
+        already_in_circ_count,
+    ) = build_unified_returns_payload(
+        return_candidates=return_candidates,
+        cz_info_map=cz_info_map,
+        fbs_order_lookup=fbs_order_lookup,
+        seller_inn=seller_inn,
+        now_utc=now_utc,
+    )
 
     # 8. Сводка пакета
     summary = {
         "period_days": days,
         "total_unique_cises_scanned": len(history_by_cis),
         "sales_candidates_count": len(sales_candidates),
+        "sales_excise_report_count": excise_count,
         "sales_needing_withdrawal": sales_needing_count,
         "sales_already_withdrawn": sales_already_withdrawn_count,
         "sales_wb_owned_count": sales_wb_owned_count,

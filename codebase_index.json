@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T03:15:10.016797+00:00",
+  "updated_at": "2026-09-27T03:42:43.906868+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 141,
   "files": [
@@ -6316,7 +6316,7 @@
     {
       "file": "app/services/wb_finance_batch_service.py",
       "layer": "services",
-      "hash": "af18cd068d00",
+      "hash": "37e2f9013e02",
       "docstring": "WB Finance Return Batch Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6375,7 +6375,7 @@
     {
       "file": "app/services/wb_finance_client.py",
       "layer": "services",
-      "hash": "a9077c293f75",
+      "hash": "d61d345b3de0",
       "docstring": "Wildberries Finance API Client.",
       "classes": [
         {

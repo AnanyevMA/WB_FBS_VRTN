@@ -166,8 +166,10 @@ async def create_finance_return_signature_batch(
     returns_payload: List[Dict[str, Any]] = []
     wb_owned_count = 0
     seller_owned_count = 0
-    already_in_circulation_count = 0
-    needing_return_count = 0
+    seller_owned_direct_count = 0
+    wb_owned_producer_count = 0
+    foreign_remarking_count = 0
+    already_in_circ_count = 0
 
     seller_inn = (seller.cz_inn or "").strip()
 
@@ -180,41 +182,62 @@ async def create_finance_return_signature_batch(
         withdraw_reason = cz_info.get("withdrawReason") or ""
 
         is_already_in_circ = (cz_status == "INTRODUCED")
-        needs_cz_return = (cz_status == "RETIRED") or (not cz_status and True)
-        if is_already_in_circ:
-            needs_cz_return = False
-
-        is_wb = (owner_inn == "9714053621")
         is_seller = (owner_inn == seller_inn) if seller_inn else False
+        is_wb = (owner_inn == "9714053621")
+        is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
+        is_producer = (producer_inn == seller_inn) if seller_inn else False
+
+        # Определение режима возврата и рекомендаций
+        if is_already_in_circ:
+            return_mode = "ALREADY_INTRODUCED"
+            needs_cz_return = False
+            needs_remarking = False
+            selected = False
+            action_rec = "✅ Уже в обороте (готов к привязке)"
+            already_in_circ_count += 1
+        elif is_foreign:
+            return_mode = "FOREIGN_OPERATOR"
+            needs_cz_return = False
+            needs_remarking = True
+            selected = False
+            action_rec = f"⛔ Экспорт в РБ ({owner_name or 'Белбланкавыд'}). Прямой возврат невозможен — требуется Перемаркировка (новый КИЗ)!"
+            foreign_remarking_count += 1
+        elif is_seller:
+            return_mode = "DIRECT_RETURN"
+            needs_cz_return = True
+            needs_remarking = False
+            selected = True
+            action_rec = "✅ Баланс ИП Ананьев. Готов к возврату в оборот!"
+            seller_owned_direct_count += 1
+        elif is_wb and is_producer:
+            return_mode = "PRODUCER_RETURN"
+            needs_cz_return = True
+            needs_remarking = False
+            selected = True
+            action_rec = "⚠️ Баланс ООО «РВБ» (ИП — производитель). Возврат через LP_RETURN от производителя. В случае отказа ГИС МТ — Перемаркировка."
+            wb_owned_producer_count += 1
+        else:
+            return_mode = "OTHER_OWNED"
+            needs_cz_return = False
+            needs_remarking = True
+            selected = False
+            action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Требуется Перемаркировка."
+            foreign_remarking_count += 1
 
         if is_wb:
             wb_owned_count += 1
         elif is_seller:
             seller_owned_count += 1
 
-        if is_already_in_circ:
-            already_in_circulation_count += 1
-        elif needs_cz_return:
-            needing_return_count += 1
-
         # FBS context
-        fbs_order = fbs_order_lookup.get(cis)
+        fbs_order = fbs_order_lookup.get(cis) or fbs_order_lookup.get(row.kiz)
         fbs_order_id = fbs_order.id if fbs_order else None
         fbs_sticker = fbs_order.sticker_id if fbs_order else None
         fbs_status = fbs_order.status.value if fbs_order else "Нет в FBS (FBO/архив)"
         fbs_kiz_status = fbs_order.kiz_status.value if fbs_order else None
 
-        if is_already_in_circ:
-            action_rec = "✅ Уже в обороте (готов к привязке)"
-        elif needs_cz_return and is_wb:
-            action_rec = "⚠️ Требует возврата в оборот (баланс WB / РВБ)"
-        elif needs_cz_return and is_seller:
-            action_rec = "⚠️ Требует возврата в оборот (баланс ИП)"
-        else:
-            action_rec = f"⚠️ Требует возврата в оборот ({cz_status or 'Статус не определен'})"
-
         if fbs_order and fbs_order.status.value in ("ASSEMBLING", "ASSEMBLED"):
-            action_rec += " 🚨 Товар в сборке!"
+            action_rec += " 🚨 Внимание: товар в сборке под новый заказ!"
 
         price_val = float(row.retail_amount or row.retail_price or 0.0)
 
@@ -239,23 +262,29 @@ async def create_finance_return_signature_batch(
             "cz_owner_inn": owner_inn,
             "cz_owner_name": owner_name,
             "cz_producer_inn": producer_inn,
+            "return_mode": return_mode,
             "is_wb_owned": is_wb,
             "is_seller_owner": is_seller,
             "needs_cz_return": needs_cz_return,
+            "needs_remarking": needs_remarking,
             "is_already_in_circulation": is_already_in_circ,
             "action_recommended": action_rec,
-            "selected": needs_cz_return and bool(row.kiz or cis),
+            "selected": selected and bool(row.kiz or cis),
         })
 
     # Сводка пакета
+    needing_total = seller_owned_direct_count + wb_owned_producer_count
     summary = {
         "period_days": days,
         "total_unique_cises_scanned": len(cises_map),
         "resold_after_return_count": resold_after_return_count,
         "only_sales_count": only_sales_count,
         "return_candidates_count": len(return_candidates),
-        "returns_needing_cz_return": needing_return_count,
-        "returns_already_in_circulation": already_in_circulation_count,
+        "returns_needing_cz_return": needing_total,
+        "returns_already_in_circulation": already_in_circ_count,
+        "seller_owned_direct_count": seller_owned_direct_count,
+        "wb_owned_producer_count": wb_owned_producer_count,
+        "foreign_belarus_remarking_count": foreign_remarking_count,
         "wb_owned_count": wb_owned_count,
         "seller_owned_count": seller_owned_count,
         "linked_to_fbs_orders": len(fbs_order_lookup),
@@ -271,8 +300,8 @@ async def create_finance_return_signature_batch(
         source="wb_finance_returns",
         status=BatchStatus.PENDING_SIGNATURE,
         sales_count=0,
-        returns_count=needing_return_count,
-        already_withdrawn_count=already_in_circulation_count,
+        returns_count=needing_total,
+        already_withdrawn_count=already_in_circ_count,
         total_count=len(returns_payload),
         data_payload={
             "summary": summary,
@@ -291,7 +320,7 @@ async def create_finance_return_signature_batch(
             "batch_id": batch_id,
             "days": days,
             "total_candidates": len(return_candidates),
-            "needing_return": needing_return_count,
+            "needing_return": needing_total,
             "wb_owned": wb_owned_count,
             "seller_owned": seller_owned_count,
             "resold_after_return": resold_after_return_count,

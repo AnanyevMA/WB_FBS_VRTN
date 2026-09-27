@@ -3,7 +3,7 @@ Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit.
 Verifies WBFinanceClient, wb_finance_service, Celery tasks, and API endpoints.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -293,3 +293,147 @@ async def test_celery_finance_agent_dispatch():
         res = sync_all_sellers_financial_reports()
         assert res["dispatched"] >= 1
         mock_delay.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_create_finance_return_signature_batch():
+    from app.models.order import Order, OrderStatus, KizStatus
+    from app.models.kiz import KizSignatureBatch, BatchStatus
+    from app.services.wb_finance_batch_service import create_finance_return_signature_batch
+
+    seller_id = str(uuid.uuid4())
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="Batch Test Shop",
+            wb_api_token_encrypted=encrypt("token"),
+            cz_token_encrypted=encrypt("cz_token"),
+            cz_inn="190207495060",
+            is_active=True,
+        )
+        session.add(seller)
+
+        # KIZ 1: Sale -> Return (Candidate)
+        cis1 = "0104630199251844215kiz_returned_1"
+        row1_sale = WbSalesReportRow(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            rrd_id=101,
+            rr_date=date(2026, 7, 1),
+            doc_type_name="Продажа",
+            clean_cis=cis1,
+            kiz=cis1,
+        )
+        row1_return = WbSalesReportRow(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            rrd_id=105,
+            rr_date=date(2026, 7, 15),
+            doc_type_name="Возврат",
+            clean_cis=cis1,
+            kiz=cis1,
+            retail_amount=Decimal("2000.00"),
+        )
+
+        # KIZ 2: Sale -> Return -> Resold (Should be filtered out)
+        cis2 = "0104630199251844215kiz_resold_2"
+        row2_sale1 = WbSalesReportRow(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            rrd_id=201,
+            rr_date=date(2026, 7, 2),
+            doc_type_name="Продажа",
+            clean_cis=cis2,
+            kiz=cis2,
+        )
+        row2_return = WbSalesReportRow(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            rrd_id=205,
+            rr_date=date(2026, 7, 10),
+            doc_type_name="Возврат",
+            clean_cis=cis2,
+            kiz=cis2,
+        )
+        row2_sale2 = WbSalesReportRow(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            rrd_id=210,
+            rr_date=date(2026, 7, 25),
+            doc_type_name="Продажа",
+            clean_cis=cis2,
+            kiz=cis2,
+        )
+
+        # KIZ 3: Only Sale
+        cis3 = "0104630199251844215kiz_only_sale_3"
+        row3_sale = WbSalesReportRow(
+            id=str(uuid.uuid4()),
+            seller_id=seller_id,
+            rrd_id=301,
+            rr_date=date(2026, 7, 5),
+            doc_type_name="Продажа",
+            clean_cis=cis3,
+            kiz=cis3,
+        )
+
+        import random
+        random_order_id = random.randint(5000000000, 9999999999)
+        # Matching FBS Order for cis1
+        order = Order(
+            id=random_order_id,
+            seller_id=seller_id,
+            status=OrderStatus.DELIVERED,
+            wb_status="complete",
+            kiz_code=cis1,
+            kiz_status=KizStatus.WITHDRAWN,
+            sticker_id="STK-999888",
+            wb_created_at=datetime.now(timezone.utc),
+        )
+
+        session.add_all([row1_sale, row1_return, row2_sale1, row2_return, row2_sale2, row3_sale, order])
+        await session.commit()
+
+        # Mock True API get_cises_info
+        mock_cz_info = [
+            {
+                "cisInfo": {
+                    "requestedCis": cis1,
+                    "cis": cis1,
+                    "status": "RETIRED",
+                    "withdrawReason": "DISTANCE",
+                    "ownerInn": "9714053621",
+                    "ownerName": 'ООО "РВБ"',
+                    "producerInn": "190207495060",
+                }
+            }
+        ]
+
+        with patch("app.services.cz_client.CZClient.get_cises_info", new_callable=AsyncMock) as mock_get_info:
+            mock_get_info.return_value = mock_cz_info
+
+            res = await create_finance_return_signature_batch(seller=seller, db=session, days=90)
+            assert res["success"] is True
+            assert res["batch_id"] is not None
+
+            summary = res["summary"]
+            assert summary["resold_after_return_count"] == 1
+            assert summary["return_candidates_count"] == 1
+            assert summary["wb_owned_count"] == 1
+            assert summary["linked_to_fbs_orders"] == 1
+
+            # Check KizSignatureBatch
+            batch = await session.get(KizSignatureBatch, res["batch_id"])
+            assert batch is not None
+            assert batch.status == BatchStatus.PENDING_SIGNATURE
+            assert batch.source == "wb_finance_returns"
+            assert batch.returns_count == 1
+
+            ret_item = batch.data_payload["returns"][0]
+            assert ret_item["clean_cis"] == cis1
+            assert ret_item["order_id"] == random_order_id
+            assert ret_item["sticker_id"] == "STK-999888"
+            assert ret_item["is_wb_owned"] is True
+            assert ret_item["needs_cz_return"] is True
+            assert ret_item["selected"] is True
+

@@ -209,3 +209,31 @@ async def list_financial_returns(
         "total": total_count,
         "items": items,
     }
+
+
+@router.post("/create-return-batch")
+async def create_return_batch_endpoint(
+    seller_id: str,
+    days: int = Query(default=90, ge=1, le=180, description="Период в днях для анализа возвратов"),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Формирует пакет KizSignatureBatch на ввод в оборот по результатам анализа отчетов WB:
+    1. Хронологический анализ (отсекает товары, проданные после возврата).
+    2. Кросс-сверка с локальной БД заказов FBS.
+    3. Проверка актуального статуса в True API (ГИС МТ).
+    4. Создание пакета в статусе PENDING_SIGNATURE для подписания в веб-интерфейсе.
+    """
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    from app.services.wb_finance_batch_service import create_finance_return_signature_batch
+
+    try:
+        res = await create_finance_return_signature_batch(seller=seller, db=db, days=days)
+        return res
+    except Exception as exc:
+        logger.error(f"[WB Finance Batch API] Error for seller {seller_id}: {exc}")
+        raise HTTPException(status_code=500, detail=f"Ошибка формирования пакета возвратов: {str(exc)}")
+

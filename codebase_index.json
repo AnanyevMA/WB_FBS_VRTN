@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T02:53:47.309725+00:00",
+  "updated_at": "2026-09-27T03:15:10.016797+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 140,
+  "total_files": 141,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2027,7 +2027,7 @@
     {
       "file": "app/api/finance.py",
       "layer": "api",
-      "hash": "d591188d7900",
+      "hash": "1aec897a2a8b",
       "docstring": "FastAPI WB Finance Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2073,6 +2073,19 @@
             "router.get('/returns')"
           ],
           "docstring": "Возвращает список возвращенных товаров с информацией о коде маркировки и статусе в Честном Знаке."
+        },
+        {
+          "name": "create_return_batch_endpoint",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "days",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/create-return-batch')"
+          ],
+          "docstring": "Формирует пакет KizSignatureBatch на ввод в оборот по результатам анализа отчетов WB:"
         }
       ],
       "endpoints": [
@@ -2093,6 +2106,12 @@
           "path": "/returns",
           "handler": "list_financial_returns",
           "docstring": "Возвращает список возвращенных товаров с информацией о коде маркировки и статусе в Честном Знаке."
+        },
+        {
+          "method": "POST",
+          "path": "/create-return-batch",
+          "handler": "create_return_batch_endpoint",
+          "docstring": "Формирует пакет KizSignatureBatch на ввод в оборот по результатам анализа отчетов WB:"
         }
       ],
       "celery_tasks": [],
@@ -2102,6 +2121,7 @@
         "app.database",
         "app.models.seller",
         "app.models.wb_finance",
+        "app.services.wb_finance_batch_service",
         "app.services.wb_finance_service",
         "fastapi",
         "logging",
@@ -6291,6 +6311,65 @@
         "logging",
         "tenacity",
         "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_finance_batch_service.py",
+      "layer": "services",
+      "hash": "af18cd068d00",
+      "docstring": "WB Finance Return Batch Service — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_is_return_row",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [],
+          "docstring": "Определяет, является ли строка отчета операцией возврата."
+        },
+        {
+          "name": "_is_sale_row",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [],
+          "docstring": "Определяет, является ли строка отчета операцией продажи."
+        },
+        {
+          "name": "create_finance_return_signature_batch",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "1. Извлекает все строки отчетов WB реализации за указанный период (по умолчанию 90 дней)."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "copy",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.orm.attributes",
+        "typing",
+        "uuid"
       ]
     },
     {
@@ -10533,7 +10612,7 @@
     {
       "file": "tests/test_wb_finance.py",
       "layer": "tests",
-      "hash": "12e6e1e8815b",
+      "hash": "9b699ee35608",
       "docstring": "Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit.",
       "classes": [],
       "functions": [
@@ -10588,6 +10667,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_create_finance_return_signature_batch",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
         }
       ],
       "endpoints": [],
@@ -10599,10 +10687,12 @@
         "app.database",
         "app.main",
         "app.models.kiz",
+        "app.models.order",
         "app.models.seller",
         "app.models.wb_finance",
         "app.services.auth_service",
         "app.services.encryption",
+        "app.services.wb_finance_batch_service",
         "app.services.wb_finance_client",
         "app.services.wb_finance_service",
         "datetime",
@@ -10610,6 +10700,7 @@
         "fastapi.testclient",
         "httpx",
         "pytest",
+        "random",
         "sqlalchemy",
         "unittest.mock",
         "uuid"

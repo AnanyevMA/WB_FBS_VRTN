@@ -649,9 +649,11 @@ function renderActiveBatch(batch) {
                                 returns.map((r, idx) => {
                                     const needsReturn = Boolean(r.needs_cz_return);
                                     const isSelected = r.selected !== false && needsReturn;
-                                    const statusBadge = needsReturn
-                                        ? `<span class="badge badge-warning">⚠️ Требует возврата в оборот</span>`
-                                        : `<span class="badge badge-delivered">✅ Уже в обороте</span>`;
+                                    const statusBadge = r.needs_remarking
+                                        ? `<span class="badge" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); font-weight:600;">⛔ Перемаркировка</span>`
+                                        : (needsReturn
+                                            ? `<span class="badge badge-warning">⚠️ Требует возврата</span>`
+                                            : `<span class="badge badge-delivered">✅ В обороте</span>`);
                                     const safeKiz = (r.kiz_code || '').replace(/"/g, '&quot;');
                                     return `
                                         <tr>
@@ -663,11 +665,12 @@ function renderActiveBatch(batch) {
                                                 <div style="font-weight:500;">${r.name || 'Товар'}</div>
                                                 <div style="font-size:11px; color:var(--text-muted);">${r.article || ''}</div>
                                             </td>
-                                            <td><span class="badge ${needsReturn ? 'badge-warning' : 'badge-delivered'}">${r.action_recommended || (needsReturn ? '⚠️ Требует возврата' : '✅ В обороте')}</span></td>
+                                            <td><span class="badge ${r.needs_remarking ? 'badge-cancelled' : (needsReturn ? 'badge-warning' : 'badge-delivered')}">${r.action_recommended || (needsReturn ? '⚠️ Требует возврата' : '✅ В обороте')}</span></td>
                                             <td>
                                                 <div style="display:flex; flex-direction:column; gap:2px;">
                                                     ${statusBadge}
                                                     ${r.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${r.cz_status_desc}</span>` : ''}
+                                                    ${r.cz_owner_name ? `<span style="font-size:10px; color:#60a5fa; font-weight:500;">👤 ${r.cz_owner_name}</span>` : ''}
                                                 </div>
                                             </td>
                                         </tr>

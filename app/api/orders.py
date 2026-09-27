@@ -770,37 +770,41 @@ async def sync_all_orders_cz_status(seller_id: str, db: AsyncSession = Depends(g
         except Exception as meta_err:
             logger.warning(f"Failed to auto-sync missing order SGTINs from WB before CZ sync: {meta_err}")
 
-    # 1. Собираем все уникальные КИЗ продавца
-    # А. Из таблицы orders
+    # 1. Собираем уникальные КИЗ заказов FBS данного продавца
+    # Исключаем терминальные: доставленные заказы, КИЗ которых уже успешно выведен из оборота
     stmt_orders = select(Order.kiz_code).where(
         Order.seller_id == seller_id,
         Order.kiz_code.isnot(None),
         Order.kiz_code != "",
+        ~(
+            (Order.status == OrderStatus.DELIVERED) &
+            (Order.kiz_status == KizStatus.WITHDRAWN) &
+            (Order.kiz_cz_status == "RETIRED")
+        )
     ).distinct()
     order_kizes = (await db.execute(stmt_orders)).scalars().all()
 
-    # Б. Из таблицы kiz_product_info
-    stmt_kiz_info = select(KizProductInfo.kiz_code).where(
-        KizProductInfo.seller_id == seller_id,
-        KizProductInfo.kiz_code.isnot(None),
-        KizProductInfo.kiz_code != "",
-    ).distinct()
-    info_kizes = (await db.execute(stmt_kiz_info)).scalars().all()
-
     all_kiz_codes = list(set([
-        k.strip() for k in (list(order_kizes) + list(info_kizes))
+        k.strip() for k in order_kizes
         if k and k.strip()
     ]))
 
     if not all_kiz_codes:
+        total_kiz_orders = (await db.execute(
+            select(func.count(Order.id)).where(
+                Order.seller_id == seller_id,
+                Order.kiz_code.isnot(None),
+                Order.kiz_code != "",
+            )
+        )).scalar() or 0
         return {
             "success": True,
-            "message": "У данного продавца нет прикрепленных кодов КИЗ для проверки.",
-            "total_checked": 0,
+            "message": f"Все заказы с маркировкой ({total_kiz_orders} шт.) уже имеют актуальный статус (выбыли)." if total_kiz_orders > 0 else "У данного продавца нет прикрепленных кодов КИЗ для проверки.",
+            "total_checked": total_kiz_orders,
             "updated_count": 0,
             "summary": {
                 "in_circulation": 0,
-                "withdrawn": 0,
+                "withdrawn": total_kiz_orders,
                 "other": 0,
             }
         }

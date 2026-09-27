@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T07:01:00.936194+00:00",
+  "updated_at": "2026-09-27T07:19:46.652933+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 147,
   "files": [
@@ -2796,7 +2796,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "01a6ae78ffc6",
+      "hash": "c64876f5b564",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -5869,7 +5869,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "d831930357cc",
+      "hash": "5c156fd17a59",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6250,7 +6250,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "d82a9d104b47",
+      "hash": "a9f6a2c45bfd",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6294,8 +6294,6 @@
         "app.models.order",
         "app.models.seller",
         "app.models.wb_finance",
-        "app.services.cz_client",
-        "app.services.encryption",
         "app.services.kiz_service",
         "app.services.unified_kiz_payload_builder",
         "app.services.wb_finance_service",
@@ -10827,7 +10825,7 @@
     {
       "file": "tests/test_unified_kiz_batch.py",
       "layer": "tests",
-      "hash": "2bef15a5e22a",
+      "hash": "9cf7565fe5da",
       "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
       "classes": [],
       "functions": [

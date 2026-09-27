@@ -817,25 +817,59 @@ async def batch_verify_and_sync_cises(
     unique_codes = list(set(kiz_codes))
     results: Dict[str, Optional[KizProductInfo]] = {}
 
-    # Сначала проверяем локальный кэш, если force_refresh=False
-    if not force_refresh:
-        for i in range(0, len(unique_codes), 500):
-            chunk = unique_codes[i:i + 500]
-            stmt = select(KizProductInfo).where(
-                KizProductInfo.kiz_code.in_(chunk)
-            )
-            res = await db.execute(stmt)
-            for row in res.scalars().all():
-                results[row.kiz_code] = row
+    seller_inn = (seller.cz_inn or "").strip()
 
-    missing_codes = [c for c in unique_codes if c not in results]
-    if not missing_codes or not seller.cz_inn:
+    # 1. Загружаем локальный кэш kiz_product_info
+    cached_map: Dict[str, KizProductInfo] = {}
+    for i in range(0, len(unique_codes), 500):
+        chunk = unique_codes[i:i + 500]
+        stmt = select(KizProductInfo).where(
+            KizProductInfo.kiz_code.in_(chunk)
+        )
+        res = await db.execute(stmt)
+        for row in res.scalars().all():
+            cached_map[row.kiz_code] = row
+            if row.clean_cis:
+                cached_map[row.clean_cis] = row
+
+    # 2. Интеллектуальная фильтрация (Skip-Filter):
+    # Если по КИЗ уже известно, что его владелец — НЕ текущий продавец (ООО «РВБ», РБ, сторонние лица)
+    # или товар уже в терминальном статусе RETIRED и не требует принудительной перепроверки,
+    # мы НЕ шлем его в True API повторно, а мгновенно берем из локальной БД.
+    codes_to_query: List[str] = []
+    for c in unique_codes:
+        parsed_c = parse_kiz_code(c)
+        clean_c = parsed_c.get("clean_cis") or c.strip()
+        rec = cached_map.get(c) or cached_map.get(clean_c)
+
+        if not rec:
+            # Новый, ранее не проверявшийся КИЗ — обязательно запрашиваем в ГИС МТ
+            codes_to_query.append(c)
+            continue
+
+        raw = rec.raw_cz_payload or {}
+        owner = (rec.cz_owner_inn or raw.get("ownerInn") or "").strip()
+        is_foreign_owner = bool(owner and seller_inn and owner != seller_inn)
+        is_retired = (rec.cz_status == "RETIRED")
+
+        if is_foreign_owner:
+            # Чужой владелец — продавец не имеет права им оперировать, в True API не шлем
+            results[c] = rec
+            continue
+
+        if not force_refresh or is_retired:
+            results[c] = rec
+            continue
+
+        codes_to_query.append(c)
+
+    if not codes_to_query or not seller.cz_inn:
         return results
 
     # Подготавливаем clean_cis для True API
     cis_to_original = {}
     lookup_cises = []
-    for c in missing_codes:
+    for c in codes_to_query:
         parsed = parse_kiz_code(c)
         clean = parsed.get("clean_cis") or c.strip()
         cis_to_original[clean] = c

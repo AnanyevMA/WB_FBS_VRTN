@@ -18,7 +18,7 @@ from app.database import AsyncSessionLocal, init_db
 from app.main import app
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
-from app.models.kiz import KizSignatureBatch, BatchStatus
+from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
 from app.models.wb_finance import WbSalesReportRow
 from app.services.auth_service import ensure_initial_admin, create_access_token
 from app.services.unified_kiz_batch_service import create_unified_kiz_signature_batch
@@ -104,38 +104,42 @@ async def test_unified_reconciliation_ownership_and_chronology():
         await db.commit()
 
         # Mock True API responses
-        mock_cz_info = [
-            {
-                "cis": "0104603702055109215WBOWNED1234",
-                "status": "RETIRED",
-                "ownerInn": "9714053621",
-                "ownerName": "ООО «РВБ»",
-            },
-            {
-                "cis": "0104603702055109215SELLEROWN12",
-                "status": "RETIRED",
-                "ownerInn": "190207495060",
-                "ownerName": "ИП АНАНЬЕВ МАКСИМ АНДРЕЕВИЧ",
-            },
-            {
-                "cis": "0104603702055109215RESOLDITEM1",
-                "status": "INTRODUCED",
-                "ownerInn": "190207495060",
-            },
-            {
-                "cis": "0104603702055109215WBSALEITEM1",
-                "status": "INTRODUCED",
-                "ownerInn": "9714053621",
-                "ownerName": "ООО «РВБ»",
-            },
-        ]
+        mock_sync_result = {
+            "0104603702055109215WBOWNED1234": KizProductInfo(
+                kiz_code="0104603702055109215WBOWNED1234",
+                clean_cis="0104603702055109215WBOWNED1234",
+                cz_status="RETIRED",
+                cz_owner_inn="9714053621",
+                cz_owner_name="ООО «РВБ»",
+                raw_cz_payload={"ownerInn": "9714053621", "ownerName": "ООО «РВБ»"},
+            ),
+            "0104603702055109215SELLEROWN12": KizProductInfo(
+                kiz_code="0104603702055109215SELLEROWN12",
+                clean_cis="0104603702055109215SELLEROWN12",
+                cz_status="RETIRED",
+                cz_owner_inn="190207495060",
+                cz_owner_name="ИП АНАНЬЕВ МАКСИМ АНДРЕЕВИЧ",
+                raw_cz_payload={"ownerInn": "190207495060", "ownerName": "ИП АНАНЬЕВ МАКСИМ АНДРЕЕВИЧ"},
+            ),
+            "0104603702055109215RESOLDITEM1": KizProductInfo(
+                kiz_code="0104603702055109215RESOLDITEM1",
+                clean_cis="0104603702055109215RESOLDITEM1",
+                cz_status="INTRODUCED",
+                cz_owner_inn="190207495060",
+                raw_cz_payload={"ownerInn": "190207495060"},
+            ),
+            "0104603702055109215WBSALEITEM1": KizProductInfo(
+                kiz_code="0104603702055109215WBSALEITEM1",
+                clean_cis="0104603702055109215WBSALEITEM1",
+                cz_status="INTRODUCED",
+                cz_owner_inn="9714053621",
+                cz_owner_name="ООО «РВБ»",
+                raw_cz_payload={"ownerInn": "9714053621", "ownerName": "ООО «РВБ»"},
+            ),
+        }
 
-        with patch("app.services.unified_kiz_batch_service.CZClient") as MockClient, \
-             patch("app.services.unified_kiz_batch_service.decrypt", return_value="dummy_token"):
-            instance = MockClient.return_value
-            instance.get_cises_info = AsyncMock(return_value=mock_cz_info)
+        with patch("app.services.unified_kiz_batch_service.batch_verify_and_sync_cises", return_value=mock_sync_result):
             seller.cz_token_encrypted = b"dummy"
-
             res = await create_unified_kiz_signature_batch(seller=seller, db=db, days=90)
             assert res["success"] is True
 
@@ -309,21 +313,17 @@ async def test_unified_reconciliation_integrates_excise_report():
                 "srid": "srid-12345",
             }
         ]
-        mock_cz_info = [
-            {
-                "cis": "0104630199253602215!_x<2R:/KWcL",
-                "status": "INTRODUCED",
-                "ownerInn": "190207495060",
-                "ownerName": "ИП АНАНЬЕВ",
-            }
-        ]
+        rec_excise = KizProductInfo(
+            kiz_code="0104630199253602215!_x<2R:/KWcL",
+            clean_cis="0104630199253602215!_x<2R:/KWcL",
+            cz_status="INTRODUCED",
+            cz_owner_inn="190207495060",
+            cz_owner_name="ИП АНАНЬЕВ",
+            raw_cz_payload={"ownerInn": "190207495060", "ownerName": "ИП АНАНЬЕВ"},
+        )
 
         with patch("app.services.unified_kiz_batch_service.fetch_wb_excise_data", return_value=mock_excise_rows) as mock_fetch, \
-             patch("app.services.unified_kiz_batch_service.CZClient") as MockClient, \
-             patch("app.services.unified_kiz_batch_service.decrypt", return_value="dummy_token"):
-            instance = MockClient.return_value
-            instance.get_cises_info = AsyncMock(return_value=mock_cz_info)
-
+             patch("app.services.unified_kiz_batch_service.batch_verify_and_sync_cises", return_value={"0104630199253602215!_x<2R:/KWcL": rec_excise}):
             res = await create_unified_kiz_signature_batch(seller=seller, db=db, days=30)
             assert res["success"] is True
 

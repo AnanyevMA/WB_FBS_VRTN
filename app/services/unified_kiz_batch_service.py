@@ -20,12 +20,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
-from app.models.kiz import KizSignatureBatch, BatchStatus
+from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
 from app.models.wb_finance import WbSalesReportRow
 from app.models.audit import AuditLog
-from app.services.kiz_service import parse_kiz_code, is_kiz_withdrawn, CZ_STATUS_DESCRIPTIONS
-from app.services.cz_client import CZClient
-from app.services.encryption import decrypt
+from app.services.kiz_service import (
+    parse_kiz_code,
+    is_kiz_withdrawn,
+    CZ_STATUS_DESCRIPTIONS,
+    batch_verify_and_sync_cises,
+)
 from app.services.wb_finance_service import sync_seller_financial_reports
 from app.services.wb_warehouse_sales_service import fetch_wb_excise_data
 from app.services.unified_kiz_payload_builder import (
@@ -174,26 +177,40 @@ async def create_unified_kiz_signature_batch(
                 resold_after_return_count += 1
             sales_candidates[cis] = last_ev
 
-    # 5. Пакетная верификация в True API Честного Знака
+    # 5. Пакетная верификация в True API Честного Знака с Skip-Filter (пропуск чужих владельцев и RETIRED)
     all_cises = list(set(list(sales_candidates.keys()) + list(return_candidates.keys())))
     cz_info_map: Dict[str, Dict[str, Any]] = {}
 
-    if all_cises and seller.cz_token_encrypted:
+    if all_cises:
         try:
-            token = decrypt(seller.cz_token_encrypted)
-            client = CZClient(inn=seller.cz_inn or "", token=token)
-            chunk_size = 500
-            for i in range(0, len(all_cises), chunk_size):
-                chunk = all_cises[i:i + chunk_size]
-                info_list = await client.get_cises_info(chunk)
-                for item in info_list:
-                    info = item.get("cisInfo") or item.get("result") or item
-                    if isinstance(info, dict):
-                        req_cis = item.get("requestedCis") or info.get("requestedCis") or info.get("cis") or item.get("cis")
-                        if req_cis:
-                            cz_info_map[req_cis] = info
+            k_info_map = await batch_verify_and_sync_cises(
+                db=db,
+                seller=seller,
+                kiz_codes=all_cises,
+                force_refresh=False,
+            )
+            for cis_key, rec in k_info_map.items():
+                if not rec:
+                    continue
+                info = dict(rec.raw_cz_payload or {})
+                if rec.cz_status:
+                    info["status"] = rec.cz_status
+                if rec.cz_owner_inn:
+                    info["ownerInn"] = rec.cz_owner_inn
+                if rec.cz_owner_name:
+                    info["ownerName"] = rec.cz_owner_name
+                if rec.cz_producer_inn:
+                    info["producerInn"] = rec.cz_producer_inn
+                if rec.cz_status_ex:
+                    info["statusEx"] = rec.cz_status_ex
+
+                cz_info_map[cis_key] = info
+                if rec.clean_cis:
+                    cz_info_map[rec.clean_cis] = info
+                if rec.kiz_code:
+                    cz_info_map[rec.kiz_code] = info
         except Exception as e:
-            logger.error(f"Failed to batch query True API for unified reconciliation: {e}")
+            logger.error(f"Failed to batch verify True API for unified reconciliation: {e}")
 
     # 6. Формирование выбытий (WITHDRAWALS)
     (

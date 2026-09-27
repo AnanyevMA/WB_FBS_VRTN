@@ -252,14 +252,11 @@
                         <h1 class="page-title">Маркировка и Сканер КИЗ</h1>
                         <p class="page-subtitle">Сканирование DataMatrix, привязка КИЗ, загрузка архива WB и операции с Честным Знаком.</p>
                     </div>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(30)" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB за 30 дней и выявить продажи со склада WB (FBO)">
-                            🏭 Сверить склад WB
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <button class="btn btn-primary" onclick="triggerUnifiedBatch(90)" id="triggerUnifiedBatchBtnKiz" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 600;" title="Проверить все источники: FBS заказы, FBO склад WB, финотчеты за 90 дней и True API">
+                            ⚡ Сверить все источники и сформировать пакет
                         </button>
-                        <button class="btn btn-primary" onclick="triggerAutoBatchNow()" id="triggerAutoBatchBtnKiz" style="background: linear-gradient(135deg, #10b981, #059669);" title="Сформировать пакет вывода и возврата из API WB без файла">
-                            ⚡ Сформировать пакет за сегодня
-                        </button>
-                        <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                        <button class="btn btn-secondary" onclick="openArchiveFileInput()" style="border-color: rgba(124, 58, 237, 0.4); color: #c4b5fd;">
                             📁 Загрузить архив WB (.xlsx)
                         </button>
                         <button class="btn btn-secondary" onclick="triggerCzAction('withdraw')">Выбытие в ЧЗ</button>
@@ -335,13 +332,10 @@
                         <button class="btn btn-secondary" onclick="loadSignatureBatches()">
                             <span>🔄</span> Обновить очередь
                         </button>
-                        <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(30)" id="triggerWarehouseSyncBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB за 30 дней и выявить продажи со склада WB (FBO)">
-                            <span>🏭</span> Сверить склад WB (FBO)
+                        <button class="btn btn-primary" onclick="triggerUnifiedBatch(90)" id="triggerUnifiedBatchBtnHeader" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 600;" title="Проверить все источники: FBS заказы, FBO продажи со склада WB, финотчеты за 90 дней и True API">
+                            <span>⚡</span> Сверить все источники и сформировать пакет
                         </button>
-                        <button class="btn btn-primary" onclick="triggerAutoBatchNow()" id="triggerAutoBatchBtn" style="background: linear-gradient(135deg, #10b981, #059669);" title="Сформировать пакет вывода и возврата из API WB без файла">
-                            <span>⚡</span> Сформировать пакет за сегодня
-                        </button>
-                        <button class="btn btn-primary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                        <button class="btn btn-secondary" onclick="openArchiveFileInput()" style="border-color: rgba(124, 58, 237, 0.4); color: #c4b5fd;">
                             <span>📁</span> Загрузить отчёт (.xlsx)
                         </button>
                     </div>

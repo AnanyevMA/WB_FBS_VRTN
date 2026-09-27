@@ -438,17 +438,14 @@ function renderEmptyBatchState() {
         <div class="glass-card" style="text-align: center; padding: 48px 24px; border: 1px dashed rgba(124, 58, 237, 0.3);">
             <div style="font-size: 40px; margin-bottom: 12px;">🎉</div>
             <h3 style="font-size: 18px; margin-bottom: 8px; color: var(--text-main);">Нет пакетов, ожидающих подписания ЭЦП</h3>
-            <p style="color: var(--text-muted); font-size: 14px; max-width: 500px; margin: 0 auto 20px;">
-                Все операции обработаны. Пакеты формируются автоматически 1 раз в сутки (в 17:00), а также при загрузке <code>archive.xlsx</code> или по кнопке ниже.
+            <p style="color: var(--text-muted); font-size: 14px; max-width: 550px; margin: 0 auto 20px;">
+                Все операции обработаны. Вы можете в 1 клик сверить все источники данных (FBS, FBO продажи со склада WB, детальные финотчеты за 90 дней и статусы в Честном Знаке).
             </p>
-            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="triggerWarehouseSalesSync(30)" style="background: linear-gradient(135deg, #0284c7, #0369a1);" title="Запросить отчет маркировки WB и выявить продажи со склада WB (FBO)">
-                    <span>🏭</span> Сверить склад WB (FBO)
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-primary" id="triggerUnifiedBatchBtnEmpty" onclick="triggerUnifiedBatch(90)" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 15px; padding: 12px 24px; font-weight: 700; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
+                    <span>⚡</span> Сверить все источники и сформировать пакет
                 </button>
-                <button class="btn btn-primary" onclick="triggerAutoBatchNow()" style="background: linear-gradient(135deg, #10b981, #059669);">
-                    <span>⚡</span> Сформировать пакет за сегодня
-                </button>
-                <button class="btn btn-secondary" onclick="openArchiveFileInput()" style="background: linear-gradient(135deg, #7c3aed, #4f46e5);">
+                <button class="btn btn-secondary" onclick="openArchiveFileInput()" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);">
                     <span>📁</span> Загрузить отчёт вручную
                 </button>
             </div>
@@ -490,9 +487,12 @@ function renderActiveBatch(batch) {
                         Файл: <b>${batch.filename}</b> · Источник: ${sourceIcon} · Получен: ${dateStr}
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button class="btn btn-secondary btn-sm" id="btnSyncBatchCz" onclick="syncBatchCzLive('${batch.id}')" title="Запросить свежие статусы всех кодов КИЗ напрямую из ГИС МТ True API" style="display: flex; align-items: center; gap: 4px;">
                         <span>🔄</span> Сверить с ЧЗ
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="triggerUnifiedBatch(90)" style="background: linear-gradient(135deg, #10b981, #059669);" title="Пересобрать единый пакет по всем источникам (FBS, FBO, отчеты за 90 дней)">
+                        <span>⚡</span> Пересобрать пакет
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="cancelBatchAction('${batch.id}')" title="Отменить этот пакет">
                         ✕ Отклонить
@@ -1047,6 +1047,56 @@ async function triggerWarehouseSalesSync(days = 30) {
     }
 }
 
+async function triggerUnifiedBatch(days = 90) {
+    if (!currentSellerId && currentSellersList && currentSellersList.length > 0) {
+        currentSellerId = currentSellersList[0].id;
+    }
+    if (!currentSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активного продавца в верхнем меню', 'error');
+    }
+
+    const btns = [
+        document.getElementById('triggerUnifiedBatchBtnEmpty'),
+        document.getElementById('triggerUnifiedBatchBtnHeader'),
+        document.getElementById('triggerUnifiedBatchBtnKiz'),
+    ].filter(Boolean);
+
+    const origTexts = btns.map(b => b.innerHTML);
+    btns.forEach(b => {
+        b.disabled = true;
+        b.innerHTML = '<span>⏳</span> Сверка всех источников...';
+    });
+
+    showToast('Единая сверка', `Сверяем заказы FBS, склад WB и финотчеты за ${days} дней с Честным Знаком...`, 'info');
+
+    try {
+        const res = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches/unified-reconcile`, {
+            method: 'POST',
+            body: JSON.stringify({ days: days, sync_finance_api: false })
+        });
+
+        if (res.success) {
+            const s = res.summary || {};
+            showToast(
+                'Сверка завершена',
+                `Единый пакет готов! Выбытие: ${s.sales_needing_withdrawal || 0}, возврат: ${s.returns_needing_cz_return || 0} (перемаркировка РВБ: ${s.wb_owned_remarking_count || 0})`,
+                'success'
+            );
+            await loadSignatureBatches();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            showToast('Внимание', res.message || 'Не удалось сформировать пакет', 'warning');
+        }
+    } catch (e) {
+        showToast('Ошибка', `Ошибка единой сверки: ${e.message}`, 'error');
+    } finally {
+        btns.forEach((b, i) => {
+            b.disabled = false;
+            b.innerHTML = origTexts[i];
+        });
+    }
+}
+
 // Global window bindings for inline HTML onclick handlers
 window.openArchiveFileInput = openArchiveFileInput;
 window.handleArchiveFileSelect = handleArchiveFileSelect;
@@ -1068,6 +1118,8 @@ window.switchBatchTab = switchBatchTab;
 window.viewBatchDetailsModal = viewBatchDetailsModal;
 window.triggerAutoBatchNow = triggerAutoBatchNow;
 window.triggerWarehouseSalesSync = triggerWarehouseSalesSync;
+window.triggerUnifiedBatch = triggerUnifiedBatch;
+
 
 
 

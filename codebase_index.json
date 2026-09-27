@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T04:15:09.686469+00:00",
+  "updated_at": "2026-09-27T04:38:57.474102+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 142,
+  "total_files": 146,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2574,7 +2574,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "0d9d0190a839",
+      "hash": "942b2672f8ee",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2589,7 +2589,7 @@
           "decorators": [
             "router.get('/kiz/signature-batches')"
           ],
-          "docstring": "Возвращает список пакетов операций с маркировкой (загруженных через Telegram или Web)."
+          "docstring": "Возвращает список пакетов операций с маркировкой."
         },
         {
           "name": "get_signature_batch",
@@ -2602,7 +2602,7 @@
           "decorators": [
             "router.get('/kiz/signature-batches/{batch_id}')"
           ],
-          "docstring": "Возвращает подробные данные пакета (списки продаж с чеками и возвратов)."
+          "docstring": "Возвращает подробные данные пакета (списки выбытия и возврата)."
         },
         {
           "name": "sync_signature_batch_cz",
@@ -2646,6 +2646,19 @@
           "docstring": "Принимает подписанные браузерным плагином документы или запускает серверную обработку пакета."
         },
         {
+          "name": "trigger_unified_batch_reconcile",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/kiz/signature-batches/unified-reconcile')"
+          ],
+          "docstring": "Единая точка входа сверки: объединяет FBS заказы, FBO продажи со склада WB,"
+        },
+        {
           "name": "cancel_signature_batch",
           "is_async": true,
           "args": [
@@ -2664,13 +2677,13 @@
           "method": "GET",
           "path": "/kiz/signature-batches",
           "handler": "list_signature_batches",
-          "docstring": "Возвращает список пакетов операций с маркировкой (загруженных через Telegram или Web)."
+          "docstring": "Возвращает список пакетов операций с маркировкой."
         },
         {
           "method": "GET",
           "path": "/kiz/signature-batches/{batch_id}",
           "handler": "get_signature_batch",
-          "docstring": "Возвращает подробные данные пакета (списки продаж с чеками и возвратов)."
+          "docstring": "Возвращает подробные данные пакета (списки выбытия и возврата)."
         },
         {
           "method": "POST",
@@ -2691,6 +2704,12 @@
           "docstring": "Принимает подписанные браузерным плагином документы или запускает серверную обработку пакета."
         },
         {
+          "method": "POST",
+          "path": "/kiz/signature-batches/unified-reconcile",
+          "handler": "trigger_unified_batch_reconcile",
+          "docstring": "Единая точка входа сверки: объединяет FBS заказы, FBO продажи со склада WB,"
+        },
+        {
           "method": "DELETE",
           "path": "/kiz/signature-batches/{batch_id}",
           "handler": "cancel_signature_batch",
@@ -2700,23 +2719,15 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
-        "app.agents.cz_return",
-        "app.agents.cz_withdrawal",
         "app.database",
         "app.models.kiz",
-        "app.models.order",
         "app.models.seller",
-        "app.services.cz_client",
-        "app.services.encryption",
-        "app.services.kiz_service",
-        "app.services.telegram_service",
-        "copy",
-        "datetime",
+        "app.services.signature_batch_executor",
+        "app.services.unified_kiz_batch_service",
         "fastapi",
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
-        "sqlalchemy.orm.attributes",
         "typing"
       ]
     },
@@ -5771,7 +5782,7 @@
     {
       "file": "app/services/encryption.py",
       "layer": "services",
-      "hash": "32d6fa175d8a",
+      "hash": "60dd7647fffc",
       "docstring": "Encryption Service — шифрование чувствительных данных (токены API, credentials)",
       "classes": [
         {
@@ -5808,7 +5819,7 @@
             "value"
           ],
           "decorators": [],
-          "docstring": "Decrypt a Fernet-encrypted string. Returns plaintext."
+          "docstring": "Decrypt a Fernet-encrypted string or bytes. Returns plaintext."
         }
       ],
       "endpoints": [],
@@ -5818,7 +5829,8 @@
         "app.config",
         "base64",
         "cryptography.fernet",
-        "logging"
+        "logging",
+        "typing"
       ]
     },
     {
@@ -5971,6 +5983,94 @@
         "sqlalchemy.ext.asyncio",
         "typing",
         "uuid"
+      ]
+    },
+    {
+      "file": "app/services/signature_batch_executor.py",
+      "layer": "services",
+      "hash": "3a33c15e661c",
+      "docstring": "Signature Batch Executor Service.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "sync_batch_with_cz_data",
+          "is_async": true,
+          "args": [
+            "seller",
+            "batch",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Принудительная живая сверка всех кодов маркировки пакета с True API Честного Знака."
+        },
+        {
+          "name": "build_batch_signing_payloads",
+          "is_async": false,
+          "args": [
+            "seller",
+            "batch",
+            "selected_kiz_list"
+          ],
+          "decorators": [],
+          "docstring": "Формирует неподписанные канонические документы (LK_RECEIPT и LP_RETURN)"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.signature_batch_submitter",
+        "copy",
+        "datetime",
+        "logging",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.orm.attributes",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/signature_batch_submitter.py",
+      "layer": "services",
+      "hash": "1b3e8454a2f3",
+      "docstring": "Signature Batch Submitter Service.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "execute_signed_batch_submission",
+          "is_async": true,
+          "args": [
+            "seller",
+            "batch",
+            "payload",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Отправляет подписанные браузером или сервером документы в ГИС МТ (Честный Знак)."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.agents.cz_withdrawal",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.telegram_service",
+        "datetime",
+        "logging",
+        "sqlalchemy.ext.asyncio",
+        "typing"
       ]
     },
     {
@@ -6145,6 +6245,65 @@
         "time",
         "typing",
         "zoneinfo"
+      ]
+    },
+    {
+      "file": "app/services/unified_kiz_batch_service.py",
+      "layer": "services",
+      "hash": "a3d540d8ff32",
+      "docstring": "Unified KIZ Batch Reconciliation Service.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_is_return_row",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_is_sale_row",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "create_unified_kiz_signature_batch",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "days",
+            "sync_finance_api"
+          ],
+          "decorators": [],
+          "docstring": "Создает единый пакет сверки маркировки по ВСЕМ источникам данных:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.wb_finance_service",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
       ]
     },
     {
@@ -10610,6 +10769,70 @@
       ]
     },
     {
+      "file": "tests/test_unified_kiz_batch.py",
+      "layer": "tests",
+      "hash": "7691a1244f0c",
+      "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_unified_reconciliation_ownership_and_chronology",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sync_batch_with_cz_data_preserves_owner_safety",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify sync_batch_with_cz_data never turns WB-owned items into return candidates."
+        },
+        {
+          "name": "test_unified_reconcile_api_endpoint",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify POST /api/v1/sellers/{seller_id}/kiz/signature-batches/unified-reconcile."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.auth_service",
+        "app.services.signature_batch_executor",
+        "app.services.unified_kiz_batch_service",
+        "datetime",
+        "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_wb_finance.py",
       "layer": "tests",
       "hash": "5478d65562f9",
@@ -10993,7 +11216,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "34cedf68f221",
+      "hash": "4d6445cb50c0",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

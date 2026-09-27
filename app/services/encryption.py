@@ -4,6 +4,7 @@ Encryption Service — шифрование чувствительных дан�
 """
 import base64
 import logging
+from typing import Any, Union
 try:
     from cryptography.fernet import Fernet, InvalidToken
     HAS_FERNET = True
@@ -43,10 +44,15 @@ def encrypt(value: str) -> str:
         raise
 
 
-def decrypt(value: str) -> str:
-    """Decrypt a Fernet-encrypted string. Returns plaintext."""
+def decrypt(value: Any) -> str:
+    """Decrypt a Fernet-encrypted string or bytes. Returns plaintext."""
     if not value:
         return ""
+    if isinstance(value, bytes):
+        try:
+            value = value.decode("utf-8")
+        except UnicodeDecodeError:
+            value = base64.b64encode(value).decode("utf-8")
     if not HAS_FERNET:
         try:
             return base64.b64decode(value.encode()).decode()

@@ -152,11 +152,11 @@ crontab -e
 # 2. Ежесуточный бэкап базы данных PostgreSQL (04:00)
 0 4 * * * /PROJECTS/WB_FBS_VRTN/wb-fbs/scripts/backup_db.sh >> /PROJECTS/WB_FBS_VRTN/wb-fbs/logs/backup.log 2>&1
 
-# 3. Еженедельный сброс фрагментированной памяти Python (bot + scheduler) в воскресенье (04:15)
-15 4 * * 0 cd /PROJECTS/WB_FBS_VRTN/wb-fbs && docker compose -f docker-compose.prod.yml restart bot scheduler >> /PROJECTS/WB_FBS_VRTN/wb-fbs/logs/cleanup.log 2>&1
+# 3. Ежесуточный сброс фрагментированной памяти Python (bot + scheduler) в 04:15
+15 4 * * * cd /PROJECTS/WB_FBS_VRTN/wb-fbs && docker compose -f docker-compose.prod.yml restart bot scheduler >> /PROJECTS/WB_FBS_VRTN/wb-fbs/logs/cleanup.log 2>&1
 
 # 4. Watchdog упреждающей защиты от OOM и мониторинга здоровья (каждые 15 минут)
-*/15 * * * * /PROJECTS/WB_FBS_VRTN/wb-fbs/scripts/watchdog.sh >> /PROJECTS/WB_FBS_VRTN/wb-fbs/logs/watchdog.log 2>&1
+*/15 * * * * /bin/bash /PROJECTS/WB_FBS_VRTN/wb-fbs/scripts/watchdog.sh >> /PROJECTS/WB_FBS_VRTN/wb-fbs/logs/watchdog.log 2>&1
 ```
 
 ---

@@ -81,32 +81,34 @@ def build_unified_withdrawals_payload(
             or now_utc.strftime("%Y-%m-%d")
         )
 
-        withdrawals_payload.append({
-            "order_id": fbs_order.id if fbs_order else None,
-            "sticker_id": fbs_order.sticker_id if fbs_order else None,
-            "kiz_code": ev.get("raw_kiz") or cis,
-            "clean_cis": cis,
-            "receipt_number": receipt_num,
-            "fn_number": fn_num,
-            "receipt_date": receipt_dt,
-            "price": price_val,
-            "price_kopecks": int(round(price_val * 100)),
-            "article": ev.get("article") or (fbs_order.article if fbs_order else ""),
-            "name": ev.get("name") or ((fbs_order.name or fbs_order.subject) if fbs_order else "Товар WB"),
-            "task_status": "Продажа WB (выбытие)",
-            "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
-            "cz_status": cz_status or "UNKNOWN",
-            "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
-            "cz_owner_inn": owner_inn,
-            "cz_owner_name": owner_name,
-            "cz_producer_inn": producer_inn,
-            "is_seller_owner": is_seller,
-            "is_wb_owned": is_wb,
-            "is_already_withdrawn": withdrawn,
-            "needs_withdrawal": needs_withdrawal,
-            "action_recommended": action_rec,
-            "selected": selected,
-        })
+        # В рабочий список выбытия включаем ТОЛЬКО позиции, реально требующие вывода
+        if needs_withdrawal:
+            withdrawals_payload.append({
+                "order_id": fbs_order.id if fbs_order else None,
+                "sticker_id": fbs_order.sticker_id if fbs_order else None,
+                "kiz_code": ev.get("raw_kiz") or cis,
+                "clean_cis": cis,
+                "receipt_number": receipt_num,
+                "fn_number": fn_num,
+                "receipt_date": receipt_dt,
+                "price": price_val,
+                "price_kopecks": int(round(price_val * 100)),
+                "article": ev.get("article") or (fbs_order.article if fbs_order else ""),
+                "name": ev.get("name") or ((fbs_order.name or fbs_order.subject) if fbs_order else "Товар WB"),
+                "task_status": "Продажа WB (выбытие)",
+                "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
+                "cz_status": cz_status or "UNKNOWN",
+                "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
+                "cz_owner_inn": owner_inn,
+                "cz_owner_name": owner_name,
+                "cz_producer_inn": producer_inn,
+                "is_seller_owner": is_seller,
+                "is_wb_owned": is_wb,
+                "is_already_withdrawn": withdrawn,
+                "needs_withdrawal": needs_withdrawal,
+                "action_recommended": action_rec,
+                "selected": selected,
+            })
 
     return (
         withdrawals_payload,
@@ -174,33 +176,35 @@ def build_unified_returns_payload(
         receipt_num = str(ev.get("rrd_id") or (fbs_order.id if fbs_order else "1"))
         receipt_dt = str(ev.get("rr_date") or now_utc.strftime("%Y-%m-%d"))
 
-        returns_payload.append({
-            "order_id": fbs_order.id if fbs_order else None,
-            "sticker_id": fbs_order.sticker_id if fbs_order else None,
-            "kiz_code": ev.get("raw_kiz") or cis,
-            "clean_cis": cis,
-            "receipt_number": receipt_num,
-            "receipt_date": receipt_dt,
-            "price": price_val,
-            "price_kopecks": int(round(price_val * 100)),
-            "article": ev.get("article") or (fbs_order.article if fbs_order else ""),
-            "name": ev.get("name") or ((fbs_order.name or fbs_order.subject) if fbs_order else "Товар WB"),
-            "task_status": "Возврат WB",
-            "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
-            "cz_status": cz_status or "UNKNOWN",
-            "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
-            "cz_owner_inn": owner_inn,
-            "cz_owner_name": owner_name,
-            "cz_producer_inn": producer_inn,
-            "is_seller_owner": is_seller,
-            "is_wb_owned": is_wb,
-            "is_already_in_circulation": is_already_in_circ,
-            "needs_cz_return": needs_cz_return,
-            "needs_remarking": needs_remarking,
-            "return_mode": return_mode,
-            "action_recommended": action_rec,
-            "selected": selected,
-        })
+        # В рабочий список возвратов включаем ТОЛЬКО позиции, реально требующие ввода в оборот
+        if needs_cz_return:
+            returns_payload.append({
+                "order_id": fbs_order.id if fbs_order else None,
+                "sticker_id": fbs_order.sticker_id if fbs_order else None,
+                "kiz_code": ev.get("raw_kiz") or cis,
+                "clean_cis": cis,
+                "receipt_number": receipt_num,
+                "receipt_date": receipt_dt,
+                "price": price_val,
+                "price_kopecks": int(round(price_val * 100)),
+                "article": ev.get("article") or (fbs_order.article if fbs_order else ""),
+                "name": ev.get("name") or ((fbs_order.name or fbs_order.subject) if fbs_order else "Товар WB"),
+                "task_status": "Возврат WB",
+                "db_status": fbs_order.status.value if fbs_order else "Архив/FBO",
+                "cz_status": cz_status or "UNKNOWN",
+                "cz_status_desc": CZ_STATUS_DESCRIPTIONS.get(cz_status or "", cz_status or "Не проверен"),
+                "cz_owner_inn": owner_inn,
+                "cz_owner_name": owner_name,
+                "cz_producer_inn": producer_inn,
+                "is_seller_owner": is_seller,
+                "is_wb_owned": is_wb,
+                "is_already_in_circulation": is_already_in_circ,
+                "needs_cz_return": needs_cz_return,
+                "needs_remarking": False,
+                "return_mode": return_mode,
+                "action_recommended": action_rec,
+                "selected": selected,
+            })
 
     return (
         returns_payload,

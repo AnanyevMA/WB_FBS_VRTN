@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-27T13:41:38.188437+00:00",
+  "updated_at": "2026-09-28T14:22:53.026339+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 147,
   "files": [
@@ -6310,7 +6310,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "9de28acdaa41",
+      "hash": "a1948db4b3b3",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -10826,7 +10826,7 @@
     {
       "file": "tests/test_unified_kiz_batch.py",
       "layer": "tests",
-      "hash": "9cf7565fe5da",
+      "hash": "97548202f801",
       "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
       "classes": [],
       "functions": [

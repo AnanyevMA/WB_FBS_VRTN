@@ -156,23 +156,25 @@ async def test_unified_reconciliation_ownership_and_chronology():
             assert summary["sales_wb_owned_count"] == 1
 
             withdrawals = batch.data_payload["withdrawals"]
-            wb_sale = next(w for w in withdrawals if w["clean_cis"] == "0104603702055109215WBSALEITEM1")
-            assert wb_sale["needs_withdrawal"] is False
-            assert wb_sale["is_wb_owned"] is True
-            assert wb_sale["selected"] is False
-            assert "РВБ" in wb_sale["action_recommended"]
+            assert len(withdrawals) == 1  # Only actionable seller-owned withdrawal!
+            seller_sale = withdrawals[0]
+            assert seller_sale["clean_cis"] == "0104603702055109215RESOLDITEM1"
+            assert seller_sale["needs_withdrawal"] is True
+            assert seller_sale["is_seller_owner"] is True
+            assert seller_sale["selected"] is True
+
+            # WB-owned items must NOT clutter the actionable lists
+            assert not any(w["clean_cis"] == "0104603702055109215WBSALEITEM1" for w in withdrawals)
 
             returns = batch.data_payload["returns"]
-            wb_item = next(r for r in returns if r["clean_cis"] == "0104603702055109215WBOWNED1234")
-            assert wb_item["needs_cz_return"] is False
-            assert wb_item["needs_remarking"] is True
-            assert wb_item["selected"] is False
-            assert "РВБ" in wb_item["action_recommended"]
-
-            seller_item = next(r for r in returns if r["clean_cis"] == "0104603702055109215SELLEROWN12")
+            assert len(returns) == 1  # Only actionable seller-owned return!
+            seller_item = returns[0]
+            assert seller_item["clean_cis"] == "0104603702055109215SELLEROWN12"
             assert seller_item["needs_cz_return"] is True
-            assert seller_item["needs_remarking"] is False
             assert seller_item["selected"] is True
+
+            # WB-owned return items must NOT clutter the actionable lists
+            assert not any(r["clean_cis"] == "0104603702055109215WBOWNED1234" for r in returns)
 
             # Test build_batch_signing_payloads: WB item must NOT be generated into LP_RETURN or LK_RECEIPT
             seller.cz_token_encrypted = None
@@ -183,8 +185,8 @@ async def test_unified_reconciliation_ownership_and_chronology():
             assert "RETURN" in actions
             # WB-owned items must be strictly omitted
             codes = [d["kiz_code"] for d in docs["documents"]]
-            assert wb_item["kiz_code"] not in codes
-            assert wb_sale["kiz_code"] not in codes
+            assert "0104603702055109215WBOWNED1234" not in codes
+            assert "0104603702055109215WBSALEITEM1" not in codes
             assert seller_item["kiz_code"] in codes
 
 

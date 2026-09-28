@@ -458,14 +458,17 @@ function renderActiveBatch(batch) {
     if (!container) return;
 
     const data = batch.data_payload || {};
-    const withdrawals = data.withdrawals || [];
-    const returns = data.returns || [];
+    const rawWithdrawals = data.withdrawals || [];
+    const rawReturns = data.returns || [];
+    // Отображаем ТОЛЬКО позиции, реально требующие действий пользователя (выбытие / возврат)
+    const withdrawals = rawWithdrawals.filter(w => w.needs_withdrawal !== false && !w.is_already_withdrawn && !w.is_wb_owned);
+    const returns = rawReturns.filter(r => r.needs_cz_return !== false && !r.is_already_in_circulation && !r.is_wb_owned);
     const summary = data.summary || {};
 
-    const sales_needing = summary.sales_needing_withdrawal !== undefined ? summary.sales_needing_withdrawal : (batch.sales_count || 0);
-    const returns_needing = summary.returns_needing_cz_return !== undefined ? summary.returns_needing_cz_return : (batch.returns_count || 0);
+    const sales_needing = summary.sales_needing_withdrawal !== undefined ? summary.sales_needing_withdrawal : withdrawals.length;
+    const returns_needing = summary.returns_needing_cz_return !== undefined ? summary.returns_needing_cz_return : returns.length;
     const already_withdrawn = summary.sales_already_withdrawn !== undefined ? summary.sales_already_withdrawn : (batch.already_withdrawn_count || 0);
-    const already_in_circ = summary.returns_already_in_circulation !== undefined ? summary.returns_already_in_circulation : Math.max(0, returns.length - returns_needing);
+    const already_in_circ = summary.returns_already_in_circulation !== undefined ? summary.returns_already_in_circulation : 0;
 
     const totalToSign = sales_needing + returns_needing;
     const dateStr = batch.created_at ? new Date(batch.created_at).toLocaleString('ru-RU') : '—';
@@ -488,7 +491,7 @@ function renderActiveBatch(batch) {
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <button class="btn btn-secondary btn-sm" id="btnSyncBatchCz" onclick="syncBatchCzLive('${batch.id}')" title="Запросить свежие статусы всех кодов КИЗ напрямую из ГИС МТ True API" style="display: flex; align-items: center; gap: 4px;">
+                    <button class="btn btn-secondary btn-sm" id="btnSyncBatchCz" onclick="syncBatchCzLive('${batch.id}')" title="Запросить свежие статусы кодов маркировки из ГИС МТ True API" style="display: flex; align-items: center; gap: 4px;">
                         <span>🔄</span> Сверить с ЧЗ
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="triggerUnifiedBatch(90)" style="background: linear-gradient(135deg, #10b981, #059669);" title="Пересобрать единый пакет по всем источникам (FBS, FBO, отчеты за 90 дней)">
@@ -520,7 +523,7 @@ function renderActiveBatch(batch) {
                 <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 12px 16px; border-radius: 8px;">
                     <div style="font-size: 11px; color: #60a5fa; font-weight: 600;">УЖЕ В ОБОРОТЕ</div>
                     <div style="font-size: 22px; font-weight: 700; color: #60a5fa; margin-top: 2px;">${already_in_circ}</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">Готовы к привязке</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Готовы к продаже</div>
                 </div>
             </div>
 
@@ -555,10 +558,10 @@ function renderActiveBatch(batch) {
             <!-- Detail Tabs for Sales with Receipts and Returns -->
             <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
                 <button id="batchTabSalesBtn" class="btn" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border-bottom: 2px solid #22c55e; border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600;" onclick="switchBatchTab('sales')">
-                    🟢 Продажи с чеками (${withdrawals.length}) ${sales_needing > 0 ? `<span style="font-size:11px; opacity:0.85;">(${sales_needing} к выводу)</span>` : ''}
+                    🟢 К выводу из оборота (${withdrawals.length})
                 </button>
                 <button id="batchTabReturnsBtn" class="btn" style="background: transparent; color: var(--text-muted); border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600;" onclick="switchBatchTab('returns')">
-                    🔄 Возвраты в оборот (${returns.length}) ${returns_needing > 0 ? `<span style="font-size:11px; opacity:0.85;">(${returns_needing} к возврату)</span>` : ''}
+                    🔄 К возврату в оборот (${returns.length})
                 </button>
             </div>
 
@@ -568,16 +571,18 @@ function renderActiveBatch(batch) {
                     <div style="font-size: 13px; color: var(--text-muted);">
                         Будет сформирован документ вывода из оборота ГИС МТ (<code>LK_RECEIPT</code>) по причине «Дистанционная продажа».
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('withdrawals', true)">Выбрать все</button>
-                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('withdrawals', false)">Снять выбор</button>
-                    </div>
+                    ${withdrawals.length > 0 ? `
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('withdrawals', true)">Выбрать все</button>
+                            <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('withdrawals', false)">Снять выбор</button>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="table-container" style="max-height: 340px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="batchSelectAllWithdrawals" onchange="toggleAllBatchCheckboxes('withdrawals', this.checked)" ${sales_needing > 0 ? 'checked' : ''}></th>
+                                <th style="width: 40px;"><input type="checkbox" id="batchSelectAllWithdrawals" onchange="toggleAllBatchCheckboxes('withdrawals', this.checked)" ${withdrawals.length > 0 ? 'checked' : ''}></th>
                                 <th>№ задания</th>
                                 <th>Стикер</th>
                                 <th>КИЗ / Код маркировки</th>
@@ -588,25 +593,21 @@ function renderActiveBatch(batch) {
                             </tr>
                         </thead>
                         <tbody>
-                            ${withdrawals.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding:16px; color:var(--text-muted);">Нет продаж для вывода</td></tr>' : 
+                            ${withdrawals.length === 0 ? `
+                                <tr>
+                                    <td colspan="8" style="text-align:center; padding:32px 16px; color:var(--text-muted);">
+                                        <div style="font-size:24px; margin-bottom:6px;">✅</div>
+                                        <div style="font-size:14px; font-weight:600; color:var(--text-main);">Все проверенные продажи уже выведены из оборота</div>
+                                        <div style="font-size:12px; margin-top:2px;">Позиций, требующих подписания выбытия (LK_RECEIPT), не обнаружено.</div>
+                                    </td>
+                                </tr>
+                            ` : 
                                 withdrawals.map((w, idx) => {
-                                    const needsWithdrawal = Boolean(w.needs_withdrawal);
-                                    const isSelected = w.selected !== false && needsWithdrawal;
-                                    let statusBadge = '';
-                                    if (w.is_already_withdrawn) {
-                                        statusBadge = `<span class="badge badge-delivered">✅ Выведен</span>`;
-                                    } else if (w.is_wb_owned) {
-                                        statusBadge = `<span class="badge" style="background:rgba(124,58,237,0.18); color:#c4b5fd; font-weight:600;">🏢 Баланс ООО «РВБ»</span>`;
-                                    } else if (needsWithdrawal) {
-                                        statusBadge = `<span class="badge badge-warning">⚠️ Требует выбытия</span>`;
-                                    } else {
-                                        statusBadge = `<span class="badge" style="background:rgba(148,163,184,0.15); color:#cbd5e1;">Сторонний владелец</span>`;
-                                    }
-                                    const subDesc = w.action_recommended || (w.is_wb_owned ? 'Вывод осуществляет WB' : (w.cz_status_desc || ''));
+                                    const isSelected = w.selected !== false;
                                     const safeKiz = (w.kiz_code || '').replace(/"/g, '&quot;');
                                     return `
-                                        <tr style="${!needsWithdrawal ? 'opacity: 0.75;' : ''}">
-                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${safeKiz}" ${isSelected ? 'checked' : ''} ${!needsWithdrawal ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onchange="updateBatchSelectedCount()"></td>
+                                        <tr>
+                                            <td><input type="checkbox" class="batch-item-withdrawal" data-idx="${idx}" data-kiz="${safeKiz}" ${isSelected ? 'checked' : ''} onchange="updateBatchSelectedCount()"></td>
                                             <td style="font-weight:600;">#${w.order_id || '—'}</td>
                                             <td><code>${w.sticker_id || '—'}</code></td>
                                             <td style="font-family: monospace; font-size: 11px;">${w.kiz_code || '—'}</td>
@@ -618,8 +619,8 @@ function renderActiveBatch(batch) {
                                             <td>${w.price ? w.price.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
                                             <td>
                                                 <div style="display:flex; flex-direction:column; gap:2px;">
-                                                    ${statusBadge}
-                                                    ${subDesc ? `<span style="font-size:10px; color:var(--text-muted); max-width:220px;">${subDesc}</span>` : ''}
+                                                    <span class="badge badge-warning">⚠️ Требует выбытия</span>
+                                                    ${w.action_recommended ? `<span style="font-size:10px; color:var(--text-muted); max-width:220px;">${w.action_recommended}</span>` : ''}
                                                 </div>
                                             </td>
                                         </tr>
@@ -635,36 +636,39 @@ function renderActiveBatch(batch) {
             <div id="batchTabReturnsContent" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div style="font-size: 13px; color: var(--text-muted);">
-                        Товары, от которых покупатель отказался. Если КИЗ был выведен, сформируется документ возврата в оборот (<code>LP_RETURN</code>).
+                        Товары, от которых покупатель отказался. Если КИЗ выбыл из оборота, сформируется документ возврата (<code>LP_RETURN</code>).
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('returns', true)">Выбрать все</button>
-                        <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('returns', false)">Снять выбор</button>
-                    </div>
+                    ${returns.length > 0 ? `
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('returns', true)">Выбрать все</button>
+                            <button class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;" onclick="toggleAllBatchCheckboxes('returns', false)">Снять выбор</button>
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="table-container" style="max-height: 340px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 40px;"><input type="checkbox" id="batchSelectAllReturns" onchange="toggleAllBatchCheckboxes('returns', this.checked)" ${returns_needing > 0 ? 'checked' : ''}></th>
+                                <th style="width: 40px;"><input type="checkbox" id="batchSelectAllReturns" onchange="toggleAllBatchCheckboxes('returns', this.checked)" ${returns.length > 0 ? 'checked' : ''}></th>
                                 <th>№ задания</th>
                                 <th>Стикер</th>
                                 <th>КИЗ / Код маркировки</th>
                                 <th>Товар</th>
-                                <th>Рекомендуемое действие</th>
-                                <th>Статус в ЧЗ</th>
+                                <th>Статус</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${returns.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--text-muted);">Нет возвратов для ввода</td></tr>' : 
+                            ${returns.length === 0 ? `
+                                <tr>
+                                    <td colspan="6" style="text-align:center; padding:32px 16px; color:var(--text-muted);">
+                                        <div style="font-size:24px; margin-bottom:6px;">✅</div>
+                                        <div style="font-size:14px; font-weight:600; color:var(--text-main);">Все возвращенные товары уже находятся в обороте</div>
+                                        <div style="font-size:12px; margin-top:2px;">Позиций, требующих подписания возврата (LP_RETURN), не обнаружено.</div>
+                                    </td>
+                                </tr>
+                            ` : 
                                 returns.map((r, idx) => {
-                                    const needsReturn = Boolean(r.needs_cz_return);
-                                    const isSelected = r.selected !== false && needsReturn;
-                                    const statusBadge = r.needs_remarking
-                                        ? `<span class="badge" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); font-weight:600;">⛔ Перемаркировка</span>`
-                                        : (needsReturn
-                                            ? `<span class="badge badge-warning">⚠️ Требует возврата</span>`
-                                            : `<span class="badge badge-delivered">✅ В обороте</span>`);
+                                    const isSelected = r.selected !== false;
                                     const safeKiz = (r.kiz_code || '').replace(/"/g, '&quot;');
                                     return `
                                         <tr>
@@ -676,12 +680,10 @@ function renderActiveBatch(batch) {
                                                 <div style="font-weight:500;">${r.name || 'Товар'}</div>
                                                 <div style="font-size:11px; color:var(--text-muted);">${r.article || ''}</div>
                                             </td>
-                                            <td><span class="badge ${r.needs_remarking ? 'badge-cancelled' : (needsReturn ? 'badge-warning' : 'badge-delivered')}">${r.action_recommended || (needsReturn ? '⚠️ Требует возврата' : '✅ В обороте')}</span></td>
                                             <td>
                                                 <div style="display:flex; flex-direction:column; gap:2px;">
-                                                    ${statusBadge}
+                                                    <span class="badge badge-warning">⚠️ Требует возврата</span>
                                                     ${r.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${r.cz_status_desc}</span>` : ''}
-                                                    ${r.cz_owner_name ? `<span style="font-size:10px; color:#60a5fa; font-weight:500;">👤 ${r.cz_owner_name}</span>` : ''}
                                                 </div>
                                             </td>
                                         </tr>

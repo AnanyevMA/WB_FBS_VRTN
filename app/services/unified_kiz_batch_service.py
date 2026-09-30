@@ -123,10 +123,12 @@ async def create_unified_kiz_signature_batch(
         parsed = parse_kiz_code(o.kiz_code)
         cis = parsed.get("clean_cis") or o.kiz_code
         ev_date = o.updated_at or o.created_at or now_utc
-        if o.status == OrderStatus.DELIVERED or o.kiz_status == KizStatus.WITHDRAWN:
-            history_by_cis.setdefault(cis, []).append({"source": "fbs_order", "type": "SALE", "date": ev_date, "order": o})
-        elif o.status == OrderStatus.CANCELLED or o.kiz_status == KizStatus.RETURNED:
+        if o.status == OrderStatus.CANCELLED or o.kiz_status == KizStatus.RETURNED or o.wb_status in ["canceled", "canceled_by_client", "declined_by_client", "defect"]:
+            if o.kiz_status == KizStatus.WITHDRAWN or o.cz_withdrawal_doc_id:
+                history_by_cis.setdefault(cis, []).append({"source": "fbs_order", "type": "SALE", "date": o.created_at or ev_date, "order": o})
             history_by_cis.setdefault(cis, []).append({"source": "fbs_order", "type": "RETURN", "date": ev_date, "order": o})
+        elif o.status == OrderStatus.DELIVERED or o.kiz_status == KizStatus.WITHDRAWN or o.wb_status == "sold":
+            history_by_cis.setdefault(cis, []).append({"source": "fbs_order", "type": "SALE", "date": ev_date, "order": o})
 
     # 2.5. Загрузка оперативных онлайн продаж из WB Analytics excise-report (кассовые чеки)
     excise_count = 0

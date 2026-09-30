@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-30T11:42:05.218302+00:00",
+  "updated_at": "2026-09-30T11:53:04.577727+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 149,
   "files": [
@@ -6252,7 +6252,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "615d2f7ce682",
+      "hash": "2ec6ac4b167e",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [

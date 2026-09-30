@@ -170,6 +170,16 @@ async def create_unified_kiz_signature_batch(
         last_ev = sorted_ev[-1]
         had_return = any(e["type"] == "RETURN" for e in sorted_ev)
 
+        # Сквозное сопоставление по srid: если продажа имеет тот же srid, что и возврат,
+        # то данная продажа аннулирована возвратом покупателя!
+        if last_ev["type"] == "SALE" and last_ev.get("srid"):
+            matching_return = next(
+                (e for e in sorted_ev if e["type"] == "RETURN" and e.get("srid") == last_ev.get("srid")),
+                None,
+            )
+            if matching_return:
+                last_ev = matching_return
+
         if last_ev["type"] == "RETURN":
             return_candidates[cis] = last_ev
         elif last_ev["type"] == "SALE":

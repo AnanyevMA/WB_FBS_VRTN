@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus
 from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
+from app.models.wb_finance import WbSalesReportRow
 from app.models.audit import AuditLog
 from app.services.encryption import decrypt
 from app.services.wb_analytics_client import WBAnalyticsClient
@@ -149,7 +150,7 @@ async def process_warehouse_sales_for_seller(
     unique_cises = list(kiz_to_record.keys())
     logger.info(f"[Warehouse Sales] Found {len(unique_cises)} unique KIZ codes in WB report")
 
-    # 2. Поиск связанных заказов в локальной БД
+    # 2. Поиск связанных заказов и возвратов в локальной БД
     stmt_orders = select(Order).where(
         Order.seller_id == seller.id,
         Order.kiz_code.isnot(None),
@@ -161,6 +162,31 @@ async def process_warehouse_sales_for_seller(
             p = parse_kiz_code(ord_obj.kiz_code)
             c = p.get("clean_cis") or ord_obj.kiz_code
             orders_map[c] = ord_obj
+
+    # 2.1. Сквозная проверка возвратов в финансовых отчетах WB (WbSalesReportRow)
+    returned_cises: Set[str] = set()
+    returned_srids: Set[str] = set()
+    excise_srids = [str(r.get("srid") or "").strip() for r in excise_rows if r.get("srid")]
+
+    if unique_cises or excise_srids:
+        conds = []
+        if unique_cises:
+            conds.append(WbSalesReportRow.clean_cis.in_(unique_cises))
+        if excise_srids:
+            conds.append(WbSalesReportRow.srid.in_(excise_srids))
+
+        stmt_fin = select(WbSalesReportRow).where(
+            WbSalesReportRow.seller_id == seller.id,
+            or_(*conds),
+        )
+        res_fin = await db.execute(stmt_fin)
+        for f_row in res_fin.scalars().all():
+            doc_name = (f_row.doc_type_name or f_row.seller_oper_name or "").lower()
+            if "возврат" in doc_name or "отказ" in doc_name or "отмен" in doc_name:
+                if f_row.clean_cis:
+                    returned_cises.add(f_row.clean_cis)
+                if f_row.srid:
+                    returned_srids.add(f_row.srid)
 
     # 3. Живая пакетная проверка в True API ГИС МТ
     verified_map = await batch_verify_and_sync_cises(
@@ -179,6 +205,15 @@ async def process_warehouse_sales_for_seller(
     total_sales_sum = 0.0
 
     for clean_cis, record in kiz_to_record.items():
+        # Проверяем, не был ли товар возвращен покупателем по фин. отчету (по SRID или КИЗ):
+        r_srid = str(record.get("srid") or "").strip()
+        if (r_srid and r_srid in returned_srids) or (clean_cis in returned_cises):
+            logger.info(
+                f"[Warehouse Sales] KIZ {clean_cis} (srid={r_srid}) was returned in WB finance report. "
+                "Skipping withdrawal (product returned to stock)."
+            )
+            continue
+
         kinfo = verified_map.get(clean_cis)
         cz_st = kinfo.cz_status if kinfo else None
         cz_ex = kinfo.cz_status_ex if kinfo else None

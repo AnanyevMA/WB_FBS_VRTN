@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-28T14:22:53.026339+00:00",
+  "updated_at": "2026-09-30T01:29:01.376487+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 147,
+  "total_files": 148,
   "files": [
     {
       "file": "alembic/env.py",
@@ -6251,7 +6251,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "a9f6a2c45bfd",
+      "hash": "f1a273d442cf",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6736,7 +6736,7 @@
     {
       "file": "app/services/wb_warehouse_sales_service.py",
       "layer": "services",
-      "hash": "9c3c91009fce",
+      "hash": "ac4d524fd527",
       "docstring": "WB Warehouse Sales Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6812,6 +6812,7 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
+        "app.models.wb_finance",
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.telegram_service",
@@ -10891,6 +10892,38 @@
         "app.services.unified_kiz_batch_service",
         "datetime",
         "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_warehouse_sales_returns_correlation.py",
+      "layer": "tests",
+      "hash": "2f8ea58b4fda",
+      "docstring": "Tests for Warehouse Sales and Returns Correlation (WbSalesReportRow cross-check).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_warehouse_sales_skips_returned_srid",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that a sale in excise report matching a RETURN row in finance reports is skipped."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.wb_warehouse_sales_service",
+        "datetime",
         "pytest",
         "unittest.mock",
         "uuid"

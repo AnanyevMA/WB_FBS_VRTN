@@ -887,6 +887,19 @@ async function submitBatchSigningAction(batchId) {
     if (btn) btn.disabled = true;
 
     try {
+        // 0. Proactive token check before signing documents
+        try {
+            const tokenStatus = await apiFetch(`/sellers/${currentSellerId}/cz-token-status`);
+            if (tokenStatus && tokenStatus.needs_refresh) {
+                showToast('Честный Знак', 'Обновление сессии ГИС МТ перед отправкой пакета...', 'info');
+                if (typeof window.forceRefreshCzTokenViaBrowser === 'function') {
+                    await window.forceRefreshCzTokenViaBrowser(currentSellerId);
+                }
+            }
+        } catch (tokErr) {
+            console.debug("[submitBatchSigningAction] Pre-flight token check note:", tokErr);
+        }
+
         // 1. Prepare documents
         showToast('ЭЦП', 'Подготовка канонических документов ГИС МТ...', 'info');
         const prepRes = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches/${batchId}/prepare-documents`, {

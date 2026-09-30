@@ -220,7 +220,7 @@ async def submit_signed_kiz_document(
     if not doc_base64 or not sig_base64:
         raise HTTPException(status_code=400, detail="Отсутствует документ или подпись Base64")
 
-    from app.services.cz_client import CZClient, CZDocumentError
+    from app.services.cz_client import CZClient, CZDocumentError, CZUnauthorizedError
     from app.services.encryption import decrypt
 
     cz_token = decrypt(seller.cz_token_encrypted) if seller.cz_token_encrypted else ""
@@ -233,7 +233,13 @@ async def submit_signed_kiz_document(
             signature_base64=sig_base64,
             wait_for_result=False,
         )
+    except CZUnauthorizedError as ue:
+        logger.warning(f"CZ session token expired during submit_signed_document: {ue}")
+        raise HTTPException(status_code=401, detail=str(ue))
     except Exception as e:
+        err_msg = str(e).lower()
+        if "401" in err_msg or "token expired" in err_msg or "token is expired" in err_msg:
+            raise HTTPException(status_code=401, detail="Срок действия токена Честного Знака истек (401)")
         logger.error(f"Error submitting signed document to ГИС МТ: {e}")
         audit = AuditLog(
             seller_id=seller_id,

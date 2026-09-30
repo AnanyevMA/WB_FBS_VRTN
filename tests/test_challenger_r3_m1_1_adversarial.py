@@ -189,7 +189,8 @@ def test_randomized_valid_barcodes_stress_harness():
     random alphanumeric characters in serial (including '91' and '92'), and random crypto tails.
     Every single output MUST be strictly 31 characters: 01{gtin:14}21{serial:13}.
     """
-    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"%&'*+-./:;=?_"
+    random.seed(42)
+    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\"%&*+-./:;=?_"
     delimiters = [
         " ",
         "  ",

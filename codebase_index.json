@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-30T01:29:01.376487+00:00",
+  "updated_at": "2026-09-30T02:00:02.643123+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 148,
   "files": [
@@ -2447,7 +2447,7 @@
     {
       "file": "app/api/kiz/documents.py",
       "layer": "api",
-      "hash": "cbafc84d0bbe",
+      "hash": "daa0912aabd3",
       "docstring": "FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3092,7 +3092,7 @@
     {
       "file": "app/api/sellers.py",
       "layer": "api",
-      "hash": "714ba49969d3",
+      "hash": "789021d826a2",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6038,7 +6038,7 @@
     {
       "file": "app/services/signature_batch_submitter.py",
       "layer": "services",
-      "hash": "520990d89749",
+      "hash": "e17b932d3b04",
       "docstring": "Signature Batch Submitter Service.",
       "classes": [],
       "functions": [
@@ -8026,7 +8026,7 @@
     {
       "file": "tests/test_challenger_r3_m1_1_adversarial.py",
       "layer": "tests",
-      "hash": "b294f571aea9",
+      "hash": "320a228b02e8",
       "docstring": "Adversarial Challenge & Empirical Bug Reproduction Test Suite.",
       "classes": [],
       "functions": [
@@ -9616,7 +9616,7 @@
     {
       "file": "tests/test_kiz_signature_batches.py",
       "layer": "tests",
-      "hash": "7c78b2d7f621",
+      "hash": "f1daa6def84b",
       "docstring": "Integration & Unit Tests for KIZ Signature Batches and Dashboard Signing Queue",
       "classes": [],
       "functions": [
@@ -9655,6 +9655,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Проверяет, что уведомления об обработке пакетов отправляются только в личные чаты,"
+        },
+        {
+          "name": "test_signature_batch_submit_401_cz_token_expired",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that submit-signed raises 401 CZUnauthorizedError when CZ token is expired, preserving batch state."
         }
       ],
       "endpoints": [],

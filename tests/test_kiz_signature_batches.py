@@ -561,3 +561,94 @@ async def test_signature_batch_notification_filters_group_chats():
             # mock_send_text must not be called because there are no private chats
             assert not mock_send_text.called
 
+
+@pytest.mark.asyncio
+async def test_signature_batch_submit_401_cz_token_expired():
+    """Verify that submit-signed raises 401 CZUnauthorizedError when CZ token is expired, preserving batch state."""
+    from app.services.cz_client import CZUnauthorizedError
+    await init_db()
+
+    async with AsyncSessionLocal() as session:
+        admin_user = await ensure_initial_admin(session)
+        auth_token = create_access_token(
+            data={"sub": admin_user.id, "username": admin_user.username, "role": "admin", "is_superuser": True}
+        )
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Batch Expired Test Seller",
+            wb_api_token_encrypted=encrypt("wb_test_token"),
+            cz_token_encrypted=encrypt("cz_test_token"),
+            cz_inn="7700998877",
+            is_active=True,
+        )
+        session.add(seller)
+
+        order_id = int(str(uuid.uuid4().int)[:9])
+        order = Order(
+            id=order_id,
+            seller_id=seller.id,
+            name="Тестовый товар",
+            article="test-art",
+            price=1200,
+            status=OrderStatus.DELIVERED,
+            kiz_required=True,
+            kiz_code="0104630199251844215TESTEXPIRED",
+            kiz_status=KizStatus.ATTACHED,
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(order)
+
+        batch = KizSignatureBatch(
+            seller_id=seller.id,
+            source="auto",
+            status=BatchStatus.PENDING_SIGNATURE,
+            sales_count=1,
+            returns_count=0,
+            data_payload={
+                "withdrawals": [{
+                    "order_id": order_id,
+                    "kiz_code": "0104630199251844215TESTEXPIRED",
+                    "receipt_number": "ЧЕК-999",
+                    "price_kopecks": 120000,
+                }],
+                "returns": [],
+            }
+        )
+        session.add(batch)
+        await session.commit()
+        batch_id = batch.id
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test", headers={"Authorization": f"Bearer {auth_token}"}) as ac:
+        with patch("app.services.cz_client.CZClient.submit_signed_document", new_callable=AsyncMock) as mock_submit:
+            mock_submit.side_effect = CZUnauthorizedError("CZ/SUZ token expired or invalid", 401)
+
+            res = await ac.post(
+                f"/api/v1/sellers/{seller_id}/kiz/signature-batches/{batch_id}/submit-signed",
+                json={
+                    "sign_mode": "client_cades",
+                    "cert_subject": "ИП Ананьев М.А.",
+                    "signed_documents": [{
+                        "action": "WITHDRAWAL",
+                        "type": "LK_RECEIPT",
+                        "order_id": order_id,
+                        "kiz_code": "0104630199251844215TESTEXPIRED",
+                        "document_base64": "bW9jaw==",
+                        "signature_base64": "mock-sig",
+                    }]
+                }
+            )
+
+            # Must return HTTP 401 Unauthorized for client auto-refresh interceptor
+            assert res.status_code == 401
+            assert "token expired" in res.json().get("detail", "").lower()
+
+    # Batch in DB must remain PENDING_SIGNATURE, NOT marked failed
+    async with AsyncSessionLocal() as session:
+        b_after = await session.get(KizSignatureBatch, batch_id)
+        assert b_after is not None
+        assert b_after.status == BatchStatus.PENDING_SIGNATURE
+
+

@@ -573,9 +573,13 @@ async def get_cz_token_status(seller_id: str, db: AsyncSession = Depends(get_db)
             age_seconds = max(0, int((now_utc - auth_dt).total_seconds()))
             # True API token expires in 10 hours (36000 sec). Refresh when older than 6 hours (21600 sec)
             needs_refresh = age_seconds > (6 * 3600)
+        elif seller.updated_at:
+            upd_dt = seller.updated_at if seller.updated_at.tzinfo else seller.updated_at.replace(tzinfo=timezone.utc)
+            age_seconds = max(0, int((now_utc - upd_dt).total_seconds()))
+            needs_refresh = age_seconds > (6 * 3600)
         else:
-            # Token exists in DB but no recent audit log recorded yet
-            needs_refresh = False
+            # Token exists in DB but no recent timestamp recorded yet - refresh to be safe
+            needs_refresh = True
 
     return {
         "seller_id": seller_id,

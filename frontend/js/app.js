@@ -195,6 +195,18 @@ async function initAppPostLogin() {
             silentCheckAndRefreshCzToken();
         }
     }, 15 * 60 * 1000);
+
+    // Refresh check when user returns to tab
+    window.addEventListener('focus', () => {
+        if (typeof silentCheckAndRefreshCzToken === 'function') {
+            silentCheckAndRefreshCzToken();
+        }
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && typeof silentCheckAndRefreshCzToken === 'function') {
+            silentCheckAndRefreshCzToken();
+        }
+    });
 }
 
 // Run init on DOM Ready

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus, OrderStatus
 from app.models.kiz import KizSignatureBatch, BatchStatus, KizOperation, KizOperationType
-from app.services.cz_client import CZClient, CZDocumentError
+from app.services.cz_client import CZClient, CZDocumentError, CZUnauthorizedError
 from app.services.kiz_service import sync_kiz_status_record
 from app.services.encryption import decrypt
 
@@ -59,7 +59,14 @@ async def execute_signed_batch_submission(
                     signature_base64=sig_b64,
                     wait_for_result=False,
                 )
+            except CZUnauthorizedError as ue:
+                logger.warning(f"CZ session token expired during batch submission for {kiz_code}: {ue}")
+                raise ue
             except Exception as e:
+                err_msg = str(e).lower()
+                if "401" in err_msg or "token expired" in err_msg or "token is expired" in err_msg:
+                    logger.warning(f"CZ auth error during batch submission for {kiz_code}: {e}")
+                    raise CZUnauthorizedError(str(e))
                 failed_submissions += 1
                 results.append({"kiz_code": kiz_code, "order_id": order_id, "error": str(e), "status": "FAILED"})
                 logger.error(f"Error submitting batch signed doc for {kiz_code}: {e}")

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-30T02:00:02.643123+00:00",
+  "updated_at": "2026-09-30T11:01:07.604025+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 148,
   "files": [
@@ -4581,7 +4581,7 @@
     {
       "file": "app/national_catalog/router.py",
       "layer": "core",
-      "hash": "4a816b01d285",
+      "hash": "b8486045f763",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4627,7 +4627,7 @@
             "attrs"
           ],
           "decorators": [],
-          "docstring": "Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959)."
+          "docstring": "Извлечение кода ТН ВЭД из атрибутов карточки (приоритет 10-значному 13933, затем 10609, затем 3959)."
         },
         {
           "name": "_auto_fill_tnved_from_attrs",

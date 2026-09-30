@@ -111,21 +111,28 @@ async def list_products(
 
 
 def _extract_tnved_from_attrs(attrs: Optional[list]) -> Optional[str]:
-    """Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959)."""
+    """Извлечение кода ТН ВЭД из атрибутов карточки (приоритет 10-значному 13933, затем 10609, затем 3959)."""
     if not attrs or not isinstance(attrs, list):
         return None
+    tnved_candidates = {}
     for a in attrs:
         if isinstance(a, dict):
             aid = str(a.get("attr_id"))
             val = str(a.get("attr_value") or "").strip()
             if val and aid in ("13933", "10609", "3959"):
-                return val[:20]
+                tnved_candidates[aid] = val
+    if "13933" in tnved_candidates:
+        return tnved_candidates["13933"][:20]
+    if "10609" in tnved_candidates:
+        return tnved_candidates["10609"][:20]
+    if "3959" in tnved_candidates:
+        return tnved_candidates["3959"][:20]
     return None
 
 
 def _auto_fill_tnved_from_attrs(card: ProductCard) -> bool:
     """Извлечение кода ТН ВЭД из атрибутов карточки (13933, 10609, 3959), если поле tnved пусто."""
-    if card.tnved and card.tnved.strip():
+    if card.tnved and card.tnved.strip() and len(card.tnved.strip()) == 10:
         return False
     val = _extract_tnved_from_attrs(card.attributes)
     if val:
@@ -137,8 +144,9 @@ def _auto_fill_tnved_from_attrs(card: ProductCard) -> bool:
 def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
     """
     Универсальное извлечение списка ошибок фида из ответа Честного Знака.
-    Поддерживает форматы:
-    - result: {"0": [...], "1": [...], "totalErrors": 3}
+    Поддерживает форматы True API v3:
+    - nested result: {"result": {"0": [...], "1": [...], "totalErrors": 14}}
+    - root result: {"0": [...], "1": [...], "totalErrors": 14}
     - item / items: [{"gtin": "...", "message": "...", "status_message": "..."}]
     - error_details: {"items": [...], "commonError": {...}}
     - commonError: {"code": ..., "text": "..."}
@@ -150,26 +158,12 @@ def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
     clean_gtin = str(gtin).strip() if gtin else ""
     gtin_no_zero = clean_gtin.lstrip("0") if clean_gtin else ""
 
-    # 1. Формат result: {"0": ["..."], "1": ["..."], "totalErrors": "3"}
+    # Извлечение словаря с индексами ошибок "0", "1", ...
     res_obj = feed_data.get("result")
-    if isinstance(res_obj, dict):
-        matched_for_gtin = []
-        all_res_errors = []
-        for k, v in res_obj.items():
-            if k == "totalErrors":
-                continue
-            err_list = v if isinstance(v, list) else [v]
-            for err in err_list:
-                err_text = str(err)
-                all_res_errors.append(err_text)
-                if clean_gtin and (clean_gtin in err_text or (gtin_no_zero and gtin_no_zero in err_text)):
-                    matched_for_gtin.append(err_text)
-        if matched_for_gtin:
-            return matched_for_gtin
-        if not clean_gtin and all_res_errors:
-            return all_res_errors
+    if isinstance(res_obj, dict) and isinstance(res_obj.get("result"), dict):
+        res_obj = res_obj["result"]
 
-    # 2. Формат item: [...]
+    # 1. Сбор ошибок из формата item / items
     item_list = feed_data.get("item") or feed_data.get("items") or []
     if isinstance(item_list, list):
         for it in item_list:
@@ -185,6 +179,27 @@ def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
                             errors.append(text)
                     else:
                         errors.append(text)
+
+    # 2. Формат result: {"0": ["..."], "1": ["..."], "totalErrors": "14"}
+    if isinstance(res_obj, dict):
+        matched_for_gtin = []
+        all_res_errors = []
+        for k, v in res_obj.items():
+            if k == "totalErrors":
+                continue
+            err_list = v if isinstance(v, list) else [v]
+            for err in err_list:
+                err_text = str(err).strip()
+                if not err_text:
+                    continue
+                all_res_errors.append(err_text)
+                if clean_gtin and (clean_gtin in err_text or (gtin_no_zero and gtin_no_zero in err_text)):
+                    matched_for_gtin.append(err_text)
+
+        if matched_for_gtin:
+            errors.extend(matched_for_gtin)
+        elif all_res_errors:
+            errors.extend(all_res_errors)
 
     # 3. Формат error_details
     err_details = feed_data.get("error_details")
@@ -215,13 +230,6 @@ def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
     if not errors and feed_data.get("error_message"):
         errors.append(str(feed_data["error_message"]))
 
-    # Если для конкретного GTIN ничего точечно не найдено, но в result были общие ошибки
-    if not errors and isinstance(res_obj, dict):
-        for k, v in res_obj.items():
-            if k != "totalErrors":
-                err_list = v if isinstance(v, list) else [v]
-                errors.extend([str(e) for e in err_list])
-
     return list(dict.fromkeys(errors))
 
 
@@ -249,6 +257,21 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
             detail=f"Для товара '{payload.name}' обязательно укажите код ТН ВЭД (10 знаков, например: 6206300000)."
         )
 
+    # Определение и нормализация категории товара для ГИС МТ (Легпром)
+    cat_id = payload.category_id
+    if cat_id in (234392, 235663, 20000003, None):
+        prefix = tnved_val[:4] if tnved_val else ""
+        if prefix == "6202":
+            cat_id = 237414  # Куртки, ветровки, штормовки
+        elif prefix == "6206":
+            cat_id = 231282  # Рубашки
+        elif prefix == "6104":
+            cat_id = 30683   # Брюки, бриджи, шорты
+        elif prefix.startswith("6") or prefix.startswith("4"):
+            cat_id = 31326   # Одежда второго и третьего слоя
+        else:
+            cat_id = cat_id or 237414
+
     goods_item: dict = {
         "good_name": payload.name,
         "moderation": payload.moderation,
@@ -257,12 +280,13 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
         "good_images": [],
     }
     if tnved_val:
-        goods_item["tnved"] = tnved_val
+        # Для НКТ в корневом поле tnved указывается 4-значный код группы ТН ВЭД
+        goods_item["tnved"] = tnved_val[:4] if len(tnved_val) >= 4 else tnved_val
 
     if payload.brand:
         goods_item["brand"] = payload.brand
-    if payload.category_id:
-        goods_item["categories"] = [payload.category_id]
+    if cat_id:
+        goods_item["categories"] = [cat_id]
 
     if payload.is_tech_gtin:
         goods_item["is_tech_gtin"] = 1
@@ -280,24 +304,69 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
             }
         ]
 
-    has_tnved_attr = False
+    # Проверяем наличие специфических атрибутов легпрома (13914, 13933, 2483 и т.д.)
+    has_specific_attrs = any(a.attr_id in (13914, 13933, 2483, 35, 36) for a in (payload.attributes or []))
+    legacy_attr_ids = {10001, 10609, 10610, 10611, 10612, 10613}
+
+    has_13933 = False
+    has_3959 = False
+
     for attr in payload.attributes:
+        # Пропускаем общие атрибуты заглушечной категории 20000003, если есть нормальные атрибуты
+        if has_specific_attrs and attr.attr_id in legacy_attr_ids:
+            continue
+
         attr_dict = {
             "attr_id": attr.attr_id,
-            "attr_value": attr.attr_value,
+            "attr_value": str(attr.attr_value) if attr.attr_value is not None else "",
         }
-        if attr.attr_id in (10609, 13933):
-            has_tnved_attr = True
-        if attr.attr_value_type:
+
+        # Нормализация 13914 (Модель / артикул)
+        if attr.attr_id == 13914:
+            attr_dict["attr_value_type"] = attr.attr_value_type or "Артикул"
+
+        # Нормализация 35 (Размер одежды / изделия)
+        elif attr.attr_id == 35:
+            val_s = str(attr.attr_value or "").strip().upper()
+            if attr.attr_value_type:
+                attr_dict["attr_value_type"] = attr.attr_value_type
+            elif any(c in val_s for c in ("XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "OS")):
+                attr_dict["attr_value_type"] = "МЕЖДУНАРОДНЫЙ"
+            elif val_s.isdigit() and 28 <= int(val_s) <= 74:
+                attr_dict["attr_value_type"] = "РОССИЯ"
+            elif val_s.isdigit() and 80 <= int(val_s) <= 190:
+                attr_dict["attr_value_type"] = "РОСТ"
+            else:
+                attr_dict["attr_value_type"] = "МЕЖДУНАРОДНЫЙ"
+
+        elif attr.attr_value_type:
             attr_dict["attr_value_type"] = attr.attr_value_type
+
         if attr.attr_value_id:
             attr_dict["attr_value_id"] = attr.attr_value_id
+
+        if attr.attr_id == 13933:
+            has_13933 = True
+            # Убеждаемся, что в 13933 передается 10-значный код
+            if tnved_val and len(tnved_val) == 10 and len(attr_dict["attr_value"]) != 10:
+                attr_dict["attr_value"] = tnved_val
+        elif attr.attr_id == 3959:
+            has_3959 = True
+
         goods_item["good_attrs"].append(attr_dict)
 
-    if not has_tnved_attr and tnved_val:
+    # Если отсутствует 13933, но есть 10-значный ТН ВЭД — добавляем его
+    if not has_13933 and tnved_val and len(tnved_val) == 10:
         goods_item["good_attrs"].append({
-            "attr_id": 10609,
+            "attr_id": 13933,
             "attr_value": tnved_val,
+        })
+
+    # Если отсутствует 3959 (Группа ТН ВЭД), добавляем 4-значный префикс
+    if not has_3959 and tnved_val and len(tnved_val) >= 4:
+        goods_item["good_attrs"].append({
+            "attr_id": 3959,
+            "attr_value": tnved_val[:4],
         })
 
     for img in payload.images:
@@ -715,29 +784,26 @@ async def sync_products_from_nk(
         if gtin_val and len(gtin_val) == 13 and gtin_val.isdigit():
             gtin_val = f"0{gtin_val}"
 
-        # Извлечение категорий
+        # Извлечение категорий (выбираем листовую категорию ГИС МТ, исключая промежуточные узлы ТНВЭД/ОКПД2)
         cat_id = None
         cat_name = None
         categories = p.get("categories", [])
         if categories and isinstance(categories, list):
-            first_cat = categories[0]
-            if isinstance(first_cat, dict):
-                cat_id = first_cat.get("cat_id")
-                cat_name = first_cat.get("cat_name")
+            chosen_cat = categories[-1]
+            for cat in reversed(categories):
+                if isinstance(cat, dict) and cat.get("cat_id") not in (234392, 235663):
+                    chosen_cat = cat
+                    break
+            if isinstance(chosen_cat, dict):
+                cat_id = chosen_cat.get("cat_id")
+                cat_name = chosen_cat.get("cat_name")
 
         # Извлечение торговой марки
         brand_val = p.get("brand_name") or p.get("brand")
 
-        # Извлечение ТН ВЭД
-        tnved_val = p.get("tnved")
+        # Извлечение ТН ВЭД (приоритет 10-значному 13933 из атрибутов)
         attrs = p.get("good_attrs") or []
-        if not tnved_val and attrs:
-            for a in attrs:
-                if isinstance(a, dict):
-                    aid = a.get("attr_id")
-                    if aid in (10609, "10609") or "ТН ВЭД" in str(a.get("attr_name", "")):
-                        tnved_val = a.get("attr_value")
-                        break
+        tnved_val = _extract_tnved_from_attrs(attrs) or p.get("tnved")
 
         # Нормализация статуса
         st_raw = str(p.get("good_status") or "draft").lower()

@@ -818,7 +818,13 @@ function populateMatrixFromDonor(card) {
             donorDeclaration = val;
         } else if (id === 13836) {
             donorTechReg = val;
-        } else if (id === 13933 || id === 10609 || id === 3959) {
+        } else if (id === 13933) {
+            const cand = String(val).trim();
+            if (cand.length === 10) donorTnved = cand;
+            else if (!donorTnved) donorTnved = cand;
+        } else if (id === 10609) {
+            if (!donorTnved || donorTnved.length !== 10) donorTnved = String(val).trim();
+        } else if (id === 3959) {
             if (!donorTnved) donorTnved = String(val).trim();
         }
     });
@@ -836,11 +842,21 @@ function populateMatrixFromDonor(card) {
         cleanArticle = cleanArticle.slice(0, -(donorSize.length + 1));
     }
 
+    // Определение валидной категории ГИС МТ (Легпром)
+    let finalCatId = card.category_id;
+    if (!finalCatId || finalCatId === 234392 || finalCatId === 235663 || finalCatId === 20000003) {
+        const tnvedPrefix = (donorTnved || card.tnved || '').substring(0, 4);
+        if (tnvedPrefix === '6202') finalCatId = 237414;
+        else if (tnvedPrefix === '6206') finalCatId = 231282;
+        else if (tnvedPrefix === '6104') finalCatId = 30683;
+        else finalCatId = 31326;
+    }
+
     document.getElementById('matrix_base_name').value = cleanName || card.name || '';
     document.getElementById('matrix_base_article').value = cleanArticle || '';
     document.getElementById('matrix_brand').value = card.brand || '';
     document.getElementById('matrix_tnved').value = donorTnved || card.tnved || '';
-    document.getElementById('matrix_category_id').value = card.category_id || '20000003';
+    document.getElementById('matrix_category_id').value = String(finalCatId);
     document.getElementById('matrix_composition').value = donorComposition || '';
     document.getElementById('matrix_country').value = donorCountry || 'Россия';
 
@@ -1233,9 +1249,17 @@ async function submitMatrixBatch() {
     if (!baseName) return showToast('Ошибка', 'Укажите базовое наименование товара', 'error');
     if (!baseArticle) return showToast('Ошибка', 'Укажите базовый артикул (модель)', 'error');
     if (!composition) return showToast('Ошибка', 'Укажите состав / материал ткани', 'error');
-    if (!tnved) return showToast('Ошибка', 'Укажите код ТН ВЭД (10 цифр, например 6206300000)', 'error');
+    if (!tnved) return showToast('Ошибка', 'Укажите код ТН ВЭД (10 цифр, например 6202900001)', 'error');
+    if (tnved.length !== 10) return showToast('Ошибка ТН ВЭД', 'Код ТН ВЭД должен содержать ровно 10 знаков (например, 6202900001)', 'error');
 
-    const categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : 20000003;
+    let categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : 20000003;
+    if (categoryId === 20000003 || categoryId === 234392 || categoryId === 235663) {
+        const tnvedPrefix = tnved.substring(0, 4);
+        if (tnvedPrefix === '6202') categoryId = 237414;
+        else if (tnvedPrefix === '6206') categoryId = 231282;
+        else if (tnvedPrefix === '6104') categoryId = 30683;
+        else categoryId = 31326;
+    }
     const checkedRows = matrixCombinations.filter(r => r.checked);
 
     if (checkedRows.length === 0) {
@@ -1261,48 +1285,59 @@ async function submitMatrixBatch() {
     for (const row of checkedRows) {
         const itemAttrs = [];
 
-        // 1. Article / Model
+        // 1. Article / Model (обязательный тип: "Артикул")
         if (row.article) {
-            itemAttrs.push({ attr_id: 13914, attr_value: row.article });
-            itemAttrs.push({ attr_id: 10001, attr_value: row.article });
+            itemAttrs.push({ attr_id: 13914, attr_value: row.article, attr_value_type: 'Артикул' });
         }
 
-        // 2. Size
+        // 2. Size (обязательный тип: "МЕЖДУНАРОДНЫЙ" или "РОССИЯ")
         if (row.size) {
-            itemAttrs.push({ attr_id: 35, attr_value: row.size });
-            itemAttrs.push({ attr_id: 10613, attr_value: row.size });
+            const szVal = String(row.size).trim();
+            const szUpper = szVal.toUpperCase();
+            let szType = 'МЕЖДУНАРОДНЫЙ';
+            if (['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'OS'].some(code => szUpper.includes(code))) {
+                szType = 'МЕЖДУНАРОДНЫЙ';
+            } else if (/^\d+$/.test(szVal) && parseInt(szVal) >= 28 && parseInt(szVal) <= 74) {
+                szType = 'РОССИЯ';
+            } else if (/^\d+$/.test(szVal) && parseInt(szVal) >= 80 && parseInt(szVal) <= 190) {
+                szType = 'РОСТ';
+            }
+            itemAttrs.push({ attr_id: 35, attr_value: szVal, attr_value_type: szType });
         }
 
         // 3. Color
         if (row.color) {
             itemAttrs.push({ attr_id: 36, attr_value: row.color });
-            itemAttrs.push({ attr_id: 10612, attr_value: row.color });
         }
 
         // 4. Composition
         if (composition) {
             itemAttrs.push({ attr_id: 2483, attr_value: composition });
-            itemAttrs.push({ attr_id: 10610, attr_value: composition });
         }
 
         // 5. Country of origin
         if (country) {
             itemAttrs.push({ attr_id: 2480, attr_value: country });
-            itemAttrs.push({ attr_id: 10611, attr_value: country });
         }
 
-        // 6. TNVED attribute
+        // 6. TNVED attributes: 13933 (10 цифр) и 3959 (4 цифры)
         if (tnved) {
-            itemAttrs.push({ attr_id: 10609, attr_value: tnved });
             itemAttrs.push({ attr_id: 13933, attr_value: tnved });
+            itemAttrs.push({ attr_id: 3959, attr_value: tnved.substring(0, 4) });
         }
 
-        // 7. Declaration of Conformity (attr 23557)
+        // 7. Full product name
+        const itemName = row.name || baseName;
+        if (itemName) {
+            itemAttrs.push({ attr_id: 2478, attr_value: itemName });
+        }
+
+        // 8. Declaration of Conformity (attr 23557)
         if (declaration) {
             itemAttrs.push({ attr_id: 23557, attr_value: declaration });
         }
 
-        // 8. Technical Regulation (attr 13836)
+        // 9. Technical Regulation (attr 13836)
         if (techReg) {
             itemAttrs.push({ attr_id: 13836, attr_value: techReg });
         }

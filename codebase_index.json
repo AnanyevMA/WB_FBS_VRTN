@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-09-30T11:01:07.604025+00:00",
+  "updated_at": "2026-09-30T11:42:05.218302+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 148,
+  "total_files": 149,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2154,7 +2154,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "fc3496414943",
+      "hash": "9442b7898115",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3815,7 +3815,7 @@
     {
       "file": "app/bot/handlers/documents.py",
       "layer": "core",
-      "hash": "8d96b99914bb",
+      "hash": "29319ef87dee",
       "docstring": "Telegram Bot Document Handlers — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3847,6 +3847,7 @@
         "app.database",
         "app.models.audit",
         "app.models.kiz",
+        "app.models.order",
         "app.models.seller",
         "app.services.archive_service",
         "datetime",
@@ -6038,7 +6039,7 @@
     {
       "file": "app/services/signature_batch_submitter.py",
       "layer": "services",
-      "hash": "e17b932d3b04",
+      "hash": "c5ca117864f7",
       "docstring": "Signature Batch Submitter Service.",
       "classes": [],
       "functions": [
@@ -6251,7 +6252,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "f1a273d442cf",
+      "hash": "615d2f7ce682",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6310,7 +6311,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "a1948db4b3b3",
+      "hash": "c983454309dd",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -7469,6 +7470,60 @@
         "sqlalchemy.orm",
         "unittest.mock",
         "zoneinfo"
+      ]
+    },
+    {
+      "file": "tests/test_archive_unified_reconcile.py",
+      "layer": "tests",
+      "hash": "6a4102a68527",
+      "docstring": "Tests for Archive Orders Status Synchronization, Unified Reconciliation Preservation,",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_unified_reconciliation_preserves_archive_batch_and_order_sync",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет, что единая сверка сохраняет возвраты из активных пакетов архивов."
+        },
+        {
+          "name": "test_signature_batch_submitter_syncs_status_and_handles_error_14",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет, что при ошибке 14 ГИС МТ (недопустимый статус) КИЗ помечается как INTRODUCED."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.cz_client",
+        "app.services.signature_batch_submitter",
+        "app.services.unified_kiz_batch_service",
+        "datetime",
+        "pytest",
+        "sqlalchemy",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {

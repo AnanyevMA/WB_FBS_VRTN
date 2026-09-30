@@ -160,6 +160,54 @@ async def create_unified_kiz_signature_batch(
         except Exception as exc_err:
             logger.warning(f"Could not load online excise report: {exc_err}")
 
+    # 2.6. Загрузка данных из активных пакетов архивов (ожидающих подписи)
+    stmt_pending = select(KizSignatureBatch).where(
+        KizSignatureBatch.seller_id == seller.id,
+        KizSignatureBatch.status == BatchStatus.PENDING_SIGNATURE,
+    ).order_by(KizSignatureBatch.created_at.desc())
+    res_pending = await db.execute(stmt_pending)
+    pending_batches = res_pending.scalars().all()
+
+    for pb in pending_batches:
+        p_payload = pb.data_payload or {}
+        for r_item in p_payload.get("returns", []):
+            raw_k = r_item.get("kiz_code")
+            if not raw_k:
+                continue
+            parsed_k = parse_kiz_code(raw_k)
+            c_cis = parsed_k.get("clean_cis") or raw_k
+            history_by_cis.setdefault(c_cis, []).append({
+                "source": "archive_upload",
+                "type": "RETURN",
+                "date": pb.created_at or now_utc,
+                "order_id": r_item.get("order_id"),
+                "price": float(r_item.get("price") or 0.0),
+                "article": str(r_item.get("article") or ""),
+                "name": r_item.get("name") or "",
+                "raw_kiz": raw_k,
+                "receipt_number": r_item.get("receipt_number"),
+                "receipt_date": r_item.get("receipt_date"),
+            })
+        for w_item in p_payload.get("withdrawals", []):
+            raw_k = w_item.get("kiz_code")
+            if not raw_k:
+                continue
+            parsed_k = parse_kiz_code(raw_k)
+            c_cis = parsed_k.get("clean_cis") or raw_k
+            history_by_cis.setdefault(c_cis, []).append({
+                "source": "archive_upload",
+                "type": "SALE",
+                "date": pb.created_at or now_utc,
+                "order_id": w_item.get("order_id"),
+                "price": float(w_item.get("price") or 0.0),
+                "article": str(w_item.get("article") or ""),
+                "name": w_item.get("name") or "",
+                "raw_kiz": raw_k,
+                "receipt_number": w_item.get("receipt_number"),
+                "fn_number": w_item.get("fn_number"),
+                "receipt_date": w_item.get("receipt_date"),
+            })
+
     # 4. Анализ терминального состояния каждого КИЗ
     sales_candidates: Dict[str, Dict[str, Any]] = {}
     return_candidates: Dict[str, Dict[str, Any]] = {}
@@ -273,13 +321,6 @@ async def create_unified_kiz_signature_batch(
     }
 
     # 9. Сохранение в KizSignatureBatch
-    existing_stmt = select(KizSignatureBatch).where(
-        KizSignatureBatch.seller_id == seller.id,
-        KizSignatureBatch.status == BatchStatus.PENDING_SIGNATURE,
-    ).order_by(KizSignatureBatch.created_at.desc())
-    ex_res = await db.execute(existing_stmt)
-    pending_batches = ex_res.scalars().all()
-
     for old_b in pending_batches[1:]:
         old_b.status = BatchStatus.CANCELLED
 

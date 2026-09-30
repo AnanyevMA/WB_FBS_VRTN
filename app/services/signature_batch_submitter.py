@@ -95,8 +95,8 @@ async def execute_signed_batch_submission(
                 successful_submissions += 1
                 results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "status": "SUCCESS", "cz_status": doc_status})
 
+                target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
                 if ord_obj and str(ord_obj.seller_id) == str(seller.id):
-                    target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
                     if action == "WITHDRAWAL":
                         ord_obj.kiz_status = KizStatus.WITHDRAWN
                         ord_obj.kiz_cz_status = target_cz_status
@@ -124,15 +124,17 @@ async def execute_signed_batch_submission(
                     )
                     db.add(kiz_op)
 
-                    if ord_obj.kiz_code:
-                        await sync_kiz_status_record(
-                            db=db,
-                            kiz_code=ord_obj.kiz_code,
-                            cz_status=target_cz_status,
-                            seller_id=str(seller.id),
-                            doc_id=doc_id if action == "WITHDRAWAL" else None,
-                            target_order_id=ord_obj.id,
-                        )
+                # Всегда синхронизируем единый реестр kiz_product_info (даже если ord_obj отсутствует)
+                effective_kiz = (ord_obj.kiz_code if ord_obj and ord_obj.kiz_code else kiz_code)
+                if effective_kiz:
+                    await sync_kiz_status_record(
+                        db=db,
+                        kiz_code=effective_kiz,
+                        cz_status=target_cz_status,
+                        seller_id=str(seller.id),
+                        doc_id=doc_id if action == "WITHDRAWAL" else None,
+                        target_order_id=ord_obj.id if ord_obj else None,
+                    )
 
             elif is_confirmed is False:
                 failed_submissions += 1
@@ -162,6 +164,28 @@ async def execute_signed_batch_submission(
                     )
                     db.add(kiz_op)
 
+                effective_kiz = (ord_obj.kiz_code if ord_obj and ord_obj.kiz_code else kiz_code)
+                if effective_kiz:
+                    # Если ГИС МТ отклонил возврат с ошибкой 14 (недопустимый статус), код уже в обороте!
+                    if action == "RETURN" and ("недопустимый статус" in (error_reason or "").lower() or "14:" in (error_reason or "")):
+                        await sync_kiz_status_record(
+                            db=db,
+                            kiz_code=effective_kiz,
+                            cz_status="INTRODUCED",
+                            seller_id=str(seller.id),
+                            validation_message="Код уже находится в обороте в ГИС МТ",
+                            target_order_id=ord_obj.id if ord_obj else None,
+                        )
+                    else:
+                        await sync_kiz_status_record(
+                            db=db,
+                            kiz_code=effective_kiz,
+                            cz_status=None,
+                            seller_id=str(seller.id),
+                            validation_message=error_reason,
+                            target_order_id=ord_obj.id if ord_obj else None,
+                        )
+
             else:
                 successful_submissions += 1
                 results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "status": "IN_PROGRESS", "cz_status": doc_status})
@@ -177,6 +201,17 @@ async def execute_signed_batch_submission(
                         ord_obj.cz_return_doc_id = doc_id
                     ord_obj.cz_doc_status = "IN_PROGRESS"
                     ord_obj.updated_at = now
+
+                effective_kiz = (ord_obj.kiz_code if ord_obj and ord_obj.kiz_code else kiz_code)
+                if effective_kiz:
+                    await sync_kiz_status_record(
+                        db=db,
+                        kiz_code=effective_kiz,
+                        cz_status="RETIRED" if action == "WITHDRAWAL" else "INTRODUCED",
+                        seller_id=str(seller.id),
+                        doc_id=doc_id if action == "WITHDRAWAL" else None,
+                        target_order_id=ord_obj.id if ord_obj else None,
+                    )
 
     elif sign_mode == "server":
         from app.agents.cz_withdrawal import withdraw_order_kiz

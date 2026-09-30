@@ -149,6 +149,15 @@ async def process_wb_archive(
 
     # 1. Process withdrawals
     if withdrawals_to_process:
+        for item in withdrawals_to_process:
+            oid = item.get("order_id")
+            if oid:
+                ord_to_upd = await db.get(Order, oid)
+                if ord_to_upd and ord_to_upd.status in (OrderStatus.NEW, OrderStatus.ASSEMBLING, OrderStatus.DELIVERING):
+                    ord_to_upd.status = OrderStatus.DELIVERED
+                    ord_to_upd.wb_status = "sold"
+                    ord_to_upd.updated_at = now
+
         if sign_mode == "client_cades":
             from app.services.cz_client import CZClient
             from app.services.encryption import decrypt
@@ -213,15 +222,17 @@ async def process_wb_archive(
                 )
                 queued_withdrawals += 1
 
-                # Update order in DB if found
-                order = await db.get(Order, order_id)
-                if order:
-                    order.status = OrderStatus.DELIVERED
-                    order.wb_status = "sold"
-                    order.updated_at = now
-
     # 2. Process returns
     if returns_to_process:
+        for item in returns_to_process:
+            oid = item.get("order_id")
+            if oid:
+                ord_to_upd = await db.get(Order, oid)
+                if ord_to_upd and ord_to_upd.status != OrderStatus.CANCELLED:
+                    ord_to_upd.status = OrderStatus.CANCELLED
+                    ord_to_upd.wb_status = "canceled_by_client"
+                    ord_to_upd.updated_at = now
+
         if sign_mode == "client_cades":
             from app.services.cz_client import CZClient
             from app.services.encryption import decrypt
@@ -264,13 +275,6 @@ async def process_wb_archive(
                 kiz_code = item.get("kiz_code")
                 order_id = item.get("order_id")
                 needs_cz = item.get("needs_cz_return", False)
-
-                if order_id:
-                    order = await db.get(Order, order_id)
-                    if order:
-                        order.status = OrderStatus.CANCELLED
-                        order.wb_status = "canceled_by_client"
-                        order.updated_at = now
 
                 if needs_cz and kiz_code and order_id:
                     return_order_kiz.apply_async(

@@ -83,9 +83,11 @@ def build_unified_withdrawals_payload(
 
         # В рабочий список выбытия включаем ТОЛЬКО позиции, реально требующие вывода
         if needs_withdrawal:
+            order_id_val = fbs_order.id if fbs_order else ev.get("order_id")
+            sticker_id_val = fbs_order.sticker_id if fbs_order else ev.get("sticker_id")
             withdrawals_payload.append({
-                "order_id": fbs_order.id if fbs_order else None,
-                "sticker_id": fbs_order.sticker_id if fbs_order else None,
+                "order_id": order_id_val,
+                "sticker_id": sticker_id_val,
                 "kiz_code": ev.get("raw_kiz") or cis,
                 "clean_cis": cis,
                 "receipt_number": receipt_num,
@@ -172,15 +174,17 @@ def build_unified_returns_payload(
             foreign_remarking_count += 1
 
         fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
+        order_id_val = fbs_order.id if fbs_order else ev.get("order_id")
+        sticker_id_val = fbs_order.sticker_id if fbs_order else ev.get("sticker_id")
         price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
-        receipt_num = str(ev.get("rrd_id") or (fbs_order.id if fbs_order else "1"))
-        receipt_dt = str(ev.get("rr_date") or now_utc.strftime("%Y-%m-%d"))
+        receipt_num = str(ev.get("receipt_number") or ev.get("rrd_id") or (order_id_val if order_id_val else "1"))
+        receipt_dt = str(ev.get("receipt_date") or ev.get("rr_date") or now_utc.strftime("%Y-%m-%d"))
 
         # В рабочий список возвратов включаем ТОЛЬКО позиции, реально требующие ввода в оборот
         if needs_cz_return:
             returns_payload.append({
-                "order_id": fbs_order.id if fbs_order else None,
-                "sticker_id": fbs_order.sticker_id if fbs_order else None,
+                "order_id": order_id_val,
+                "sticker_id": sticker_id_val,
                 "kiz_code": ev.get("raw_kiz") or cis,
                 "clean_cis": cis,
                 "receipt_number": receipt_num,

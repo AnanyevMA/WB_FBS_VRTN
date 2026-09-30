@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-09-30 11:01:07 UTC | **Файлов проиндексировано**: 148  
+> **Дата актуализации**: 2026-09-30 11:42:05 UTC | **Файлов проиндексировано**: 149  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -138,6 +138,7 @@
 | [`tests/test_api_auto_kiz_queue.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_auto_kiz_queue.py) | — | `test_auto_kiz_queue_api_endpoints` | API Tests for Auto KIZ Queue Endpoints (app/api/kiz/auto_queue.py) |
 | [`tests/test_api_sellers.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_sellers.py) | — | `_get_auth_headers`, `test_patch_seller_notification_settings_preserves_tokens_and_chat_ids`, `test_patch_seller_updates_tokens_when_non_empty_values_provided`, `test_patch_seller_schedule_validation_errors`, +еще 4 | Tests for Seller API Endpoints (PATCH, POST, GET) & Token/ChatID Preservation. |
 | [`tests/test_archive_reminder.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_reminder.py) | — | `sync_db`, `test_archive_reminder_never_uploaded`, `test_archive_reminder_uploaded_recently_skipped`, `test_archive_reminder_uploaded_3_days_ago_triggers`, +еще 4 | Unit & Integration Tests for Archive Upload Reminders Agent (Every 2 days) |
+| [`tests/test_archive_unified_reconcile.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_unified_reconcile.py) | — | `setup_test_db`, `test_unified_reconciliation_preserves_archive_batch_and_order_sync`, `test_signature_batch_submitter_syncs_status_and_handles_error_14` | Tests for Archive Orders Status Synchronization, Unified Reconciliation Preservation, |
 | [`tests/test_auth.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auth.py) | — | `test_password_hashing_and_verification`, `test_jwt_token_generation_and_decode`, `test_admin_bootstrap_and_login_flow`, `test_protected_routes_require_authentication`, +еще 6 | Tests for Authentication, JWT, User Management, and Endpoint Security Protection |
 | [`tests/test_auto_kiz_queue_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auto_kiz_queue_service.py) | — | `test_sync_wb_orders_status`, `test_collect_candidates_and_deduplication`, `test_process_auto_kiz_queue_flow` | Tests for Auto KIZ Queue Service (app/services/auto_kiz_queue_service.py) |
 | [`tests/test_bot_archive_upload.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_bot_archive_upload.py) | — | `_create_mock_wb_archive_bytes`, `test_bot_archive_excel_parsing_and_batch_creation`, `test_bot_ignores_non_excel_files_in_groups`, `test_bot_warns_non_excel_files_in_private_chat`, +еще 1 | Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing) |

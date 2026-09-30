@@ -11,6 +11,7 @@ from aiogram.types import Message
 from sqlalchemy import select
 
 from app.models.seller import Seller
+from app.models.order import Order, OrderStatus
 from app.models.audit import AuditLog
 from app.database import AsyncSessionLocal
 from app.services.archive_service import parse_wb_archive_excel, analyze_archive_data
@@ -123,6 +124,28 @@ async def handle_document(message: Message):
             withdrawals = analysis.get("withdrawals", [])
             returns = analysis.get("returns", [])
             summary = analysis.get("summary", {})
+
+            # Синхронизируем статусы заказов в БД на основе подтвержденных фактов из архива WB
+            now_sync = datetime.now(timezone.utc)
+            for r in returns:
+                r_oid = r.get("order_id")
+                if r_oid:
+                    r_ord = await db.get(Order, r_oid)
+                    if r_ord and str(r_ord.seller_id) == str(target_seller.id):
+                        if r_ord.status != OrderStatus.CANCELLED:
+                            r_ord.status = OrderStatus.CANCELLED
+                            r_ord.wb_status = "canceled_by_client"
+                            r_ord.updated_at = now_sync
+
+            for w in withdrawals:
+                w_oid = w.get("order_id")
+                if w_oid:
+                    w_ord = await db.get(Order, w_oid)
+                    if w_ord and str(w_ord.seller_id) == str(target_seller.id):
+                        if w_ord.status in (OrderStatus.NEW, OrderStatus.ASSEMBLING, OrderStatus.DELIVERING):
+                            w_ord.status = OrderStatus.DELIVERED
+                            w_ord.wb_status = "sold"
+                            w_ord.updated_at = now_sync
 
             sales_needing_withdrawal = summary.get("sales_needing_withdrawal") if summary.get("sales_needing_withdrawal") is not None else sum(1 for w in withdrawals if w.get("needs_withdrawal", True))
             sales_already_withdrawn = summary.get("sales_already_withdrawn") if summary.get("sales_already_withdrawn") is not None else sum(1 for w in withdrawals if not w.get("needs_withdrawal", True))

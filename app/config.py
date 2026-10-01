@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     postgres_db: Optional[str] = None
     database_url: str = "sqlite+aiosqlite:///./wbfbs.db"
     database_url_sync: str = "sqlite:///./wbfbs.db"
+    db_pool_size: int = 5
+    db_max_overflow: int = 5
+    db_pool_recycle: int = 1800
+    db_pool_timeout: int = 30
 
     # Redis / Celery
     redis_url: str = "redis://redis:6379/0"

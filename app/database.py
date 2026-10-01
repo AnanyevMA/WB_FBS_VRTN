@@ -9,7 +9,12 @@ from app.config import settings
 # Async engine (supports both PostgreSQL and SQLite)
 engine_kwargs = {"echo": settings.debug, "pool_pre_ping": True}
 if not settings.database_url.startswith("sqlite"):
-    engine_kwargs.update({"pool_size": 20, "max_overflow": 10})
+    engine_kwargs.update({
+        "pool_size": settings.db_pool_size,
+        "max_overflow": settings.db_max_overflow,
+        "pool_recycle": settings.db_pool_recycle,
+        "pool_timeout": settings.db_pool_timeout,
+    })
 
 try:
     engine = create_async_engine(settings.database_url, **engine_kwargs)

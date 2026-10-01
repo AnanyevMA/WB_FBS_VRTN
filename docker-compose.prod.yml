@@ -18,7 +18,7 @@ services:
       -c checkpoint_completion_target=0.9
       -c wal_buffers=4MB
       -c min_wal_size=32MB
-      -c max_wal_size=128MB
+      -c max_wal_size=512MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +30,7 @@ services:
       resources:
         limits:
           cpus: '0.40'
-          memory: 180M
+          memory: 160M
         reservations:
           memory: 48M
     logging:
@@ -77,6 +77,8 @@ services:
     container_name: wbfbs_api
     restart: unless-stopped
     env_file: .env
+    environment:
+      - MALLOC_TRIM_THRESHOLD_=65536
     volumes:
       - certs_data:/app/certs
       - logs_data:/app/logs
@@ -91,9 +93,9 @@ services:
       resources:
         limits:
           cpus: '0.60'
-          memory: 200M
+          memory: 160M
         reservations:
-          memory: 64M
+          memory: 48M
     logging:
       driver: "json-file"
       options:
@@ -110,6 +112,8 @@ services:
     container_name: wbfbs_worker
     restart: unless-stopped
     env_file: .env
+    environment:
+      - MALLOC_TRIM_THRESHOLD_=65536
     volumes:
       - certs_data:/app/certs
       - logs_data:/app/logs
@@ -118,14 +122,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=200 --max-memory-per-child=250000 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=200000 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance
     deploy:
       resources:
         limits:
           cpus: '0.60'
-          memory: 290M
+          memory: 220M
         reservations:
-          memory: 64M
+          memory: 48M
     logging:
       driver: "json-file"
       options:
@@ -142,6 +146,8 @@ services:
     container_name: wbfbs_scheduler
     restart: unless-stopped
     env_file: .env
+    environment:
+      - MALLOC_TRIM_THRESHOLD_=65536
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,7 +160,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 165M
+          memory: 110M
         reservations:
           memory: 32M
     logging:
@@ -173,6 +179,8 @@ services:
     container_name: wbfbs_bot
     restart: unless-stopped
     env_file: .env
+    environment:
+      - MALLOC_TRIM_THRESHOLD_=65536
     depends_on:
       postgres:
         condition: service_healthy
@@ -183,7 +191,7 @@ services:
       resources:
         limits:
           cpus: '0.20'
-          memory: 135M
+          memory: 110M
         reservations:
           memory: 32M
     logging:

@@ -42,14 +42,26 @@ check_container_mem() {
     fi
 }
 
-# 1. Proactively monitor wbfbs_bot (cgroup limit 135M)
+# 1. Proactively monitor wbfbs_bot
 check_container_mem "wbfbs_bot" "bot"
 
-# 2. Proactively monitor wbfbs_scheduler (cgroup limit 165M)
+# 2. Proactively monitor wbfbs_scheduler
 check_container_mem "wbfbs_scheduler" "scheduler"
 
-# 3. Check for crashed or restarting containers
+# 3. Proactively monitor wbfbs_worker
+check_container_mem "wbfbs_worker" "worker"
+
+# 4. Proactively monitor wbfbs_api
+check_container_mem "wbfbs_api" "api"
+
+# 5. Check for crashed or restarting containers
 UNHEALTHY=$(docker ps -a --filter "name=wbfbs_" --filter "status=restarting" --filter "status=dead" --format "{{.Names}}: {{.Status}}" 2>/dev/null || true)
 if [ -n "$UNHEALTHY" ]; then
     echo "[$(timestamp)] 🚨 [WATCHDOG ALERT] Unhealthy container state detected: $UNHEALTHY"
+fi
+
+# 6. Hourly heartbeat log (at xx:00)
+MINUTE=$(date '+%M')
+if [ "$MINUTE" = "00" ]; then
+    echo "[$(timestamp)] 💚 [WATCHDOG HEARTBEAT] All monitored services are healthy. Memory within limits."
 fi

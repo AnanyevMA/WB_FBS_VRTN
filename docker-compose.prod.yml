@@ -30,7 +30,7 @@ services:
       resources:
         limits:
           cpus: '0.40'
-          memory: 160M
+          memory: 150M
         reservations:
           memory: 48M
     logging:
@@ -160,7 +160,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 100M
+          memory: 140M
         reservations:
           memory: 32M
     logging:
@@ -191,7 +191,7 @@ services:
       resources:
         limits:
           cpus: '0.20'
-          memory: 100M
+          memory: 110M
         reservations:
           memory: 32M
     logging:
@@ -246,7 +246,7 @@ services:
       resources:
         limits:
           cpus: '0.05'
-          memory: 24M
+          memory: 36M
     logging:
       driver: "json-file"
       options:

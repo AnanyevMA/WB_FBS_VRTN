@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-01T10:46:22.143083+00:00",
+  "updated_at": "2026-10-01T15:52:03.700243+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 149,
+  "total_files": 151,
   "files": [
     {
       "file": "alembic/env.py",
@@ -489,7 +489,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "d2967a99f945",
+      "hash": "b861ac5c5998",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -535,6 +535,18 @@
             "celery_app.task()"
           ],
           "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней в ЧЧ:ММ)."
+        },
+        {
+          "name": "sync_all_sellers_archive_api_orders",
+          "is_async": false,
+          "args": [
+            "self",
+            "months_count"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Фоновый запуск по расписанию Celery Beat (ежедневно в 03:00):"
         }
       ],
       "endpoints": [],
@@ -558,6 +570,11 @@
           "name": "app.agents.archive_processor.check_archive_reminders",
           "function": "check_archive_reminders",
           "docstring": "Проверяет, нужно ли отправить менеджеру напоминание о загрузке архива WB (раз в N дней в ЧЧ:ММ)."
+        },
+        {
+          "name": "app.agents.archive_processor.sync_all_sellers_archive_api_orders",
+          "function": "sync_all_sellers_archive_api_orders",
+          "docstring": "Фоновый запуск по расписанию Celery Beat (ежедневно в 03:00):"
         }
       ],
       "db_tables": [],
@@ -566,11 +583,13 @@
         "app.agents.cz_withdrawal",
         "app.celery_app",
         "app.config",
+        "app.database",
         "app.models.order",
         "app.models.seller",
         "app.services.encryption",
         "app.services.telegram_service",
         "app.services.time_service",
+        "app.services.wb_archive_service",
         "app.services.wb_client",
         "asyncio",
         "datetime",
@@ -2134,7 +2153,7 @@
     {
       "file": "app/api/kiz/__init__.py",
       "layer": "api",
-      "hash": "b8f3684f39f7",
+      "hash": "339363b2b367",
       "docstring": "FastAPI KIZ Router Package — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -2154,7 +2173,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "9442b7898115",
+      "hash": "013f837b0025",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2196,6 +2215,19 @@
             "router.post('/archive/process')"
           ],
           "docstring": "Обработка выбранных позиций из архива WB:"
+        },
+        {
+          "name": "sync_archive_from_wb_api",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "payload",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/archive/sync-wb-api')"
+          ],
+          "docstring": "Запуск программной синхронизации архива сборочных заданий через Wildberries API:"
         }
       ],
       "endpoints": [
@@ -2216,6 +2248,12 @@
           "path": "/archive/process",
           "handler": "process_wb_archive",
           "docstring": "Обработка выбранных позиций из архива WB:"
+        },
+        {
+          "method": "POST",
+          "path": "/archive/sync-wb-api",
+          "handler": "sync_archive_from_wb_api",
+          "docstring": "Запуск программной синхронизации архива сборочных заданий через Wildberries API:"
         }
       ],
       "celery_tasks": [],
@@ -2231,6 +2269,7 @@
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
+        "app.services.wb_archive_service",
         "datetime",
         "fastapi",
         "logging",
@@ -3977,7 +4016,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "2d0b21ad54c0",
+      "hash": "9491bf80fa5a",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -3994,7 +4033,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "9a03a5e53cd2",
+      "hash": "2e023a36f088",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -4033,7 +4072,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "50e74075d5fc",
+      "hash": "4c805a33e57f",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -6252,7 +6291,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "2ec6ac4b167e",
+      "hash": "6b80f35f1fa9",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6281,7 +6320,8 @@
             "seller",
             "db",
             "days",
-            "sync_finance_api"
+            "sync_finance_api",
+            "sync_archive_api"
           ],
           "decorators": [],
           "docstring": "Создает единый пакет сверки маркировки по ВСЕМ источникам данных:"
@@ -6298,6 +6338,7 @@
         "app.models.wb_finance",
         "app.services.kiz_service",
         "app.services.unified_kiz_payload_builder",
+        "app.services.wb_archive_service",
         "app.services.wb_finance_service",
         "app.services.wb_warehouse_sales_service",
         "datetime",
@@ -6408,9 +6449,94 @@
       ]
     },
     {
+      "file": "app/services/wb_archive_service.py",
+      "layer": "services",
+      "hash": "911145f7ed30",
+      "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (>3 дней).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "get_recent_months",
+          "is_async": false,
+          "args": [
+            "months_count",
+            "base_date"
+          ],
+          "decorators": [],
+          "docstring": "Возвращает список кортежей (year, month) за последние months_count месяцев в убывающем порядке."
+        },
+        {
+          "name": "parse_wb_iso_datetime",
+          "is_async": false,
+          "args": [
+            "val"
+          ],
+          "decorators": [],
+          "docstring": "Парсит ISO timestamp от Wildberries в timezone-aware UTC datetime."
+        },
+        {
+          "name": "resolve_order_status",
+          "is_async": false,
+          "args": [
+            "wb_status",
+            "supplier_status",
+            "current_status"
+          ],
+          "decorators": [],
+          "docstring": "Определяет актуальный статус сборочного задания на основе статусов WB."
+        },
+        {
+          "name": "_upsert_archive_order",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller",
+            "raw_order",
+            "existing_order",
+            "existing_kinfo",
+            "now_dt",
+            "existing_kinfo_map"
+          ],
+          "decorators": [],
+          "docstring": "Внутренний хелпер: создает или обновляет Order и KizProductInfo по записи из архива."
+        },
+        {
+          "name": "sync_seller_archive_orders_recent_months",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "months_count",
+            "target_months"
+          ],
+          "decorators": [],
+          "docstring": "Синхронизирует архивные заказы продавца через WB API за последние months_count месяцев"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.wb_client",
+        "datetime",
+        "decimal",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "902f37e85fb6",
+      "hash": "e784ad88897f",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {
@@ -6460,6 +6586,8 @@
             "get_orders",
             "get_orders_status",
             "cancel_order",
+            "get_archive_orders",
+            "get_all_archive_orders",
             "get_stickers",
             "get_order_sticker",
             "set_order_sgtin",
@@ -10994,6 +11122,113 @@
       ]
     },
     {
+      "file": "tests/test_wb_archive_api.py",
+      "layer": "tests",
+      "hash": "6b2e4ecc8fc9",
+      "docstring": "Tests for WB Archive API Integration:",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_get_recent_months_calculation",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Проверяет корректность расчета месяцев, включая переход через границу года."
+        },
+        {
+          "name": "test_resolve_order_status",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Проверяет маппинг статусов архива WB на внутренние статусы заказа."
+        },
+        {
+          "name": "test_wb_client_get_archive_orders_call",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет, что WBClient.get_archive_orders корректно формирует запрос."
+        },
+        {
+          "name": "test_wb_client_get_all_archive_orders_pagination",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет работу пагинатора по курсору next."
+        },
+        {
+          "name": "test_sync_seller_archive_orders_creates_and_updates",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет, что синхронизация архива:"
+        },
+        {
+          "name": "_get_auth_headers",
+          "is_async": true,
+          "args": [
+            "client"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_fastapi_sync_wb_archive_endpoint",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет эндпоинт POST /api/v1/sellers/{seller_id}/archive/sync-wb-api."
+        },
+        {
+          "name": "test_unified_batch_includes_synced_archive_orders",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Проверяет, что синхронизированный из архива отмененный заказ"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.unified_kiz_batch_service",
+        "app.services.wb_archive_service",
+        "app.services.wb_client",
+        "datetime",
+        "decimal",
+        "httpx",
+        "pytest",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_wb_finance.py",
       "layer": "tests",
       "hash": "5478d65562f9",
@@ -11387,7 +11622,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "4d6445cb50c0",
+      "hash": "0647cdb7a7c4",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

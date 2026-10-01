@@ -336,3 +336,49 @@ def check_archive_reminders(*args, ignore_time_window: bool = False, **kwargs):
         if reminders_sent > 0:
             db.commit()
             logger.info(f"[Archive Reminder] Total reminders sent: {reminders_sent}")
+
+
+@celery_app.task(
+    name="app.agents.archive_processor.sync_all_sellers_archive_api_orders",
+    queue="archive",
+    bind=True,
+    max_retries=1,
+    soft_time_limit=1800,
+)
+def sync_all_sellers_archive_api_orders(self, months_count: int = 3):
+    """
+    Фоновый запуск по расписанию Celery Beat (ежедневно в 03:00):
+    Синхронизирует архивные заказы через WB API за последние months_count месяцев (по умолчанию 3)
+    для всех активных продавцов.
+    """
+    import asyncio
+    from app.database import AsyncSessionLocal
+    from app.models.seller import Seller
+    from app.services.wb_archive_service import sync_seller_archive_orders_recent_months
+
+    with Session(sync_engine) as db:
+        sellers = db.execute(
+            select(Seller).where(
+                Seller.is_active == True,
+                Seller.wb_api_token_encrypted.isnot(None),
+            )
+        ).scalars().all()
+
+    logger.info(f"[Archive API Sync] Syncing archive orders for {len(sellers)} sellers (window: {months_count} months)")
+
+    async def _run_all():
+        for seller in sellers:
+            try:
+                async with AsyncSessionLocal() as async_db:
+                    seller_db = await async_db.get(Seller, seller.id)
+                    if seller_db:
+                        await sync_seller_archive_orders_recent_months(
+                            seller=seller_db,
+                            db=async_db,
+                            months_count=months_count,
+                        )
+            except Exception as e:
+                logger.error(f"[Archive API Sync] Error syncing seller {seller.id}: {e}", exc_info=True)
+
+    asyncio.run(_run_all())
+

@@ -274,6 +274,54 @@ class WBClient:
         await self._request("PATCH", f"/api/v3/orders/{order_id}/cancel")
         return True
 
+    async def get_archive_orders(
+        self,
+        year: int,
+        month: int,
+        next_cursor: int = 0,
+        limit: int = 1000,
+    ) -> Dict[str, Any]:
+        """
+        GET /api/marketplace/v3/fbs/orders/archive
+        Returns assembly orders older than 3 days after delivery or cancellation.
+        """
+        params = {
+            "year": int(year),
+            "month": int(month),
+            "next": int(next_cursor),
+            "limit": min(max(int(limit), 100), 1000),
+        }
+        data = await self._request("GET", "/api/marketplace/v3/fbs/orders/archive", params=params)
+        if data and isinstance(data, dict):
+            return data
+        return {"orders": [], "next": 0}
+
+    async def get_all_archive_orders(
+        self,
+        year: int,
+        month: int,
+        max_orders: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Iterates over all archive order pages for a given year and month.
+        """
+        all_orders: List[Dict[str, Any]] = []
+        cursor = 0
+        while True:
+            resp = await self.get_archive_orders(year=year, month=month, next_cursor=cursor, limit=1000)
+            page_orders = resp.get("orders") or []
+            if not page_orders:
+                break
+            all_orders.extend(page_orders)
+            if max_orders and len(all_orders) >= max_orders:
+                all_orders = all_orders[:max_orders]
+                break
+            next_cursor = resp.get("next")
+            if not next_cursor or next_cursor == cursor or next_cursor == 0:
+                break
+            cursor = next_cursor
+        return all_orders
+
     # --- Stickers ---
 
     async def get_stickers(self, order_ids: List[int], format: str = 'svg', width: int = 58, height: int = 40) -> List[Dict]:

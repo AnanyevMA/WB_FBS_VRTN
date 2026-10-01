@@ -53,22 +53,26 @@
       "category": "wb_api",
       "title": "Wildberries Marketplace API v3: Жизненный цикл сборочных заданий (Orders)",
       "file": "docs/wb_api/02_orders_workflow.md",
-      "summary": "Получение новых заказов (/api/v3/orders/new), выгрузка архива заказов (/api/v3/orders), генерация стикеров (/api/v3/orders/stickers) и отмена заданий.",
+      "summary": "Получение новых заказов (/api/v3/orders/new), опрос статусов (/api/v3/orders/status), архив сборочных заданий (/api/marketplace/v3/fbs/orders/archive), стикеры и отмена.",
       "tags": [
         "wb",
         "orders",
         "stickers",
         "fbs",
         "assembly",
-        "cancel"
+        "cancel",
+        "archive",
+        "archive_api",
+        "status",
+        "canceled_orders"
       ],
       "endpoints": [
         "GET /api/v3/orders/new",
-        "GET /api/v3/orders/new",
+        "POST /api/v3/orders/status",
+        "GET /api/marketplace/v3/fbs/orders/archive",
         "POST /api/v3/orders/stickers",
         "GET /api/v3/orders",
-        "PATCH /api/v3/orders/{orderId}/cancel",
-        "PATCH /api/v3/orders/12345678/cancel"
+        "PATCH /api/v3/orders/{orderId}/cancel"
       ],
       "covered_errors": [
         "400 Bad Request",

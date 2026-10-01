@@ -3,7 +3,7 @@ FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager
 """
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -323,3 +323,57 @@ async def process_wb_archive(
         "queued_returns": queued_returns,
         "message": f"Запущено в обработку: {queued_withdrawals} выводов (с чеками) и {queued_returns} возвратов в оборот",
     }
+
+
+@router.post("/archive/sync-wb-api")
+async def sync_archive_from_wb_api(
+    seller_id: str,
+    payload: Optional[Dict[str, Any]] = Body(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Запуск программной синхронизации архива сборочных заданий через Wildberries API:
+    - По умолчанию за последние 3 месяца (months_count=3).
+    - При передаче year и month — за конкретный календарный месяц.
+    """
+    seller = await db.get(Seller, seller_id)
+    if not seller:
+        raise HTTPException(status_code=404, detail="Продавец не найден")
+
+    if not seller.wb_api_token_encrypted:
+        raise HTTPException(status_code=400, detail="У продавца не настроен токен Wildberries API")
+
+    payload = payload or {}
+    year = payload.get("year")
+    month = payload.get("month")
+    months_count = int(payload.get("months_count") or 3)
+
+    from app.services.wb_archive_service import sync_seller_archive_orders_recent_months
+
+    target_months = None
+    if year and month:
+        try:
+            target_months = [(int(year), int(month))]
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Некорректный формат года или месяца")
+
+    try:
+        summary = await sync_seller_archive_orders_recent_months(
+            seller=seller,
+            db=db,
+            months_count=months_count,
+            target_months=target_months,
+        )
+        return {
+            "success": True,
+            "summary": summary,
+            "message": (
+                f"Синхронизировано {summary.get('total_fetched', 0)} архивных заказов "
+                f"(создано {summary.get('orders_created', 0)}, обновлено {summary.get('orders_updated', 0)}, "
+                f"отмен {summary.get('cancelled_orders', 0)}, привязано КИЗ {summary.get('kiz_linked', 0)})"
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Error syncing WB archive API for seller {seller_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка синхронизации архива WB: {str(e)}")
+

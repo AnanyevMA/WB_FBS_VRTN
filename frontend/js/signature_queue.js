@@ -1123,6 +1123,59 @@ async function triggerUnifiedBatch(days = 90) {
     }
 }
 
+async function syncArchiveFromWbApi() {
+    let targetSellerId = currentSellerId;
+    if (!targetSellerId && typeof currentSellersList !== 'undefined' && currentSellersList && currentSellersList.length > 0) {
+        targetSellerId = currentSellersList[0].id;
+    }
+    if (!targetSellerId) {
+        return showToast('Ошибка', 'Сначала выберите активный магазин в верхнем меню', 'error');
+    }
+
+    const selectEl = document.getElementById('archiveApiMonthsSelect');
+    const monthsCount = selectEl ? parseInt(selectEl.value) || 3 : 3;
+    const btn = document.getElementById('archiveApiSyncBtn');
+    const origHtml = btn ? btn.innerHTML : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Загрузка...';
+    }
+
+    showToast('Синхронизация архива WB', `Запрос сборочных заданий за ${monthsCount} мес. через API...`, 'info');
+
+    try {
+        const res = await apiFetch(`/sellers/${targetSellerId}/archive/sync-wb-api`, {
+            method: 'POST',
+            body: JSON.stringify({ months_count: monthsCount })
+        });
+
+        if (res && res.success) {
+            const sum = res.summary || {};
+            showToast(
+                'Архив WB синхронизирован',
+                `Получено: ${sum.total_fetched || 0} заданий (создано: ${sum.orders_created || 0}, обновлено: ${sum.orders_updated || 0}, отмен: ${sum.cancelled_orders || 0}, привязано КИЗ: ${sum.kiz_linked || 0})`,
+                'success'
+            );
+            if (typeof loadSignatureBatches === 'function') {
+                loadSignatureBatches();
+            }
+            if (typeof loadOrders === 'function') {
+                loadOrders();
+            }
+        } else {
+            showToast('Ошибка синхронизации', res?.message || 'Не удалось получить данные архива', 'error');
+        }
+    } catch (err) {
+        showToast('Ошибка синхронизации', err.message || 'Ошибка вызова API WB', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+}
+
 // Global window bindings for inline HTML onclick handlers
 window.openArchiveFileInput = openArchiveFileInput;
 window.handleArchiveFileSelect = handleArchiveFileSelect;
@@ -1130,6 +1183,7 @@ window.handleArchiveDrop = handleArchiveDrop;
 window.uploadAndPreviewArchive = uploadAndPreviewArchive;
 window.renderArchivePreview = renderArchivePreview;
 window.syncArchiveCzLive = syncArchiveCzLive;
+window.syncArchiveFromWbApi = syncArchiveFromWbApi;
 window.syncBatchCzLive = syncBatchCzLive;
 window.switchArchiveTab = switchArchiveTab;
 window.toggleAllArchiveCheckboxes = toggleAllArchiveCheckboxes;

@@ -287,6 +287,28 @@
                         <div style="font-size: 12px; color: var(--text-muted);">Листы «КИЗ» и «Сборочные задания» с чеками продажи и возвратами</div>
                         <input type="file" id="archiveFileInput" accept=".xlsx,.xls" style="display: none;" onclick="event.stopPropagation()" onchange="handleArchiveFileSelect(event)">
                     </div>
+
+                    <!-- API Archive Sync Panel -->
+                    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: 14px; padding: 12px 16px; border-radius: 8px; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 20px;">⚡</span>
+                            <div>
+                                <div style="font-weight: 600; font-size: 13px;">Автоматическая синхронизация архива WB по API</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">Загрузка сборочных заданий старше 3 дней (отмены, статусы, прикрепленные КИЗ) без загрузки Excel</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <select id="archiveApiMonthsSelect" class="form-control" style="width: auto; padding: 6px 10px; font-size: 12px; height: 34px;">
+                                <option value="3" selected>За последние 3 месяца</option>
+                                <option value="1">За текущий месяц</option>
+                                <option value="2">За последние 2 месяца</option>
+                                <option value="6">За полгода (6 мес)</option>
+                            </select>
+                            <button id="archiveApiSyncBtn" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; height: 34px; display: flex; align-items: center; gap: 6px;" onclick="syncArchiveFromWbApi()">
+                                <span>🔄</span> Синхронизировать по API
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="glass-card scanner-container">

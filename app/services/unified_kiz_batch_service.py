@@ -54,6 +54,7 @@ async def create_unified_kiz_signature_batch(
     db: AsyncSession,
     days: int = 90,
     sync_finance_api: bool = False,
+    sync_archive_api: bool = False,
 ) -> Dict[str, Any]:
     """
     Создает единый пакет сверки маркировки по ВСЕМ источникам данных:
@@ -62,6 +63,13 @@ async def create_unified_kiz_signature_batch(
     now_utc = datetime.now(timezone.utc)
     seller_inn = (seller.cz_inn or "").strip()
     since_date = (now_utc - timedelta(days=days)).date()
+
+    if sync_archive_api and seller.wb_api_token_encrypted:
+        try:
+            from app.services.wb_archive_service import sync_seller_archive_orders_recent_months
+            await sync_seller_archive_orders_recent_months(seller=seller, db=db, months_count=3)
+        except Exception as arc_err:
+            logger.warning(f"Could not auto-sync fresh archive API orders: {arc_err}")
 
     if sync_finance_api and seller.wb_api_token_encrypted:
         try:

@@ -23,6 +23,7 @@ from app.api.kiz.archive import (
     preview_wb_archive,
     sync_archive_kiz_with_cz,
     process_wb_archive,
+    sync_archive_from_wb_api,
 )
 from app.api.kiz.signature_batches import (
     router as signature_batches_router,
@@ -68,6 +69,7 @@ __all__ = [
     "preview_wb_archive",
     "sync_archive_kiz_with_cz",
     "process_wb_archive",
+    "sync_archive_from_wb_api",
     "list_signature_batches",
     "get_signature_batch",
     "prepare_batch_documents_for_signing",

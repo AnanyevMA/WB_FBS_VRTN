@@ -374,6 +374,7 @@
       "polp_matrix": {
         "allowed_read_paths": [
           "app/agents/archive_processor.py",
+          "app/services/wb_archive_service.py",
           "storage/archive/*"
         ],
         "allowed_write_paths": [

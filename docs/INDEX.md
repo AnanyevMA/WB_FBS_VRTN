@@ -21,7 +21,7 @@
 | Раздел / Тема | Ключевые Эндпоинты / Контекст | Теги & Ошибки | Ссылка на документ |
 |---|---|---|---|
 | **WB: Авторизация & Лимиты** | `https://marketplace-api.wildberries.ru` | `auth`, `token`, `rate_limit`, `401`, `429` | [`docs/wb_api/01_overview_and_auth.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/wb_api/01_overview_and_auth.md) |
-| **WB: Заказы & Стикеры** | `GET /api/v3/orders/new`<br>`POST /api/v3/orders/stickers` | `orders`, `fbs`, `stickers`, `cancel`, `404` | [`docs/wb_api/02_orders_workflow.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/wb_api/02_orders_workflow.md) |
+| **WB: Заказы, Статусы & Архив** | `GET /api/v3/orders/new`<br>`POST /api/v3/orders/status`<br>`GET /api/marketplace/v3/fbs/orders/archive` | `orders`, `fbs`, `status`, `archive`, `archive_api`, `canceled_orders`, `3_months` | [`docs/wb_api/02_orders_workflow.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/wb_api/02_orders_workflow.md) |
 | **WB: Привязка КИЗ (SGTIN)** | `PUT /api/v3/orders/{id}/meta/sgtin`<br>`POST /api/marketplace/v3/orders/meta` | `kiz`, `sgtin`, `meta`, `409 Conflict`, `validation` | [`docs/wb_api/03_kiz_and_meta.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/wb_api/03_kiz_and_meta.md) |
 | **WB: Поставки (Supplies)** | `POST /api/v3/supplies`<br>`PATCH /api/v3/supplies/{id}/deliver` | `supplies`, `deliver`, `barcode`, `qr`, `400` | [`docs/wb_api/04_supplies_and_shipment.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/wb_api/04_supplies_and_shipment.md) |
 | **ЧЗ: Авторизация & УКЭП** | `GET /api/v3/true-api/auth/key`<br>`POST /api/v3/true-api/auth/simpleSignIn` | `ukep`, `cryptopro`, `gost`, `x-signature`, `cms` | [`docs/chestny_znak_api/01_auth_and_cryptography.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/chestny_znak_api/01_auth_and_cryptography.md) |
@@ -54,6 +54,9 @@
 
 ### Сценарий 5: Где найти полную спецификацию True API ГИС МТ (v719.0) и карту методов?
 👉 Читать: [`docs/chestny_znak_api/06_true_api_v719_reference.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/chestny_znak_api/06_true_api_v719_reference.md) и первоисточник [`docs/True_API_GIS_MT-v719.0-18.08.2026-at-10-23-16.md`](file:///D:/PyCharm_Projects/WB%20FBS/docs/True_API_GIS_MT-v719.0-18.08.2026-at-10-23-16.md).
+
+### Сценарий 6: Как автоматически синхронизировать отмененные заказы из архива WB по API за 3 месяца?
+👉 Читать: [`docs/wb_api/02_orders_workflow.md#5-архив-сборочных-заданий-3-дней`](file:///D:/PyCharm_Projects/WB%20FBS/docs/wb_api/02_orders_workflow.md).
 
 ---
 

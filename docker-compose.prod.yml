@@ -58,9 +58,9 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 64M
+          memory: 48M
         reservations:
-          memory: 24M
+          memory: 16M
     logging:
       driver: "json-file"
       options:
@@ -93,7 +93,7 @@ services:
       resources:
         limits:
           cpus: '0.60'
-          memory: 180M
+          memory: 220M
         reservations:
           memory: 48M
     logging:
@@ -127,7 +127,7 @@ services:
       resources:
         limits:
           cpus: '0.60'
-          memory: 180M
+          memory: 150M
         reservations:
           memory: 48M
     logging:
@@ -160,7 +160,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 140M
+          memory: 100M
         reservations:
           memory: 32M
     logging:
@@ -191,7 +191,7 @@ services:
       resources:
         limits:
           cpus: '0.20'
-          memory: 120M
+          memory: 100M
         reservations:
           memory: 32M
     logging:
@@ -222,7 +222,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 48M
+          memory: 32M
         reservations:
           memory: 16M
     logging:
@@ -246,7 +246,7 @@ services:
       resources:
         limits:
           cpus: '0.05'
-          memory: 32M
+          memory: 24M
     logging:
       driver: "json-file"
       options:

@@ -197,7 +197,7 @@ function renderProductCards(cards, resetPage = false) {
             </button>
         ` : '';
 
-        const errorsList = Array.isArray(c.error_details) && c.error_details.length > 0 ? `
+        const errorsList = (Array.isArray(c.error_details) && c.error_details.length > 0 && c.status !== 'published') ? `
             <div style="font-size: 11px; color: #f87171; margin-top: 4px; max-width: 260px; line-height: 1.2;">
                 ⚠️ ${escapeHtml(c.error_details.map(e => (typeof e === 'object' ? (e.error_message || e.message || JSON.stringify(e)) : String(e))).join('; '))}
             </div>
@@ -534,8 +534,9 @@ async function checkCardStatus(cardId) {
             method: 'POST'
         });
         const isErr = res.status === 'errors' || res.status === 'error';
-        const msg = res.error_details 
-            ? `Статус: ${STATUS_MAP_NK[res.status] || res.status}. Ошибка: ${res.error_details}`
+        const errorText = Array.isArray(res.error_details) ? res.error_details.join('; ') : res.error_details;
+        const msg = (res.error_details && isErr) 
+            ? `Статус: ${STATUS_MAP_NK[res.status] || res.status}. Ошибка: ${errorText}`
             : `Статус карточки: ${STATUS_MAP_NK[res.status] || res.status}`;
         showToast('Статус НКТ', msg, isErr ? 'error' : 'success');
         await loadProductCards(true);

@@ -12,6 +12,7 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.database import init_db, AsyncSessionLocal, engine
 from app.models.seller import Seller
+from sqlalchemy import select
 from app.national_catalog.models import ProductCard
 from app.national_catalog.client import NKClient
 from app.services.encryption import encrypt
@@ -554,4 +555,116 @@ async def test_check_status_feed_rejected_parsing():
         card_data = get_res.json()
         assert card_data["status"] == "errors"
         assert any("отсутствует обязательный параметр tnved" in str(err) for err in card_data["error_details"])
+
+
+def test_extract_feed_errors_signed_feed_no_metadata_leak():
+    """Ensure _extract_feed_errors does not treat feed metadata as error strings."""
+    from app.national_catalog.router import _extract_feed_errors
+
+    signed_feed = {
+        "apiversion": 3,
+        "feed_id": 473258028,
+        "item": [],
+        "received_at": "2026-09-30T13:57:51Z",
+        "result": {
+            "feed_id": 473258028,
+            "item": [],
+            "received_at": "2026-09-30T13:57:51Z",
+            "status": "Signed",
+            "status_id": 3,
+            "status_updated_at": "2026-10-02T05:10:32Z"
+        },
+        "status": "Signed",
+        "status_id": 3,
+        "status_updated_at": "2026-10-02T05:10:32Z"
+    }
+
+    errs = _extract_feed_errors(signed_feed, gtin="04630199255705")
+    assert errs == []
+
+    errs_no_gtin = _extract_feed_errors(signed_feed)
+    assert errs_no_gtin == []
+
+
+@pytest.mark.asyncio
+async def test_check_status_signed_feed_clears_error_details():
+    """Ensure check-status for a card with signed feed clears error_details to None."""
+    await init_db()
+    seller_id = f"test-nk-signed-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="НК Тест Опубликован Магазин",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="190207495060",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        with patch.object(NKClient, "create_or_update_feed", new_callable=AsyncMock) as mock_feed:
+            mock_feed.return_value = 473258028
+
+            create_res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products",
+                json={
+                    "name": "Анорак тедди, цвет Черный, размер L",
+                    "gtin": "04630199255705",
+                    "tnved": "6202900001",
+                    "category_id": 20000003,
+                    "moderation": True
+                },
+                headers=headers
+            )
+            assert create_res.status_code == 200
+            card_id = create_res.json()["id"]
+
+        # Simulate previous error in card
+        async with AsyncSessionLocal() as session:
+            stmt = select(ProductCard).where(ProductCard.id == card_id)
+            c = (await session.execute(stmt)).scalar_one()
+            c.error_details = ["Старая ошибка валидации"]
+            await session.commit()
+
+        # Mock signed feed status and published product
+        with patch.object(NKClient, "get_feed_status", new_callable=AsyncMock) as mock_st, \
+             patch.object(NKClient, "get_feed_product", new_callable=AsyncMock) as mock_prod:
+            mock_st.return_value = {
+                "apiversion": 3,
+                "feed_id": 473258028,
+                "status": "Signed",
+                "status_id": 3,
+                "result": {
+                    "feed_id": 473258028,
+                    "status": "Signed",
+                    "status_id": 3,
+                    "received_at": "2026-09-30T13:57:51Z",
+                    "status_updated_at": "2026-10-02T05:10:32Z"
+                }
+            }
+            mock_prod.return_value = [
+                {
+                    "good_id": 1177209984,
+                    "good_status": "published",
+                    "good_mark_flag": True,
+                    "good_turn_flag": True
+                }
+            ]
+
+            chk_res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products/{card_id}/check-status",
+                headers=headers
+            )
+            assert chk_res.status_code == 200
+            data = chk_res.json()
+            assert data["status"] == "published"
+            assert data["error_details"] is None
+            assert data["good_id"] == 1177209984
+
 

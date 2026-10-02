@@ -169,9 +169,16 @@ def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
         for it in item_list:
             if isinstance(it, dict):
                 it_gtin = str(it.get("gtin") or "").strip()
-                msg = it.get("message") or it.get("error_message") or it.get("status_message") or it.get("text")
-                if not msg and it.get("status_code") and it.get("status_code") not in (0, 1, 2, 3):
-                    msg = f"Код ошибки {it['status_code']}"
+                it_st = str(it.get("status") or "").lower()
+                it_code = it.get("status_code")
+                # Успешные статусы пропускаем
+                if it_st in ("signed", "moderated", "published", "success", "ok") or it_code in (2, 3):
+                    continue
+                msg = it.get("message") or it.get("error_message") or it.get("text")
+                if not msg and it_st in ("rejected", "errors", "failed") and it.get("status_message"):
+                    msg = it.get("status_message")
+                if not msg and it_code and it_code not in (0, 1, 2, 3):
+                    msg = f"Код ошибки {it_code}"
                 if msg:
                     text = f"{it.get('attribute_name')}: {msg}" if it.get("attribute_name") else str(msg)
                     if clean_gtin:
@@ -182,24 +189,32 @@ def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
 
     # 2. Формат result: {"0": ["..."], "1": ["..."], "totalErrors": "14"}
     if isinstance(res_obj, dict):
-        matched_for_gtin = []
-        all_res_errors = []
-        for k, v in res_obj.items():
-            if k == "totalErrors":
-                continue
-            err_list = v if isinstance(v, list) else [v]
-            for err in err_list:
-                err_text = str(err).strip()
-                if not err_text:
+        # res_obj является словарем ошибок только если присутствуют числовые ключи ("0", "1", ...)
+        # либо поле totalErrors. Исключаем метаданные фида (feed_id, status, status_id, dates и т.д.).
+        is_error_map = "totalErrors" in res_obj or any(k.isdigit() for k in res_obj.keys())
+        if is_error_map:
+            matched_for_gtin = []
+            all_res_errors = []
+            metadata_keys = {
+                "totalErrors", "feed_id", "status", "status_id", "received_at",
+                "status_updated_at", "item", "items", "user_id", "inn", "created_at", "apiversion"
+            }
+            for k, v in res_obj.items():
+                if k in metadata_keys:
                     continue
-                all_res_errors.append(err_text)
-                if clean_gtin and (clean_gtin in err_text or (gtin_no_zero and gtin_no_zero in err_text)):
-                    matched_for_gtin.append(err_text)
+                err_list = v if isinstance(v, list) else [v]
+                for err in err_list:
+                    err_text = str(err).strip()
+                    if not err_text:
+                        continue
+                    all_res_errors.append(err_text)
+                    if clean_gtin and (clean_gtin in err_text or (gtin_no_zero and gtin_no_zero in err_text)):
+                        matched_for_gtin.append(err_text)
 
-        if matched_for_gtin:
-            errors.extend(matched_for_gtin)
-        elif all_res_errors:
-            errors.extend(all_res_errors)
+            if matched_for_gtin:
+                errors.extend(matched_for_gtin)
+            elif all_res_errors:
+                errors.extend(all_res_errors)
 
     # 3. Формат error_details
     err_details = feed_data.get("error_details")
@@ -700,8 +715,13 @@ async def sync_products_from_nk(
                         c.error_details = _extract_feed_errors(st_data)
                     elif st_str == "Moderated":
                         c.status = "notsigned"
+                        c.error_details = None
                     elif st_str == "Signed":
                         c.status = "published"
+                        c.error_details = None
+                    elif st_str in ("Processing", "Received"):
+                        if not c_errors:
+                            c.error_details = None
                     _auto_fill_tnved_from_attrs(c)
                     c.updated_at = datetime.now(timezone.utc)
                     feeds_updated_count += 1
@@ -831,6 +851,8 @@ async def sync_products_from_nk(
             if cat_name_str:
                 card.category_name = cat_name_str
             card.status = status_val
+            if card.status == "published":
+                card.error_details = None
             if p.get("good_mark_flag") is not None:
                 card.good_mark_flag = bool(p["good_mark_flag"])
             if p.get("good_turn_flag") is not None:
@@ -939,6 +961,7 @@ async def check_product_status(
 
                     if status_str in ("Moderated", "Signed"):
                         sc.status = "notsigned" if status_str == "Moderated" else "published"
+                        sc.error_details = None
                         # Извлекаем good_id строго для соответствующего GTIN
                         for it in item_list:
                             if isinstance(it, dict) and it.get("good_id"):
@@ -949,6 +972,9 @@ async def check_product_status(
                                         sc.good_id = int(it["good_id"])
                                     except Exception:
                                         pass
+                    elif status_str in ("Processing", "Received"):
+                        if not sc_errors:
+                            sc.error_details = None
 
                     _auto_fill_tnved_from_attrs(sc)
                     sc.updated_at = datetime.now(timezone.utc)
@@ -970,6 +996,8 @@ async def check_product_status(
                     if st_val:
                         st_lower = str(st_val).lower()
                         card.status = st_lower if st_lower in ("draft", "moderation", "notsigned", "published", "errors", "rejected") else str(st_val)
+                    if card.status == "published":
+                        card.error_details = None
                     if p.get("good_mark_flag") is not None:
                         card.good_mark_flag = bool(p["good_mark_flag"])
                     if p.get("good_turn_flag") is not None:

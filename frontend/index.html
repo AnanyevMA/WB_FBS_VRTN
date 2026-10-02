@@ -1181,7 +1181,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Страна производства</label>
-                        <input type="text" class="form-control" id="nk_card_country" placeholder="Россия">
+                        <input type="text" class="form-control" id="nk_card_country" placeholder="Россия" list="countryDatalist">
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Цвет</label>
@@ -1308,9 +1308,24 @@
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">Страна производства</label>
-                        <input type="text" class="form-control" id="matrix_country" value="Россия" placeholder="Россия">
+                        <input type="text" class="form-control" id="matrix_country" value="Россия" placeholder="Россия" list="countryDatalist">
                     </div>
                 </div>
+
+                <datalist id="countryDatalist">
+                    <option value="Россия">Россия (RU)</option>
+                    <option value="Беларусь">Беларусь (BY)</option>
+                    <option value="Китай">Китай (CN)</option>
+                    <option value="Турция">Турция (TR)</option>
+                    <option value="Узбекистан">Узбекистан (UZ)</option>
+                    <option value="Казахстан">Казахстан (KZ)</option>
+                    <option value="Кыргызстан">Кыргызстан (KG)</option>
+                    <option value="Армения">Армения (AM)</option>
+                    <option value="Вьетнам">Вьетнам (VN)</option>
+                    <option value="Индия">Индия (IN)</option>
+                    <option value="Бангладеш">Бангладеш (BD)</option>
+                    <option value="Италия">Италия (IT)</option>
+                </datalist>
 
                 <!-- Declarations and Tech Regulations -->
                 <div style="background: rgba(30, 41, 59, 0.5); border: 1px dashed rgba(147, 51, 234, 0.35); border-radius: 8px; padding: 12px; margin-top: 10px;">

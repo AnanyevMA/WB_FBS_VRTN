@@ -248,6 +248,42 @@ def _extract_feed_errors(feed_data: dict, gtin: Optional[str] = None) -> list:
     return list(dict.fromkeys(errors))
 
 
+COUNTRY_TO_ISO = {
+    "россия": "RU", "рф": "RU", "российская федерация": "RU", "russia": "RU", "rus": "RU",
+    "беларусь": "BY", "белоруссия": "BY", "республика беларусь": "BY", "belarus": "BY",
+    "китай": "CN", "кнр": "CN", "china": "CN",
+    "турция": "TR", "turkey": "TR",
+    "узбекистан": "UZ", "uzbekistan": "UZ",
+    "казахстан": "KZ", "kazakhstan": "KZ",
+    "кыргызстан": "KG", "киргизия": "KG", "kyrgyzstan": "KG",
+    "армения": "AM", "armenia": "AM",
+    "вьетнам": "VN", "vietnam": "VN",
+    "индия": "IN", "india": "IN",
+    "бангладеш": "BD", "bangladesh": "BD",
+    "италия": "IT", "italy": "IT",
+    "германия": "DE", "germany": "DE",
+    "франция": "FR", "france": "FR",
+    "сербия": "RS", "serbia": "RS",
+    "таджикистан": "TJ", "tajikistan": "TJ",
+    "азербайджан": "AZ", "azerbaijan": "AZ",
+    "грузия": "GE", "georgia": "GE",
+    "пакистан": "PK", "pakistan": "PK",
+}
+
+
+def normalize_country_to_iso(val: Optional[str]) -> Optional[str]:
+    """Преобразует текстовое название страны в 2-буквенный ISO 3166-1 alpha-2 код (для attr_id 2630)."""
+    if not val:
+        return None
+    val_clean = str(val).strip()
+    val_lower = val_clean.lower()
+    if val_lower in COUNTRY_TO_ISO:
+        return COUNTRY_TO_ISO[val_lower]
+    if len(val_clean) == 2 and val_clean.isalpha():
+        return val_clean.upper()
+    return val_clean
+
+
 def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional[str], Optional[str]]:
     gtin_val = payload.gtin.strip() if payload.gtin else None
     if not payload.is_tech_gtin and not gtin_val:
@@ -353,6 +389,25 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
                 attr_dict["attr_value_type"] = "РОСТ"
             else:
                 attr_dict["attr_value_type"] = "МЕЖДУНАРОДНЫЙ"
+
+        # Нормализация 2630 (Страна производства)
+        elif attr.attr_id == 2630:
+            c_code = normalize_country_to_iso(attr.attr_value)
+            if c_code:
+                attr_dict["attr_value"] = c_code
+                attr.attr_value = c_code
+
+        # Поддержка legacy 10611 (Страна производства из формы) -> маппинг в 2630
+        elif attr.attr_id == 10611:
+            has_2630 = any(a.attr_id == 2630 for a in payload.attributes)
+            if not has_2630:
+                c_code = normalize_country_to_iso(attr.attr_value)
+                if c_code:
+                    goods_item["good_attrs"].append({
+                        "attr_id": 2630,
+                        "attr_value": c_code,
+                    })
+            continue
 
         elif attr.attr_value_type:
             attr_dict["attr_value_type"] = attr.attr_value_type
@@ -563,9 +618,15 @@ async def update_product(
     if payload.attributes is not None:
         attrs_payload = []
         for attr in payload.attributes:
+            val_to_use = attr.attr_value
+            if attr.attr_id == 2630:
+                c_code = normalize_country_to_iso(attr.attr_value)
+                if c_code:
+                    val_to_use = c_code
+                    attr.attr_value = c_code
             ad = {
                 "attr_id": attr.attr_id,
-                "attr_value": attr.attr_value,
+                "attr_value": val_to_use,
             }
             if attr.attr_value_id:
                 ad["attr_value_id"] = attr.attr_value_id

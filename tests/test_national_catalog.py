@@ -668,3 +668,77 @@ async def test_check_status_signed_feed_clears_error_details():
             assert data["good_id"] == 1177209984
 
 
+def test_normalize_country_to_iso_helper():
+    """Test helper normalize_country_to_iso converts various formats to ISO 3166-1 alpha-2."""
+    from app.national_catalog.router import normalize_country_to_iso
+
+    assert normalize_country_to_iso("Россия") == "RU"
+    assert normalize_country_to_iso("РФ") == "RU"
+    assert normalize_country_to_iso("Российская Федерация") == "RU"
+    assert normalize_country_to_iso("Russia") == "RU"
+    assert normalize_country_to_iso("RU") == "RU"
+    assert normalize_country_to_iso("ru") == "RU"
+    assert normalize_country_to_iso("Беларусь") == "BY"
+    assert normalize_country_to_iso("Китай") == "CN"
+    assert normalize_country_to_iso("Турция") == "TR"
+    assert normalize_country_to_iso("Узбекистан") == "UZ"
+    assert normalize_country_to_iso("") is None
+    assert normalize_country_to_iso(None) is None
+
+
+@pytest.mark.asyncio
+async def test_create_product_normalizes_country_attr_2630():
+    """Ensure country attr_id 2630 with value 'Россия' is sent to True API as 'RU'."""
+    await init_db()
+    seller_id = f"test-nk-country-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="НК Тест Страна Магазин",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="190207495060",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        with patch.object(NKClient, "create_or_update_feed", new_callable=AsyncMock) as mock_feed:
+            mock_feed.return_value = 888999
+
+            res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products",
+                json={
+                    "name": "Рубашка пижамная, цвет Бежевый, р. M",
+                    "gtin": "04630199255859",
+                    "tnved": "6206300000",
+                    "category_id": 231282,
+                    "moderation": True,
+                    "attributes": [
+                        {"attr_id": 35, "attr_value": "M", "attr_value_type": "МЕЖДУНАРОДНЫЙ"},
+                        {"attr_id": 36, "attr_value": "Бежевый"},
+                        {"attr_id": 2483, "attr_value": "Хлопок 85%, Лен 15%"},
+                        {"attr_id": 13914, "attr_value": "VRTN0221", "attr_value_type": "Артикул"},
+                        {"attr_id": 2630, "attr_value": "Россия"},
+                    ]
+                },
+                headers=headers
+            )
+            assert res.status_code == 200
+
+            mock_feed.assert_called_once()
+            sent_goods = mock_feed.call_args[0][0]
+            assert len(sent_goods) == 1
+            sent_attrs = sent_goods[0]["good_attrs"]
+
+            # Verify attr 2630 value was normalized to 'RU'
+            attr_2630 = next(a for a in sent_attrs if a["attr_id"] == 2630)
+            assert attr_2630["attr_value"] == "RU"
+
+
+

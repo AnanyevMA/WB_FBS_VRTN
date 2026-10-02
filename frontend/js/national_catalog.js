@@ -9,6 +9,66 @@ let currentCardToSign = null;
 let nkPageSize = 20; // 10 | 20 | 50
 let nkCurrentPage = 1;
 
+const ISO_TO_COUNTRY = {
+    'RU': 'Россия',
+    'BY': 'Беларусь',
+    'CN': 'Китай',
+    'TR': 'Турция',
+    'UZ': 'Узбекистан',
+    'KZ': 'Казахстан',
+    'KG': 'Кыргызстан',
+    'AM': 'Армения',
+    'VN': 'Вьетнам',
+    'IN': 'Индия',
+    'BD': 'Бангладеш',
+    'IT': 'Италия',
+    'DE': 'Германия',
+    'FR': 'Франция',
+    'RS': 'Сербия',
+    'TJ': 'Таджикистан',
+    'AZ': 'Азербайджан',
+    'GE': 'Грузия',
+    'PK': 'Пакистан',
+};
+
+const COUNTRY_TO_ISO = {
+    'россия': 'RU', 'рф': 'RU', 'российская федерация': 'RU', 'russia': 'RU', 'rus': 'RU',
+    'беларусь': 'BY', 'белоруссия': 'BY', 'республика беларусь': 'BY', 'belarus': 'BY',
+    'китай': 'CN', 'кнр': 'CN', 'china': 'CN',
+    'турция': 'TR', 'turkey': 'TR',
+    'узбекистан': 'UZ', 'uzbekistan': 'UZ',
+    'казахстан': 'KZ', 'kazakhstan': 'KZ',
+    'кыргызстан': 'KG', 'киргизия': 'KG', 'kyrgyzstan': 'KG',
+    'армения': 'AM', 'armenia': 'AM',
+    'вьетнам': 'VN', 'vietnam': 'VN',
+    'индия': 'IN', 'india': 'IN',
+    'бангладеш': 'BD', 'bangladesh': 'BD',
+    'италия': 'IT', 'italy': 'IT',
+    'германия': 'DE', 'germany': 'DE',
+    'франция': 'FR', 'france': 'FR',
+    'сербия': 'RS', 'serbia': 'RS',
+    'таджикистан': 'TJ', 'tajikistan': 'TJ',
+    'азербайджан': 'AZ', 'azerbaijan': 'AZ',
+    'грузия': 'GE', 'georgia': 'GE',
+    'пакистан': 'PK', 'pakistan': 'PK',
+};
+
+function formatCountryName(val) {
+    if (!val) return '';
+    const clean = String(val).trim();
+    const upper = clean.toUpperCase();
+    return ISO_TO_COUNTRY[upper] || clean;
+}
+
+function normalizeCountryToIso(val) {
+    if (!val) return '';
+    const clean = String(val).trim();
+    const lower = clean.toLowerCase();
+    if (COUNTRY_TO_ISO[lower]) return COUNTRY_TO_ISO[lower];
+    if (clean.length === 2 && /^[a-zA-Z]+$/.test(clean)) return clean.toUpperCase();
+    return clean;
+}
+
 /**
  * Переключение размера страницы (10 / 20 / 50)
  */
@@ -366,7 +426,7 @@ async function editProductCard(cardId) {
             if (attrId === 10609 || attrId === '10609' || attrId === 13933 || attrId === '13933' || attrId === 3959 || attrId === '3959') {
                 if (!document.getElementById('nk_card_tnved').value) document.getElementById('nk_card_tnved').value = val;
             } else if (attrId === 10610 || attrId === '10610') composition = val;
-            else if (attrId === 10611 || attrId === '10611') country = val;
+            else if (attrId === 2630 || attrId === '2630' || attrId === 10611 || attrId === '10611') country = formatCountryName(val);
             else if (attrId === 10612 || attrId === '10612') color = val;
             else if (attrId === 10613 || attrId === '10613') size = val;
             else if (attrId === 10614 || attrId === '10614') desc = val;
@@ -446,7 +506,7 @@ async function saveProductCard(sendToModeration = false) {
     const composition = document.getElementById('nk_card_composition').value.trim();
     if (composition) attributes.push({ attr_id: 10610, attr_value: composition });
     const country = document.getElementById('nk_card_country').value.trim();
-    if (country) attributes.push({ attr_id: 10611, attr_value: country });
+    if (country) attributes.push({ attr_id: 2630, attr_value: normalizeCountryToIso(country) });
     const color = document.getElementById('nk_card_color').value.trim();
     if (color) attributes.push({ attr_id: 10612, attr_value: color });
     const size = document.getElementById('nk_card_size').value.trim();
@@ -809,8 +869,8 @@ function populateMatrixFromDonor(card) {
             donorArticle = val;
         } else if (id === 2483 || id === 10610) {
             if (!donorComposition) donorComposition = val;
-        } else if (id === 2480 || id === 10611) {
-            if (!donorCountry) donorCountry = val;
+        } else if (id === 2630 || id === 10611 || (id === 2480 && !donorCountry)) {
+            if (!donorCountry) donorCountry = formatCountryName(val);
         } else if (id === 36 || id === 10612) {
             if (!donorColor) donorColor = val;
         } else if (id === 35 || id === 10613) {
@@ -1280,7 +1340,7 @@ async function submitMatrixBatch() {
     const donorAttrs = Array.isArray(matrixDonorCard?.attributes) ? matrixDonorCard.attributes : [];
 
     // Filter donor custom attributes that should be preserved across all cards
-    const excludedAttrIds = [13914, 10001, 2478, 35, 10613, 36, 10612, 2483, 10610, 2480, 10611, 10609, 13933, 3959, 23557, 23561, 13836];
+    const excludedAttrIds = [13914, 10001, 2478, 35, 10613, 36, 10612, 2483, 10610, 2480, 10611, 2630, 10609, 13933, 3959, 23557, 23561, 13836];
     const inheritedCustomAttrs = donorAttrs.filter(a => !excludedAttrIds.includes(a.attr_id));
 
     for (const row of checkedRows) {
@@ -1316,9 +1376,9 @@ async function submitMatrixBatch() {
             itemAttrs.push({ attr_id: 2483, attr_value: composition });
         }
 
-        // 5. Country of origin
+        // 5. Country of origin (attr 2630)
         if (country) {
-            itemAttrs.push({ attr_id: 2480, attr_value: country });
+            itemAttrs.push({ attr_id: 2630, attr_value: normalizeCountryToIso(country) });
         }
 
         // 6. TNVED attributes: 13933 (10 цифр) и 3959 (4 цифры)

@@ -30,7 +30,7 @@ services:
       resources:
         limits:
           cpus: '0.40'
-          memory: 150M
+          memory: 100M
         reservations:
           memory: 48M
     logging:
@@ -122,12 +122,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=200000 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=180000 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance
     deploy:
       resources:
         limits:
           cpus: '0.60'
-          memory: 150M
+          memory: 190M
         reservations:
           memory: 48M
     logging:

@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-01T15:52:03.700243+00:00",
+  "updated_at": "2026-10-03T04:58:01.543535+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 151,
+  "total_files": 152,
   "files": [
     {
       "file": "alembic/env.py",
@@ -4621,7 +4621,7 @@
     {
       "file": "app/national_catalog/router.py",
       "layer": "core",
-      "hash": "b8486045f763",
+      "hash": "6f3130b06b25",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4687,6 +4687,15 @@
           ],
           "decorators": [],
           "docstring": "Универсальное извлечение списка ошибок фида из ответа Честного Знака."
+        },
+        {
+          "name": "normalize_country_to_iso",
+          "is_async": false,
+          "args": [
+            "val"
+          ],
+          "decorators": [],
+          "docstring": "Преобразует текстовое название страны в 2-буквенный ISO 3166-1 alpha-2 код (для attr_id 2630)."
         },
         {
           "name": "_build_goods_item",
@@ -5910,7 +5919,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "5c156fd17a59",
+      "hash": "28ecf290e0ec",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -5988,7 +5997,8 @@
             "doc_id",
             "is_valid",
             "validation_message",
-            "target_order_id"
+            "target_order_id",
+            "flush"
           ],
           "decorators": [],
           "docstring": "Единый канонический метод синхронизации статуса КИЗ в БД (Single Source of Truth)."
@@ -7278,6 +7288,35 @@
         "pathlib",
         "sqlalchemy",
         "sys"
+      ]
+    },
+    {
+      "file": "scripts/test_live_archive_sync.py",
+      "layer": "config",
+      "hash": "809d0ab3303b",
+      "docstring": "Live test script for WB Archive API synchronization on VPS.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "main",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.wb_archive_service",
+        "asyncio",
+        "logging",
+        "sqlalchemy",
+        "traceback"
       ]
     },
     {
@@ -10088,7 +10127,7 @@
     {
       "file": "tests/test_national_catalog.py",
       "layer": "tests",
-      "hash": "8d345df34f8a",
+      "hash": "2f22bd9b40ab",
       "docstring": "Tests for National Catalog (НКТ) module:",
       "classes": [],
       "functions": [
@@ -10172,6 +10211,38 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Test handling Honest Sign Rejected feed status with error list dict."
+        },
+        {
+          "name": "test_extract_feed_errors_signed_feed_no_metadata_leak",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Ensure _extract_feed_errors does not treat feed metadata as error strings."
+        },
+        {
+          "name": "test_check_status_signed_feed_clears_error_details",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Ensure check-status for a card with signed feed clears error_details to None."
+        },
+        {
+          "name": "test_normalize_country_to_iso_helper",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Test helper normalize_country_to_iso converts various formats to ISO 3166-1 alpha-2."
+        },
+        {
+          "name": "test_create_product_normalizes_country_attr_2630",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Ensure country attr_id 2630 with value 'Россия' is sent to True API as 'RU'."
         }
       ],
       "endpoints": [],
@@ -10184,10 +10255,12 @@
         "app.models.seller",
         "app.national_catalog.client",
         "app.national_catalog.models",
+        "app.national_catalog.router",
         "app.services.auth_service",
         "app.services.encryption",
         "httpx",
         "pytest",
+        "sqlalchemy",
         "unittest.mock",
         "uuid"
       ]
@@ -11622,7 +11695,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "0647cdb7a7c4",
+      "hash": "c1475a467fa4",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

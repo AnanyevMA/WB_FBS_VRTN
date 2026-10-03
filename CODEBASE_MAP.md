@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-01 15:52:03 UTC | **Файлов проиндексировано**: 151  
+> **Дата актуализации**: 2026-10-03 04:58:01 UTC | **Файлов проиндексировано**: 152  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -162,7 +162,7 @@
 | [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
 | [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_golden_schema_withdrawal_and_return_with_receipts`, `test_return_document_building`, +еще 3 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
 | [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest`, `TestMorningDigestFailureHandling` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
-| [`tests/test_national_catalog.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_national_catalog.py) | — | `cleanup_db_engine`, `_get_auth_headers`, `test_nk_client_feed_creation_and_status`, `test_nk_client_document_and_signing`, +еще 5 | Tests for National Catalog (НКТ) module: |
+| [`tests/test_national_catalog.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_national_catalog.py) | — | `cleanup_db_engine`, `_get_auth_headers`, `test_nk_client_feed_creation_and_status`, `test_nk_client_document_and_signing`, +еще 9 | Tests for National Catalog (НКТ) module: |
 | [`tests/test_order_poller_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_order_poller_adversarial.py) | — | `setup_db`, `test_seller`, `test_resolve_order_metadata_string_and_invalid_chrt_nm_ids`, `test_resolve_order_metadata_empty_and_missing_payload`, +еще 8 | Модуль кодовой базы |
 | [`tests/test_order_poller_enrichment.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_order_poller_enrichment.py) | — | `setup_db`, `test_seller`, `test_resolve_order_metadata_from_local_db_cache_by_chrt_id`, `test_resolve_order_metadata_from_local_db_cache_by_article`, +еще 6 | Модуль кодовой базы |
 | [`tests/test_orders_sorting_and_archive.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_orders_sorting_and_archive.py) | — | `test_seller`, `test_orders_default_sorting_by_date_desc`, `test_orders_sorting_by_columns_asc_desc`, `test_order_archive_conditions_and_view_filtering` | Модуль кодовой базы |
@@ -192,3 +192,4 @@
 | [`scripts/retry_order_cz.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/retry_order_cz.py) | — | `main` | Script to trigger retry-withdrawal for an order. |
 | [`scripts/set_admin_password.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/set_admin_password.py) | — | `sync_local_env_file`, `is_running_in_docker`, `try_docker_forward`, `set_admin_password_direct`, +еще 1 | Set or Reset Admin Password for WB FBS Manager |
 | [`scripts/sync_order_cz_status.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/sync_order_cz_status.py) | — | `sync_order` | Script to synchronize order CZ withdrawal document status with True API v4. |
+| [`scripts/test_live_archive_sync.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/test_live_archive_sync.py) | — | `main` | Live test script for WB Archive API synchronization on VPS. |

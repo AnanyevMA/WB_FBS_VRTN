@@ -47,7 +47,12 @@ async def main():
                 cancelled_orders = (await db.execute(cancelled_stmt)).scalars().all()
                 print(f"Total CANCELLED orders with KIZ in DB for this seller: {len(cancelled_orders)}")
                 for o in cancelled_orders[:5]:
-                    print(f"  Order #{o.id} | wb_status: {o.wb_status} | KIZ: {o.kiz_code}")
+                    print(f"  Order #{o.id} | wb_status: {o.wb_status} | created: {o.wb_created_at} | KIZ: {o.kiz_code}")
+
+                # Check all recent order dates in DB
+                dates_stmt = select(Order.wb_created_at).where(Order.seller_id == str(seller.id)).order_by(Order.wb_created_at.desc()).limit(5)
+                recent_dates = (await db.execute(dates_stmt)).scalars().all()
+                print("Recent 5 order dates in DB:", recent_dates)
 
             except Exception as e:
                 print(f"ERROR syncing archive for {seller.name}: {e}")

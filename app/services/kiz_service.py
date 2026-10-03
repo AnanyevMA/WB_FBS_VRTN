@@ -703,6 +703,7 @@ async def sync_kiz_status_record(
     is_valid: Optional[bool] = None,
     validation_message: Optional[str] = None,
     target_order_id: Optional[int] = None,
+    flush: bool = True,
 ) -> Optional[KizProductInfo]:
     """
     Единый канонический метод синхронизации статуса КИЗ в БД (Single Source of Truth).
@@ -797,7 +798,8 @@ async def sync_kiz_status_record(
 
         o.updated_at = now
 
-    await db.flush()
+    if flush:
+        await db.flush()
     return kiz_info
 
 
@@ -947,7 +949,10 @@ async def batch_verify_and_sync_cises(
                     cz_status_ex=st_ex,
                     raw_payload=info,
                     seller_id=str(seller.id),
+                    flush=False,
                 )
                 results[orig_code] = k_info
+
+            await db.flush()
 
     return results

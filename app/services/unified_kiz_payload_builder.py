@@ -3,8 +3,8 @@ Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.
 Constructs normalized withdrawals and returns payloads with owner validation.
 """
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
-from app.models.order import Order
+from typing import Any, Dict, List, Optional, Set, Tuple
+from app.models.order import Order, KizStatus
 from app.services.kiz_service import is_kiz_withdrawn, CZ_STATUS_DESCRIPTIONS
 
 
@@ -15,10 +15,12 @@ def build_unified_withdrawals_payload(
     history_by_cis: Dict[str, List[Dict[str, Any]]],
     seller_inn: str,
     now_utc: datetime,
+    withdrawn_cises: Optional[Set[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], int, int, int, int]:
     """
-    Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца
-    и обогащением реквизитами фискальных чеков из онлайн-отчета WB excise-report.
+    Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца,
+    многоуровневым исключением уже выбывших заказов/операций и обогащением
+    реквизитами фискальных чеков из онлайн-отчета WB excise-report.
     """
     withdrawals_payload = []
     sales_needing_count = 0
@@ -29,7 +31,24 @@ def build_unified_withdrawals_payload(
     for cis, ev in sales_candidates.items():
         cz_item = cz_info_map.get(cis, {})
         cz_status = cz_item.get("status")
-        withdrawn, _ = is_kiz_withdrawn(status=cz_status, status_ex=cz_item.get("statusEx"), raw_payload=cz_item) if cz_status else (False, "")
+        cz_withdrawn, _ = is_kiz_withdrawn(status=cz_status, status_ex=cz_item.get("statusEx"), raw_payload=cz_item) if cz_status else (False, "")
+
+        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
+
+        # 1. Приоритетный фильтр по состоянию заказа FBS:
+        is_order_withdrawn = False
+        if fbs_order:
+            if fbs_order.kiz_status == KizStatus.WITHDRAWN:
+                is_order_withdrawn = True
+            elif fbs_order.cz_withdrawal_doc_id and fbs_order.cz_doc_status in ("IN_PROGRESS", "CHECKED_OK", "SUCCESS"):
+                is_order_withdrawn = True
+            elif fbs_order.cz_doc_status == "CHECKED_OK":
+                is_order_withdrawn = True
+
+        # 2. Приоритетный фильтр по операциям выбытия ГИС МТ в БД:
+        is_op_withdrawn = bool(withdrawn_cises and cis in withdrawn_cises)
+
+        withdrawn = cz_withdrawn or is_order_withdrawn or is_op_withdrawn
 
         owner_inn = (cz_item.get("ownerInn") or "").strip()
         owner_name = cz_item.get("ownerName") or ""
@@ -41,7 +60,12 @@ def build_unified_withdrawals_payload(
 
         if withdrawn:
             needs_withdrawal, selected = False, False
-            action_rec = "✅ Уже выбыл из оборота"
+            if is_order_withdrawn:
+                action_rec = "✅ Уже выбыл из оборота (заказ FBS списан/в обработке)"
+            elif is_op_withdrawn:
+                action_rec = "✅ Уже выбыл из оборота (операция выбытия ГИС МТ)"
+            else:
+                action_rec = "✅ Уже выбыл из оборота"
             sales_already_withdrawn_count += 1
         elif is_seller:
             needs_withdrawal, selected = True, True
@@ -60,7 +84,6 @@ def build_unified_withdrawals_payload(
             action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Вывод продавцом невозможен."
             sales_foreign_count += 1
 
-        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
         price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
 
         # Обогащение реквизитами фискального чека из excise-report

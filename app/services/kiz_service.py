@@ -718,11 +718,16 @@ async def sync_kiz_status_record(
     clean_cis = parsed.get("clean_cis") or kiz_code.strip()
 
     # 1. Поиск или создание записи в kiz_product_info
-    stmt = select(KizProductInfo).where(
-        (KizProductInfo.kiz_code == kiz_code) | (KizProductInfo.clean_cis == clean_cis)
+    stmt = (
+        select(KizProductInfo)
+        .where(
+            (KizProductInfo.kiz_code == kiz_code) | (KizProductInfo.clean_cis == clean_cis)
+        )
+        .order_by(KizProductInfo.updated_at.desc())
     )
     res = await db.execute(stmt)
-    kiz_info = res.scalars().first()
+    all_matching = res.scalars().all()
+    kiz_info = all_matching[0] if all_matching else None
 
     normalized_cz_status = str(cz_status).upper().strip() if cz_status else (kiz_info.cz_status if kiz_info else None)
     
@@ -749,22 +754,23 @@ async def sync_kiz_status_record(
         )
         db.add(kiz_info)
     else:
-        if cz_status is not None:
-            kiz_info.cz_status = normalized_cz_status
-        if cz_status_ex is not None:
-            kiz_info.cz_status_ex = cz_status_ex
-        if raw_payload is not None:
-            kiz_info.raw_cz_payload = raw_payload
-        if is_valid is not None:
-            kiz_info.is_valid = is_valid
-        elif withdrawn:
-            kiz_info.is_valid = False
-            kiz_info.validation_message = w_reason
-        if validation_message is not None:
-            kiz_info.validation_message = validation_message
-        if seller_id and not kiz_info.seller_id:
-            kiz_info.seller_id = seller_id
-        kiz_info.checked_at = now
+        for rec in all_matching:
+            if cz_status is not None:
+                rec.cz_status = normalized_cz_status
+            if cz_status_ex is not None:
+                rec.cz_status_ex = cz_status_ex
+            if raw_payload is not None:
+                rec.raw_cz_payload = raw_payload
+            if is_valid is not None:
+                rec.is_valid = is_valid
+            elif withdrawn:
+                rec.is_valid = False
+                rec.validation_message = w_reason
+            if validation_message is not None:
+                rec.validation_message = validation_message
+            if seller_id and not rec.seller_id:
+                rec.seller_id = seller_id
+            rec.checked_at = now
 
     # 2. Синхронизация всех связанных заказов в таблице orders
     order_stmt = select(Order).where(
@@ -823,22 +829,36 @@ async def batch_verify_and_sync_cises(
 
     # 1. Загружаем локальный кэш kiz_product_info
     cached_map: Dict[str, KizProductInfo] = {}
-    for i in range(0, len(unique_codes), 500):
-        chunk = unique_codes[i:i + 500]
-        stmt = select(KizProductInfo).where(
-            KizProductInfo.kiz_code.in_(chunk)
+    clean_chunk_set = set()
+    for c in unique_codes:
+        clean_chunk_set.add(c)
+        p = parse_kiz_code(c)
+        if p.get("clean_cis"):
+            clean_chunk_set.add(p["clean_cis"])
+    clean_chunk_list = list(clean_chunk_set)
+
+    for i in range(0, len(clean_chunk_list), 500):
+        chunk = clean_chunk_list[i:i + 500]
+        stmt = (
+            select(KizProductInfo)
+            .where(
+                (KizProductInfo.kiz_code.in_(chunk)) | (KizProductInfo.clean_cis.in_(chunk))
+            )
+            .order_by(KizProductInfo.updated_at.desc())
         )
         res = await db.execute(stmt)
         for row in res.scalars().all():
-            cached_map[row.kiz_code] = row
-            if row.clean_cis:
+            if row.kiz_code not in cached_map:
+                cached_map[row.kiz_code] = row
+            if row.clean_cis and row.clean_cis not in cached_map:
                 cached_map[row.clean_cis] = row
 
     # 2. Интеллектуальная фильтрация (Skip-Filter):
     # Если по КИЗ уже известно, что его владелец — НЕ текущий продавец (ООО «РВБ», РБ, сторонние лица)
-    # или товар уже в терминальном статусе RETIRED и не требует принудительной перепроверки,
-    # мы НЕ шлем его в True API повторно, а мгновенно берем из локальной БД.
+    # или товар уже в терминальном статусе RETIRED, мы НЕ шлем его в True API повторно,
+    # а мгновенно берем из локальной БД.
     codes_to_query: List[str] = []
+    now_utc = datetime.now(timezone.utc)
     for c in unique_codes:
         parsed_c = parse_kiz_code(c)
         clean_c = parsed_c.get("clean_cis") or c.strip()
@@ -859,9 +879,14 @@ async def batch_verify_and_sync_cises(
             results[c] = rec
             continue
 
-        if not force_refresh or is_retired:
+        if is_retired:
             results[c] = rec
             continue
+
+        if not force_refresh:
+            if rec.checked_at and (now_utc - rec.checked_at).total_seconds() < 86400:
+                results[c] = rec
+                continue
 
         codes_to_query.append(c)
 

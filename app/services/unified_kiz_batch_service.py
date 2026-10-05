@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
-from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
+from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo, KizOperation, KizOperationType
 from app.models.wb_finance import WbSalesReportRow
 from app.models.audit import AuditLog
 from app.services.kiz_service import (
@@ -40,13 +40,13 @@ logger = logging.getLogger(__name__)
 
 
 def _is_return_row(row: WbSalesReportRow) -> bool:
-    name = (row.doc_type_name or row.seller_oper_name or "").lower()
-    return "возврат" in name or "отказ" in name or "отмен" in name
+    n = (row.doc_type_name or row.seller_oper_name or "").lower()
+    return "возврат" in n or "отказ" in n or "отмен" in n
 
 
 def _is_sale_row(row: WbSalesReportRow) -> bool:
-    name = (row.doc_type_name or row.seller_oper_name or "").lower()
-    return ("продаж" in name or "продано" in name) and not _is_return_row(row)
+    n = (row.doc_type_name or row.seller_oper_name or "").lower()
+    return ("продаж" in n or "продано" in n) and not _is_return_row(row)
 
 
 async def create_unified_kiz_signature_batch(
@@ -73,9 +73,8 @@ async def create_unified_kiz_signature_batch(
 
     if sync_finance_api and seller.wb_api_token_encrypted:
         try:
-            date_from_iso = (now_utc - timedelta(days=min(days, 30))).strftime("%Y-%m-%dT00:00:00Z")
-            date_to_iso = now_utc.strftime("%Y-%m-%dT23:59:59Z")
-            await sync_seller_financial_reports(seller=seller, db=db, date_from=date_from_iso, date_to=date_to_iso)
+            d_from = (now_utc - timedelta(days=min(days, 30))).strftime("%Y-%m-%dT00:00:00Z")
+            await sync_seller_financial_reports(seller=seller, db=db, date_from=d_from, date_to=now_utc.strftime("%Y-%m-%dT23:59:59Z"))
         except Exception as sync_err:
             logger.warning(f"Could not auto-sync fresh finance reports: {sync_err}")
 
@@ -280,6 +279,16 @@ async def create_unified_kiz_signature_batch(
         except Exception as e:
             logger.error(f"Failed to batch verify True API for unified reconciliation: {e}")
 
+    # 5.5. Сбор КИЗов с уже отправленными или выполненными операциями выбытия
+    stmt_ops = select(KizOperation.kiz_code).where(
+        KizOperation.seller_id == seller.id,
+        KizOperation.operation == KizOperationType.WITHDRAWAL,
+        KizOperation.status.in_(["SUCCESS", "IN_PROGRESS"]),
+        (KizOperation.cz_doc_status.is_(None) | (KizOperation.cz_doc_status != "CHECKED_NOT_OK")),
+    )
+    res_ops = await db.execute(stmt_ops)
+    withdrawn_cises = {parse_kiz_code(k).get("clean_cis") or k for k in res_ops.scalars().all() if k}
+
     # 6. Формирование выбытий (WITHDRAWALS)
     (
         withdrawals_payload,
@@ -294,6 +303,7 @@ async def create_unified_kiz_signature_batch(
         history_by_cis=history_by_cis,
         seller_inn=seller_inn,
         now_utc=now_utc,
+        withdrawn_cises=withdrawn_cises,
     )
 
     # 7. Формирование возвратов (RETURNS)
@@ -346,9 +356,8 @@ async def create_unified_kiz_signature_batch(
         batch.data_payload = {"summary": summary, "withdrawals": withdrawals_payload, "returns": returns_payload}
         batch.submission_results = None
     else:
-        batch_id = str(uuid.uuid4())
         batch = KizSignatureBatch(
-            id=batch_id,
+            id=str(uuid.uuid4()),
             seller_id=seller.id,
             filename=f"Единая_сверка_маркировки_{date_str}.xlsx",
             source="unified_reconciliation",

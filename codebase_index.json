@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-05T11:38:44.758615+00:00",
+  "updated_at": "2026-10-05T14:06:16.498373+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 153,
+  "total_files": 154,
   "files": [
     {
       "file": "alembic/env.py",
@@ -5920,7 +5920,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "28ecf290e0ec",
+      "hash": "aadf702be837",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6304,7 +6304,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "6b80f35f1fa9",
+      "hash": "812921974fa6",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6365,7 +6365,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "c983454309dd",
+      "hash": "83ce63bb9328",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -6378,10 +6378,11 @@
             "fbs_order_lookup",
             "history_by_cis",
             "seller_inn",
-            "now_utc"
+            "now_utc",
+            "withdrawn_cises"
           ],
           "decorators": [],
-          "docstring": "Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца"
+          "docstring": "Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца,"
         },
         {
           "name": "build_unified_returns_payload",
@@ -10706,6 +10707,68 @@
         "pydantic",
         "pytest",
         "types"
+      ]
+    },
+    {
+      "file": "tests/test_prevent_duplicate_batch_orders.py",
+      "layer": "tests",
+      "hash": "f8602593d690",
+      "docstring": "Unit tests verifying prevention of duplicate KIZ batch additions.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_with_in_progress_withdrawal_is_never_readded",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test that an order that was already submitted (with cz_withdrawal_doc_id and cz_doc_status=IN_PROGRESS)"
+        },
+        {
+          "name": "test_kiz_operation_excludes_item_from_withdrawal",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test that an active KizOperation of type WITHDRAWAL excludes the item from new batches."
+        },
+        {
+          "name": "test_sync_kiz_status_record_updates_all_duplicate_rows",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test that sync_kiz_status_record updates all existing records for the same clean_cis,"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auth_service",
+        "app.services.kiz_service",
+        "app.services.unified_kiz_batch_service",
+        "datetime",
+        "pytest",
+        "sqlalchemy",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {

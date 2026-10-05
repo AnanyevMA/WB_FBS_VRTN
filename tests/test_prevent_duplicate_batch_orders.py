@@ -46,9 +46,10 @@ async def test_order_with_in_progress_withdrawal_is_never_readded():
         await db.commit()
 
         # Order with in-progress withdrawal
-        test_cis = "0104630199252636215hVg6WjmfTBsE"
+        test_cis = f"0104630199252636215{uuid.uuid4().hex[:13]}"
+        unique_order_id = int(uuid.uuid4().int % 10000000000)
         order = Order(
-            id=5850603213,
+            id=unique_order_id,
             seller_id=seller_id,
             status=OrderStatus.DELIVERED,
             wb_status="sold",
@@ -100,10 +101,11 @@ async def test_kiz_operation_excludes_item_from_withdrawal():
         db.add(seller)
         await db.commit()
 
-        test_cis = "0104630199255293215FLUqBtdfSfrD"
+        test_cis = f"0104630199255293215{uuid.uuid4().hex[:13]}"
+        unique_order_id = int(uuid.uuid4().int % 10000000000)
         # Order is delivered, but kiz_status is not updated yet
         order = Order(
-            id=5851627560,
+            id=unique_order_id,
             seller_id=seller_id,
             status=OrderStatus.DELIVERED,
             wb_status="sold",
@@ -118,7 +120,7 @@ async def test_kiz_operation_excludes_item_from_withdrawal():
         # Existing KizOperation WITHDRAWAL in progress
         op = KizOperation(
             seller_id=seller_id,
-            order_id=5851627560,
+            order_id=unique_order_id,
             kiz_code=test_cis,
             operation=KizOperationType.WITHDRAWAL,
             status="IN_PROGRESS",
@@ -146,7 +148,7 @@ async def test_sync_kiz_status_record_updates_all_duplicate_rows():
     """
     async with AsyncSessionLocal() as db:
         seller_id = str(uuid.uuid4())
-        clean_cis = "0104630199251318215B<Ii<iAFT-PB"
+        clean_cis = f"0104630199251318215{uuid.uuid4().hex[:12]}"
         full_kiz = clean_cis + "\x1d91EE12\x1d92XYZ="
 
         # Create two duplicate rows

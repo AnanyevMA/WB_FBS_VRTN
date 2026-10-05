@@ -4,10 +4,12 @@ Handles submission of signed documents (LK_RECEIPT and LP_RETURN)
 to GIS MT (True API), polls document processing status, updates order
 and operation records, and sends Telegram notifications.
 """
+import copy
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus, OrderStatus
@@ -257,14 +259,62 @@ async def execute_signed_batch_submission(
 
     batch.signed_at = now
     batch.signed_by = cert_subject or "Владелец ЭЦП"
-    batch.submission_results = {"results": results, "successful": successful_submissions, "failed": failed_submissions}
 
-    if failed_submissions == 0:
-        batch.status = BatchStatus.COMPLETED
-    elif successful_submissions > 0:
-        batch.status = BatchStatus.PARTIALLY_COMPLETED
+    # Update data_payload items with terminal statuses
+    dp = copy.deepcopy(batch.data_payload or {})
+    w_list = dp.get("withdrawals", [])
+    r_list = dp.get("returns", [])
+    for res_item in results:
+        r_kiz = res_item.get("kiz_code")
+        r_st = res_item.get("status")
+        if r_st in ("SUCCESS", "IN_PROGRESS"):
+            for w in w_list:
+                if w.get("kiz_code") == r_kiz:
+                    w["needs_withdrawal"] = False
+                    w["is_already_withdrawn"] = True
+                    w["cz_status"] = "RETIRED"
+                    w["cz_status_desc"] = "Выбыл (выведен из оборота)"
+                    w["selected"] = False
+            for r in r_list:
+                if r.get("kiz_code") == r_kiz:
+                    r["needs_cz_return"] = False
+                    r["is_already_in_circulation"] = True
+                    r["cz_status"] = "INTRODUCED"
+                    r["cz_status_desc"] = "В обороте"
+                    r["selected"] = False
+    batch.data_payload = dp
+    flag_modified(batch, "data_payload")
+
+    # Merge results with previous submissions (supports partial retry)
+    existing_results = (batch.submission_results or {}).get("results", [])
+    merged_results = {r.get("kiz_code"): r for r in existing_results if r.get("kiz_code")}
+    for r in results:
+        if r.get("kiz_code"):
+            merged_results[r.get("kiz_code")] = r
+
+    if merged_results:
+        final_results = list(merged_results.values())
+        total_failed = sum(1 for r in final_results if r.get("status") == "FAILED")
+        total_successful = sum(1 for r in final_results if r.get("status") in ("SUCCESS", "IN_PROGRESS"))
+        batch.submission_results = {
+            "results": final_results,
+            "successful": total_successful,
+            "failed": total_failed,
+        }
+        if total_failed == 0:
+            batch.status = BatchStatus.COMPLETED
+        elif total_successful > 0:
+            batch.status = BatchStatus.PARTIALLY_COMPLETED
+        else:
+            batch.status = BatchStatus.FAILED
     else:
-        batch.status = BatchStatus.FAILED
+        batch.submission_results = {"results": results, "successful": successful_submissions, "failed": failed_submissions}
+        if failed_submissions == 0:
+            batch.status = BatchStatus.COMPLETED
+        elif successful_submissions > 0:
+            batch.status = BatchStatus.PARTIALLY_COMPLETED
+        else:
+            batch.status = BatchStatus.FAILED
 
     await db.commit()
 

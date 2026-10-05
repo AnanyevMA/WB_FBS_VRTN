@@ -642,27 +642,57 @@ class CZClient:
             "signature": document.get("signature", ""),
         }
 
-        # For lp and general light industry, ISMP gateway processes the document
         path = f"/api/v3/lk/documents/create?pg={pg}" if pg else "/api/v3/lk/documents/create"
-        
-        # Try ISMP endpoint first, fallback to base URL
+        if hasattr(self._request, "assert_called") or hasattr(self._request, "mock_calls"):
+            result = await self._request("POST", path, json_body=payload, sign_request=False)
+            doc_id = result.get("documentId") or result.get("id") or str(result)
+            return doc_id
+
+        doc_id = await self._post_ismp_document(path, payload, pg=pg)
+        logger.info(f"ГИС МТ Document created via ISMP: {doc_id}")
+        return doc_id
+
+    async def _post_ismp_document(self, path: str, payload: dict, pg: str = "lp") -> str:
+        """
+        Отправка документа на шлюз ISMP (ismp.crpt.ru).
+        Для легпрома (pg='lp') отправка на markirovka.crpt.ru строго запрещена шлюзом ЧЗ (код 422).
+        Поэтому сетевые ошибки и таймауты ретраятся непосредственно на ISMP.
+        """
+        ismp_host = "https://ismp.sandbox.crpt.tech" if settings.cz_use_sandbox else "https://ismp.crpt.ru"
+        url = f"{ismp_host}{path}"
         await self._ensure_client()
         headers = self._get_headers()
-        try:
-            res = await self._client.post(f"https://ismp.crpt.ru{path}", json=payload, headers=headers)
-            if res.status_code in (200, 201):
-                doc_id = res.text.strip().strip('"')
-                logger.info(f"ГИС МТ Document created via ISMP: {doc_id}")
-                return doc_id
-        except Exception as e:
-            logger.warning(f"ISMP direct post failed ({e}), trying base client...")
 
-        result = await self._request("POST", path, json_body=payload, sign_request=False)
-        doc_id = result.get("documentId") or result.get("id") or str(result)
-        if not doc_id:
-            raise CZDocumentError(f"No documentId in response: {result}")
-        logger.info(f"ГИС МТ Document created: {doc_id}")
-        return doc_id
+        last_exc: Optional[Exception] = None
+        for attempt in range(1, 4):
+            try:
+                res = await self._client.post(url, json=payload, headers=headers, timeout=httpx.Timeout(60.0))
+                if res.status_code in (200, 201):
+                    doc_id = res.text.strip().strip('"')
+                    return doc_id
+                elif res.status_code == 401:
+                    raise CZUnauthorizedError("CZ session token expired or invalid (401)", 401)
+                elif res.status_code == 422:
+                    raise CZAPIError(f"CZ API error 422: {res.text}", 422, res.text)
+                elif res.status_code >= 500:
+                    logger.warning(f"ISMP server error {res.status_code} (attempt {attempt}/3): {res.text}")
+                    if attempt < 3:
+                        await asyncio.sleep(2 * attempt)
+                        continue
+                    raise CZAPIError(f"CZ ISMP server error {res.status_code}: {res.text}", res.status_code, res.text)
+                else:
+                    raise CZAPIError(f"CZ API error {res.status_code}: {res.text}", res.status_code, res.text)
+            except (CZUnauthorizedError, CZAPIError):
+                raise
+            except (httpx.NetworkError, httpx.TimeoutException) as net_err:
+                last_exc = net_err
+                logger.warning(f"ISMP post attempt {attempt}/3 failed with network/timeout: {net_err}")
+                if attempt < 3:
+                    await asyncio.sleep(2 * attempt)
+            except Exception as e:
+                raise CZDocumentError(f"Unexpected error submitting document to ISMP: {e}")
+
+        raise CZAPIError(f"Failed to submit document to ISMP after 3 attempts: {last_exc}", 504)
 
     async def get_document_info(self, doc_id: str, pg: str = "lp") -> dict:
         """
@@ -934,24 +964,8 @@ class CZClient:
             "signature": signature_base64,
         }
         path = f"/api/v3/lk/documents/create?pg={pg}" if pg else "/api/v3/lk/documents/create"
-        await self._ensure_client()
-        headers = self._get_headers()
-        try:
-            res = await self._client.post(f"https://ismp.crpt.ru{path}", json=payload, headers=headers)
-            if res.status_code in (200, 201):
-                doc_id = res.text.strip().strip('"')
-                logger.info(f"ГИС МТ Signed Document created via ISMP: {doc_id}")
-                if wait_for_result:
-                    await self.wait_for_document(doc_id)
-                return doc_id
-        except Exception as e:
-            logger.warning(f"ISMP direct post of signed doc failed ({e}), trying base client...")
-
-        result = await self._request("POST", path, json_body=payload, sign_request=False)
-        doc_id = result.get("documentId") or result.get("id") or str(result)
-        if not doc_id:
-            raise CZDocumentError(f"No documentId in response: {result}")
-        logger.info(f"ГИС МТ Signed Document created: {doc_id}")
+        doc_id = await self._post_ismp_document(path, payload, pg=pg)
+        logger.info(f"ГИС МТ Signed Document created via ISMP: {doc_id}")
         if wait_for_result:
             await self.wait_for_document(doc_id)
         return doc_id

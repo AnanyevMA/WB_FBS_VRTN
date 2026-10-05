@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-03T04:58:01.543535+00:00",
+  "updated_at": "2026-10-05T11:38:44.758615+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 152,
+  "total_files": 153,
   "files": [
     {
       "file": "alembic/env.py",
@@ -5727,7 +5727,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "9fc4ef8fd912",
+      "hash": "f8e0ba9ddba1",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -5779,6 +5779,7 @@
             "_build_withdrawal_document",
             "_build_return_document",
             "_create_document",
+            "_post_ismp_document",
             "get_document_info",
             "get_document_status",
             "extract_document_error_text",
@@ -6088,7 +6089,7 @@
     {
       "file": "app/services/signature_batch_submitter.py",
       "layer": "services",
-      "hash": "c5ca117864f7",
+      "hash": "ec445fbe226c",
       "docstring": "Signature Batch Submitter Service.",
       "classes": [],
       "functions": [
@@ -6118,9 +6119,11 @@
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.telegram_service",
+        "copy",
         "datetime",
         "logging",
         "sqlalchemy.ext.asyncio",
+        "sqlalchemy.orm.attributes",
         "typing"
       ]
     },
@@ -8763,6 +8766,60 @@
         "pytest",
         "unittest.mock",
         "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_cz_client_ismp_submission.py",
+      "layer": "tests",
+      "hash": "41b9414fbd2c",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_post_ismp_document_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_post_ismp_document_retries_on_network_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_post_ismp_document_raises_422",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_post_ismp_document_raises_401",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.cz_client",
+        "httpx",
+        "pytest",
+        "unittest.mock"
       ]
     },
     {

@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-03 04:58:01 UTC | **Файлов проиндексировано**: 152  
+> **Дата актуализации**: 2026-10-05 11:38:44 UTC | **Файлов проиндексировано**: 153  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -150,6 +150,7 @@
 | [`tests/test_codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_codebase_indexer.py) | — | `test_codebase_indexer_scan_and_save`, `test_codebase_indexer_fast_symbol_query`, `test_lookup_code_symbol_helper`, `test_codebase_indexing_rule_in_manifest`, +еще 2 | Unit & Integration Tests for Codebase Symbol Indexer and Token-Efficient Search Rule. |
 | [`tests/test_cz_background_sync.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_background_sync.py) | — | `_make_dummy_jwt`, `test_parse_cz_token_expiration`, `_get_auth_headers`, `test_get_cz_token_status_jwt_exp`, +еще 3 | Unit and Integration Tests for CZ Background Sync & Token Keep-Alive (Option 1). |
 | [`tests/test_cz_client_and_queues.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_and_queues.py) | — | `test_encryption_service_compatibility`, `test_cz_client_authenticate_flow`, `test_cz_client_suz_endpoints_and_cises_info`, `test_agent_task_queue_decorators_match_manifest`, +еще 3 | Unit & Integration tests for CZClient, SUZ 3.0.38 endpoints, Task Queues, and EncryptionService. |
+| [`tests/test_cz_client_ismp_submission.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_client_ismp_submission.py) | — | `test_post_ismp_document_success`, `test_post_ismp_document_retries_on_network_error`, `test_post_ismp_document_raises_422`, `test_post_ismp_document_raises_401` | Модуль кодовой базы |
 | [`tests/test_cz_true_api_v4_polling.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_cz_true_api_v4_polling.py) | — | `test_cz_client_get_document_info_v4_endpoint`, `test_cz_client_extract_document_error_text`, `test_wait_for_document_polling_progression_to_checked_ok`, `test_wait_for_document_checked_not_ok_raises_cz_document_error`, +еще 6 | Модуль кодовой базы |
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |
 | [`tests/test_kiz_adversarial_challenge_m1_2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_adversarial_challenge_m1_2.py) | — | `test_order_5647931541_dirty_variants`, `test_lp_return_document_ki_formatting_kiz_codes`, `test_lp_return_document_ki_formatting_items_parameter`, `test_database_normalization_batch_stress`, +еще 7 | Adversarial Challenge & Empirical Boundary Test Suite for Milestone M1. |

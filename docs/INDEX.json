@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Knowledge Base",
-  "updated_at": "2026-10-01T10:46:13.020514+00:00",
+  "updated_at": "2026-10-03T04:55:33.930390+00:00",
   "description": "High-level two-tier semantic routing and lookup index. Agents must query this index to locate the exact document before loading full content.",
   "categories": [
     {
@@ -68,11 +68,16 @@
       ],
       "endpoints": [
         "GET /api/v3/orders/new",
-        "POST /api/v3/orders/status",
-        "GET /api/marketplace/v3/fbs/orders/archive",
+        "GET /api/v3/orders/new",
         "POST /api/v3/orders/stickers",
         "GET /api/v3/orders",
-        "PATCH /api/v3/orders/{orderId}/cancel"
+        "PATCH /api/v3/orders/{orderId}/cancel",
+        "PATCH /api/v3/orders/12345678/cancel",
+        "GET /api/marketplace/v3/fbs/orders/archive",
+        "GET /api/marketplace/v3/fbs/orders/archive?year=2026&month=10&next=0&limit=1000",
+        "GET /api/marketplace/v3/fbs/orders/archive",
+        "POST /api/v3/orders/status",
+        "POST /api/v3/orders/status"
       ],
       "covered_errors": [
         "400 Bad Request",
@@ -323,7 +328,8 @@
         "POST /api/v3/true",
         "GET /api/v3/orders/new",
         "PUT /api/v3/orders/{orderId}/meta/sgtin",
-        "PATCH /api/v3/supplies/{id}/deliver"
+        "PATCH /api/v3/supplies/{id}/deliver",
+        "GET /api/marketplace/v3/fbs/orders/archive"
       ],
       "covered_errors": [
         "Pipeline Desynchronization",

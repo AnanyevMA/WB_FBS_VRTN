@@ -406,8 +406,9 @@ async function loadSignatureBatches() {
         const batches = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches`);
         currentSignatureBatches = batches || [];
 
-        // Find first batch pending signature
-        const pendingBatch = currentSignatureBatches.find(b => b.status === 'PENDING_SIGNATURE');
+        // Find first batch pending signature or partially completed with remaining items
+        const pendingBatch = currentSignatureBatches.find(b => b.status === 'PENDING_SIGNATURE')
+            || currentSignatureBatches.find(b => b.status === 'PARTIALLY_COMPLETED');
         if (pendingBatch) {
             const details = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches/${pendingBatch.id}`);
             activeBatchDetails = details;
@@ -470,9 +471,13 @@ function renderActiveBatch(batch) {
     const already_withdrawn = summary.sales_already_withdrawn !== undefined ? summary.sales_already_withdrawn : (batch.already_withdrawn_count || 0);
     const already_in_circ = summary.returns_already_in_circulation !== undefined ? summary.returns_already_in_circulation : 0;
 
-    const totalToSign = sales_needing + returns_needing;
+    const totalToSign = withdrawals.length + returns.length;
     const dateStr = batch.created_at ? new Date(batch.created_at).toLocaleString('ru-RU') : '—';
     const sourceIcon = batch.source === 'auto' ? '⚡ Автоматически (WB API)' : (batch.source === 'telegram' ? '📱 Telegram-бот' : (batch.source === 'wb_warehouse_sale' ? '🏭 Склад WB (FBO)' : '🌐 Веб-загрузка'));
+    const isPartially = batch.status === 'PARTIALLY_COMPLETED';
+    const statusBadge = isPartially
+        ? '<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-weight: 600;">⚠️ Частично обработан</span>'
+        : '<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">Ожидает подписания ЭЦП</span>';
 
     container.innerHTML = `
         <div class="glass-card" style="border: 1px solid rgba(124, 58, 237, 0.4); box-shadow: 0 4px 20px rgba(124, 58, 237, 0.1);">
@@ -482,9 +487,7 @@ function renderActiveBatch(batch) {
                         <span class="badge" style="background: rgba(124, 58, 237, 0.2); color: #c4b5fd; font-weight: 700;">
                             ПАКЕТ #${batch.id.substring(0, 8)}
                         </span>
-                        <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
-                            Ожидает подписания ЭЦП
-                        </span>
+                        ${statusBadge}
                     </div>
                     <div style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">
                         Файл: <b>${batch.filename}</b> · Источник: ${sourceIcon} · Получен: ${dateStr}
@@ -839,10 +842,15 @@ function renderBatchesHistory(batches) {
                 <td>${b.signed_by || '—'}</td>
                 <td style="font-size:12px; color:var(--text-muted);">${dateStr}</td>
                 <td>
-                    ${b.status === 'PENDING_SIGNATURE' ? `
-                        <button class="btn btn-primary btn-sm" onclick="submitBatchSigningAction('${b.id}')" style="padding: 4px 8px; font-size: 11px;">
-                            ✍️ Подписать
-                        </button>
+                    ${(b.status === 'PENDING_SIGNATURE' || b.status === 'PARTIALLY_COMPLETED') ? `
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn btn-primary btn-sm" onclick="selectBatchToSign('${b.id}')" style="padding: 4px 8px; font-size: 11px;">
+                                ✍️ Подписать
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="viewBatchDetailsModal('${b.id}')" style="padding: 4px 8px; font-size: 11px;">
+                                Детали
+                            </button>
+                        </div>
                     ` : `
                         <button class="btn btn-secondary btn-sm" onclick="viewBatchDetailsModal('${b.id}')" style="padding: 4px 8px; font-size: 11px;">
                             Детали
@@ -854,20 +862,29 @@ function renderBatchesHistory(batches) {
     }).join('');
 }
 
+async function selectBatchToSign(batchId) {
+    if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
+    try {
+        const details = await apiFetch(`/sellers/${currentSellerId}/kiz/signature-batches/${batchId}`);
+        activeBatchDetails = details;
+        renderActiveBatch(details);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast('Пакет выбран', `Пакет #${batchId.substring(0, 8)} открыт для подписания`, 'info');
+    } catch (e) {
+        showToast('Ошибка', e.message, 'error');
+    }
+}
+
 async function submitBatchSigningAction(batchId) {
     if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
 
     const selectedCodes = [];
     document.querySelectorAll('.batch-item-withdrawal:checked').forEach(cb => {
-        const idx = parseInt(cb.getAttribute('data-idx'));
-        const item = activeBatchDetails?.data_payload?.withdrawals?.[idx];
-        const code = item?.kiz_code || cb.getAttribute('data-kiz');
+        const code = cb.getAttribute('data-kiz') || cb.dataset.kiz;
         if (code) selectedCodes.push(code);
     });
     document.querySelectorAll('.batch-item-return:checked').forEach(cb => {
-        const idx = parseInt(cb.getAttribute('data-idx'));
-        const item = activeBatchDetails?.data_payload?.returns?.[idx];
-        const code = item?.kiz_code || cb.getAttribute('data-kiz');
+        const code = cb.getAttribute('data-kiz') || cb.dataset.kiz;
         if (code) selectedCodes.push(code);
     });
 

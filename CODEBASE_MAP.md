@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-05 14:06:16 UTC | **Файлов проиндексировано**: 154  
+> **Дата актуализации**: 2026-10-05 14:45:55 UTC | **Файлов проиндексировано**: 155  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -168,7 +168,7 @@
 | [`tests/test_order_poller_enrichment.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_order_poller_enrichment.py) | — | `setup_db`, `test_seller`, `test_resolve_order_metadata_from_local_db_cache_by_chrt_id`, `test_resolve_order_metadata_from_local_db_cache_by_article`, +еще 6 | Модуль кодовой базы |
 | [`tests/test_orders_sorting_and_archive.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_orders_sorting_and_archive.py) | — | `test_seller`, `test_orders_default_sorting_by_date_desc`, `test_orders_sorting_by_columns_asc_desc`, `test_order_archive_conditions_and_view_filtering` | Модуль кодовой базы |
 | [`tests/test_polling_and_digest_schema.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_polling_and_digest_schema.py) | `TestDigestSettings`, `TestSellerCreatePollingInterval`, `TestSellerUpdateDigest`, `TestSellerResponseComputedInterval` | — | Tests: polling interval + digest settings — seller schema validation. |
-| [`tests/test_prevent_duplicate_batch_orders.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_prevent_duplicate_batch_orders.py) | — | `setup_test_db`, `test_order_with_in_progress_withdrawal_is_never_readded`, `test_kiz_operation_excludes_item_from_withdrawal`, `test_sync_kiz_status_record_updates_all_duplicate_rows` | Unit tests verifying prevention of duplicate KIZ batch additions. |
+| [`tests/test_prevent_duplicate_batch_orders.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_prevent_duplicate_batch_orders.py) | — | `setup_test_db`, `test_order_with_in_progress_withdrawal_is_never_readded`, `test_kiz_operation_excludes_item_from_withdrawal`, `test_sync_kiz_status_record_updates_all_duplicate_rows`, +еще 2 | Unit tests verifying prevention of duplicate KIZ batch additions. |
 | [`tests/test_scheduled_orders_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_scheduled_orders_digest.py) | — | `setup_db_and_digest`, `test_is_scheduled_slot_due_helper`, `test_send_scheduled_orders_digest_dispatches_and_stamps_orders`, `test_send_scheduled_orders_digest_idempotency`, +еще 2 | Tests for Scheduled Orders Digest Task (app.agents.notifier.send_scheduled_orders_digest) |
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |
 | [`tests/test_telegram_adversarial_stress.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_adversarial_stress.py) | `TelegramHTMLValidator` | `_stub_aiogram`, `_verify_telegram_html_validity`, `test_send_new_order_adversarial_html_xss_injection`, `test_all_methods_adversarial_html_escaping`, +еще 4 | Empirical Adversarial Stress Test Suite for TelegramService. |
@@ -189,6 +189,7 @@
 |---|---|---|---|
 | [`run_bot.py`](file:///D:/PyCharm_Projects/WB FBS/run_bot.py) | — | `get_active_sellers_with_tokens`, `check_bot`, `send_test_notification`, `run_polling`, +еще 1 | Run Telegram Bot — WB FBS Manager |
 | [`scripts/check_cz_doc.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/check_cz_doc.py) | — | `check_document_status` | CLI Utility to check Chestny Znak (GIS MT / True API) document status |
+| [`scripts/dedup_kiz_product_info.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/dedup_kiz_product_info.py) | — | `dedup` | Deduplicates rows in kiz_product_info where the same clean_cis exists multiple times. |
 | [`scripts/do_heal.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/do_heal.py) | — | `main` | Модуль кодовой базы |
 | [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | `generate_fernet_key`, `generate_random_token`, `generate_password`, `main` | Generate Secure Keys and Passwords for WB FBS Manager |
 | [`scripts/retry_order_cz.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/retry_order_cz.py) | — | `main` | Script to trigger retry-withdrawal for an order. |

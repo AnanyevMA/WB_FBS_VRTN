@@ -150,10 +150,12 @@ def build_unified_returns_payload(
     fbs_order_lookup: Dict[str, Order],
     seller_inn: str,
     now_utc: datetime,
+    returned_cises: Optional[Set[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], int, int, int, int]:
     """
     Формирует payload возвратов (RETURNS) со строгой проверкой владельца
     и разделением на прямой возврат (свой ИНН) и перемаркировку (баланс WB/сторонний).
+    Исключает повторные возвраты, если товар уже введен в оборот (KizOperation или Order).
     """
     returns_payload = []
     seller_owned_direct_count = 0
@@ -173,9 +175,29 @@ def build_unified_returns_payload(
         is_seller = (owner_inn == seller_inn) if seller_inn else False
         is_wb = (owner_inn == "9714053621")
         is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
-        is_already_in_circ = (not withdrawn) or (cz_status == "INTRODUCED")
 
-        if is_already_in_circ:
+        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
+
+        # 1. Многоуровневое исключение повторных возвратов (Order + KizOperation)
+        is_order_returned = False
+        if fbs_order:
+            if fbs_order.kiz_status == KizStatus.RETURNED:
+                is_order_returned = True
+            elif fbs_order.cz_return_doc_id and fbs_order.cz_doc_status in ("IN_PROGRESS", "CHECKED_OK", "ACCEPTED", "SUCCESS"):
+                is_order_returned = True
+            elif fbs_order.cz_doc_status == "CHECKED_OK" and fbs_order.status == OrderStatus.CANCELLED:
+                is_order_returned = True
+
+        if returned_cises and cis in returned_cises:
+            is_order_returned = True
+
+        is_already_in_circ = (not withdrawn) or (cz_status == "INTRODUCED") or is_order_returned
+
+        if is_order_returned:
+            return_mode, needs_cz_return, needs_remarking, selected = "INTRODUCED", False, False, False
+            action_rec = "✅ Уже возвращен в оборот (по операциям/заказу)"
+            already_in_circ_count += 1
+        elif is_already_in_circ:
             return_mode, needs_cz_return, needs_remarking, selected = "INTRODUCED", False, False, False
             action_rec = "✅ Уже в обороте (готов к привязке)"
             already_in_circ_count += 1
@@ -196,7 +218,6 @@ def build_unified_returns_payload(
             action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Требуется Перемаркировка."
             foreign_remarking_count += 1
 
-        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
         order_id_val = fbs_order.id if fbs_order else ev.get("order_id")
         sticker_id_val = fbs_order.sticker_id if fbs_order else ev.get("sticker_id")
         price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)

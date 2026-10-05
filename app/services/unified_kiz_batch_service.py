@@ -279,15 +279,19 @@ async def create_unified_kiz_signature_batch(
         except Exception as e:
             logger.error(f"Failed to batch verify True API for unified reconciliation: {e}")
 
-    # 5.5. Сбор КИЗов с уже отправленными или выполненными операциями выбытия
-    stmt_ops = select(KizOperation.kiz_code).where(
+    # 5.5. Сбор КИЗов с уже отправленными или выполненными операциями маркировки
+    stmt_ops = select(KizOperation.kiz_code, KizOperation.operation).where(
         KizOperation.seller_id == seller.id,
-        KizOperation.operation == KizOperationType.WITHDRAWAL,
+        KizOperation.operation.in_([KizOperationType.WITHDRAWAL, KizOperationType.RETURN]),
         KizOperation.status.in_(["SUCCESS", "IN_PROGRESS"]),
         (KizOperation.cz_doc_status.is_(None) | (KizOperation.cz_doc_status != "CHECKED_NOT_OK")),
     )
     res_ops = await db.execute(stmt_ops)
-    withdrawn_cises = {parse_kiz_code(k).get("clean_cis") or k for k in res_ops.scalars().all() if k}
+    withdrawn_cises, returned_cises = set(), set()
+    for k_code, op_type in res_ops.all():
+        if k_code:
+            c = parse_kiz_code(k_code).get("clean_cis") or k_code
+            (withdrawn_cises if op_type == KizOperationType.WITHDRAWAL else returned_cises).add(c)
 
     # 6. Формирование выбытий (WITHDRAWALS)
     (
@@ -319,6 +323,7 @@ async def create_unified_kiz_signature_batch(
         fbs_order_lookup=fbs_order_lookup,
         seller_inn=seller_inn,
         now_utc=now_utc,
+        returned_cises=returned_cises,
     )
 
     # 8. Сводка пакета
@@ -357,13 +362,10 @@ async def create_unified_kiz_signature_batch(
         batch.submission_results = None
     else:
         batch = KizSignatureBatch(
-            id=str(uuid.uuid4()),
-            seller_id=seller.id,
+            id=str(uuid.uuid4()), seller_id=seller.id,
             filename=f"Единая_сверка_маркировки_{date_str}.xlsx",
-            source="unified_reconciliation",
-            status=BatchStatus.PENDING_SIGNATURE,
-            sales_count=sales_needing_count,
-            returns_count=seller_owned_direct_count,
+            source="unified_reconciliation", status=BatchStatus.PENDING_SIGNATURE,
+            sales_count=sales_needing_count, returns_count=seller_owned_direct_count,
             already_withdrawn_count=sales_already_withdrawn_count,
             total_count=len(withdrawals_payload) + len(returns_payload),
             data_payload={"summary": summary, "withdrawals": withdrawals_payload, "returns": returns_payload},
@@ -379,21 +381,11 @@ async def create_unified_kiz_signature_batch(
         action="UNIFIED_RECONCILIATION_BATCH",
         entity_type="kiz_signature_batch",
         entity_id=batch.id,
-        payload={
-            "batch_id": batch.id,
-            "sales_needing": sales_needing_count,
-            "returns_needing": seller_owned_direct_count,
-            "wb_remarking": wb_owned_remarking_count,
-            "foreign_remarking": foreign_remarking_count,
-        },
+        payload={"batch_id": batch.id, "sales_needing": sales_needing_count, "returns_needing": seller_owned_direct_count, "wb_remarking": wb_owned_remarking_count, "foreign_remarking": foreign_remarking_count},
         trace_id=str(uuid.uuid4()),
         created_at=now_utc,
     )
     db.add(audit)
     await db.commit()
 
-    return {
-        "success": True,
-        "batch_id": batch.id,
-        "summary": summary,
-    }
+    return {"success": True, "batch_id": batch.id, "summary": summary}

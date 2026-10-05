@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-05T14:06:16.498373+00:00",
+  "updated_at": "2026-10-05T14:45:55.748859+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 154,
+  "total_files": 155,
   "files": [
     {
       "file": "alembic/env.py",
@@ -5920,7 +5920,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "aadf702be837",
+      "hash": "3d05f295d4fc",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6304,7 +6304,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "812921974fa6",
+      "hash": "a3985537b0d6",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -6365,7 +6365,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "83ce63bb9328",
+      "hash": "9f9d16c47af3",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -6392,7 +6392,8 @@
             "cz_info_map",
             "fbs_order_lookup",
             "seller_inn",
-            "now_utc"
+            "now_utc",
+            "returned_cises"
           ],
           "decorators": [],
           "docstring": "Формирует payload возвратов (RETURNS) со строгой проверкой владельца"
@@ -7078,6 +7079,30 @@
         "sqlalchemy",
         "sqlalchemy.orm",
         "sys"
+      ]
+    },
+    {
+      "file": "scripts/dedup_kiz_product_info.py",
+      "layer": "config",
+      "hash": "d7b2570c374b",
+      "docstring": "Deduplicates rows in kiz_product_info where the same clean_cis exists multiple times.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "dedup",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "asyncio",
+        "sqlalchemy"
       ]
     },
     {
@@ -10712,7 +10737,7 @@
     {
       "file": "tests/test_prevent_duplicate_batch_orders.py",
       "layer": "tests",
-      "hash": "f8602593d690",
+      "hash": "5e20b249f401",
       "docstring": "Unit tests verifying prevention of duplicate KIZ batch additions.",
       "classes": [],
       "functions": [
@@ -10751,6 +10776,24 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Test that sync_kiz_status_record updates all existing records for the same clean_cis,"
+        },
+        {
+          "name": "test_order_with_completed_return_is_never_readded",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test that a cancelled order that was already returned (kiz_status=RETURNED, cz_return_doc_id present)"
+        },
+        {
+          "name": "test_kiz_operation_return_excludes_item_from_batch",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test that an active KizOperation of type RETURN excludes the item from new return batches,"
         }
       ],
       "endpoints": [],

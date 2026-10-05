@@ -188,3 +188,106 @@ async def test_sync_kiz_status_record_updates_all_duplicate_rows():
         assert len(records) == 2
         for r in records:
             assert r.cz_status == "RETIRED"
+
+
+@pytest.mark.asyncio
+async def test_order_with_completed_return_is_never_readded():
+    """
+    Test that a cancelled order that was already returned (kiz_status=RETURNED, cz_return_doc_id present)
+    is excluded from new batches even if True API cache previously had RETIRED.
+    """
+    async with AsyncSessionLocal() as db:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Return Dedup",
+            wb_api_token_encrypted="mock_token",
+            cz_inn="190207495060",
+        )
+        db.add(seller)
+        await db.commit()
+
+        test_cis = f"0104630199251332215{uuid.uuid4().hex[:12]}"
+        unique_order_id = int(uuid.uuid4().int % 10000000000)
+        order = Order(
+            id=unique_order_id,
+            seller_id=seller_id,
+            status=OrderStatus.CANCELLED,
+            wb_status="canceled_by_client",
+            kiz_code=test_cis,
+            kiz_status=KizStatus.RETURNED,
+            cz_return_doc_id="6853ed81-c8db-457b-9c02-6b7242c07af0",
+            cz_doc_status="CHECKED_OK",
+            wb_created_at=datetime.now(timezone.utc) - timedelta(days=10),
+            price=3000.0,
+            article="hood.01",
+        )
+        db.add(order)
+        await db.commit()
+
+        # Mock True API returning RETIRED in cache
+        with patch("app.services.unified_kiz_batch_service.batch_verify_and_sync_cises") as mock_verify:
+            mock_verify.return_value = {}
+            with patch("app.services.unified_kiz_batch_service.fetch_wb_excise_data", return_value=[]):
+                res = await create_unified_kiz_signature_batch(seller=seller, db=db, days=30)
+
+        assert res["success"] is True
+        summary = res["summary"]
+        assert summary["returns_needing_cz_return"] == 0
+        assert summary["returns_already_in_circulation"] == 1
+
+
+@pytest.mark.asyncio
+async def test_kiz_operation_return_excludes_item_from_batch():
+    """
+    Test that an active KizOperation of type RETURN excludes the item from new return batches,
+    even if the order's local kiz_status is still ERROR.
+    """
+    async with AsyncSessionLocal() as db:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Return Op Dedup",
+            wb_api_token_encrypted="mock_token",
+            cz_inn="190207495060",
+        )
+        db.add(seller)
+        await db.commit()
+
+        test_cis = f"0104630199251332215{uuid.uuid4().hex[:12]}"
+        unique_order_id = int(uuid.uuid4().int % 10000000000)
+        order = Order(
+            id=unique_order_id,
+            seller_id=seller_id,
+            status=OrderStatus.CANCELLED,
+            wb_status="canceled_by_client",
+            kiz_code=test_cis,
+            kiz_status=KizStatus.ERROR,  # e.g. from a prior server signing failure
+            wb_created_at=datetime.now(timezone.utc) - timedelta(days=5),
+            price=3320.0,
+            article="hood.brown.100",
+        )
+        db.add(order)
+
+        # Existing KizOperation RETURN with SUCCESS
+        op = KizOperation(
+            seller_id=seller_id,
+            order_id=unique_order_id,
+            kiz_code=test_cis,
+            operation=KizOperationType.RETURN,
+            status="SUCCESS",
+            cz_doc_id="6853ed81-c8db-457b-9c02-6b7242c07af0",
+            cz_doc_status="CHECKED_OK",
+        )
+        db.add(op)
+        await db.commit()
+
+        with patch("app.services.unified_kiz_batch_service.batch_verify_and_sync_cises", return_value={}):
+            with patch("app.services.unified_kiz_batch_service.fetch_wb_excise_data", return_value=[]):
+                res = await create_unified_kiz_signature_batch(seller=seller, db=db, days=30)
+
+        assert res["success"] is True
+        summary = res["summary"]
+        assert summary["returns_needing_cz_return"] == 0
+        assert summary["returns_already_in_circulation"] == 1
+

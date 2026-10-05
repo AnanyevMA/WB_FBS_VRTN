@@ -879,10 +879,6 @@ async def batch_verify_and_sync_cises(
             results[c] = rec
             continue
 
-        if is_retired:
-            results[c] = rec
-            continue
-
         if not force_refresh:
             if rec.checked_at and (now_utc - rec.checked_at).total_seconds() < 86400:
                 results[c] = rec

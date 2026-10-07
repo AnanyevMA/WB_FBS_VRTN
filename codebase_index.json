@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-05T14:45:55.748859+00:00",
+  "updated_at": "2026-10-07T15:09:16.879592+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 155,
+  "total_files": 159,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1639,7 +1639,7 @@
     {
       "file": "app/agents/wb_finance_agent.py",
       "layer": "agents",
-      "hash": "2a3d35033b31",
+      "hash": "afbe74c8f548",
       "docstring": "WB Finance Celery Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1686,6 +1686,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.models.audit",
         "app.models.seller",
         "app.services.wb_finance_service",
         "asyncio",
@@ -1694,7 +1695,8 @@
         "logging",
         "sqlalchemy",
         "sqlalchemy.orm",
-        "typing"
+        "typing",
+        "uuid"
       ]
     },
     {
@@ -4016,24 +4018,70 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "9491bf80fa5a",
+      "hash": "4c7463e2eda4",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
-      "functions": [],
+      "functions": [
+        {
+          "name": "send_worker_lost_telegram_alert",
+          "is_async": false,
+          "args": [
+            "task_name",
+            "task_id",
+            "exception",
+            "args",
+            "kwargs"
+          ],
+          "decorators": [],
+          "docstring": "Отправляет экстренное уведомление администратору в Telegram при падении воркера (WorkerLostError / SIGKILL / OOM)."
+        },
+        {
+          "name": "handle_celery_task_failure",
+          "is_async": false,
+          "args": [
+            "sender",
+            "task_id",
+            "exception",
+            "args",
+            "kwargs",
+            "traceback",
+            "einfo"
+          ],
+          "decorators": [
+            "task_failure.connect"
+          ],
+          "docstring": "Перехватывает аварийные сбои задач в Celery."
+        }
+      ],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
         "app.config",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services.encryption",
         "celery",
+        "celery.exceptions",
         "celery.schedules",
-        "kombu"
+        "celery.signals",
+        "datetime",
+        "html",
+        "json",
+        "kombu",
+        "logging",
+        "os",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "typing",
+        "urllib.request",
+        "uuid"
       ]
     },
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "2e023a36f088",
+      "hash": "a032a4021e07",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -6779,7 +6827,7 @@
     {
       "file": "app/services/wb_finance_service.py",
       "layer": "services",
-      "hash": "ac84fed00c17",
+      "hash": "b905fbe4e4fb",
       "docstring": "WB Finance Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6850,7 +6898,8 @@
             "seller",
             "db",
             "days",
-            "verify_cz"
+            "verify_cz",
+            "trace_id"
           ],
           "decorators": [],
           "docstring": "Загружает еженедельные детальные отчеты реализации WB, сохраняет в БД и верифицирует КИЗ возвратов."
@@ -6869,6 +6918,7 @@
         "app.services.wb_finance_client",
         "datetime",
         "decimal",
+        "gc",
         "logging",
         "sqlalchemy",
         "sqlalchemy.dialects.postgresql",
@@ -7082,6 +7132,37 @@
       ]
     },
     {
+      "file": "scripts/check_finance_status.py",
+      "layer": "config",
+      "hash": "8dbdfecbc67a",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "check",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.wb_finance_client",
+        "asyncio",
+        "datetime",
+        "json",
+        "sqlalchemy"
+      ]
+    },
+    {
       "file": "scripts/dedup_kiz_product_info.py",
       "layer": "config",
       "hash": "d7b2570c374b",
@@ -7103,6 +7184,34 @@
         "app.database",
         "asyncio",
         "sqlalchemy"
+      ]
+    },
+    {
+      "file": "scripts/diagnose_wb_api.py",
+      "layer": "config",
+      "hash": "8df090c533d7",
+      "docstring": "Diagnostic script to test live Wildberries API methods and token status.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_wb",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.wb_client",
+        "asyncio",
+        "sqlalchemy",
+        "time"
       ]
     },
     {
@@ -7346,6 +7455,34 @@
         "logging",
         "sqlalchemy",
         "traceback"
+      ]
+    },
+    {
+      "file": "scripts/test_sync_finance.py",
+      "layer": "config",
+      "hash": "7c3d2b45a016",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "run",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.seller",
+        "app.services.wb_finance_service",
+        "asyncio",
+        "logging",
+        "sqlalchemy",
+        "sys"
       ]
     },
     {
@@ -11614,6 +11751,86 @@
         "datetime",
         "json",
         "pytest",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_wb_finance_worker_lost_resilience.py",
+      "layer": "tests",
+      "hash": "fd9dd00d3075",
+      "docstring": "Tests for WB Finance OOM Resilience and Celery WorkerLostError Alerting.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_finance_agent_dispatches_with_14_days_and_audits",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify sync_all_sellers_financial_reports dispatches with days=14 and logs STARTED/COMPLETED."
+        },
+        {
+          "name": "test_finance_service_status_lifecycle_and_gc",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify sync_seller_financial_reports records STARTED, runs gc.collect, and finishes with COMPLETED."
+        },
+        {
+          "name": "test_finance_service_records_failed_status_on_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify that if an exception occurs during sync, audit log records status=FAILED."
+        },
+        {
+          "name": "test_worker_lost_error_telegram_alert",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify send_worker_lost_telegram_alert formats and sends emergency Telegram message."
+        },
+        {
+          "name": "test_celery_task_failure_signal_trigger",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify handle_celery_task_failure triggers alert on WorkerLostError and ignores normal exceptions."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.wb_finance_agent",
+        "app.celery_app",
+        "app.config",
+        "app.database",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.wb_finance_client",
+        "app.services.wb_finance_service",
+        "celery.exceptions",
+        "celery.signals",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.orm",
+        "unittest.mock",
         "uuid"
       ]
     },

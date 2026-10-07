@@ -3,6 +3,7 @@ WB Finance Service — WB FBS Manager
 Синхронизация детального финансового отчета реализации WB (POST /api/finance/v1/sales-reports/detailed).
 Парсинг продаж, возвратов, логистики, сохранение в БД и проверка принадлежности КИЗ возвратов в Честном Знаке.
 """
+import gc
 import logging
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -31,8 +32,7 @@ def _parse_iso_datetime(val: Any) -> Optional[datetime]:
     if not val or not isinstance(val, str):
         return None
     try:
-        clean_str = val.strip().replace("Z", "+00:00")
-        return datetime.fromisoformat(clean_str)
+        return datetime.fromisoformat(val.strip().replace("Z", "+00:00"))
     except Exception:
         return None
 
@@ -173,6 +173,8 @@ async def _upsert_sales_report_rows(
                 new_obj = WbSalesReportRow(id=str(uuid.uuid4()), **item)
                 db.add(new_obj)
                 inserted_count += 1
+        existing_map.clear()
+        del existing_map
 
     await db.flush()
     return inserted_count, updated_count
@@ -249,8 +251,9 @@ async def _verify_and_update_return_cises(
 async def sync_seller_financial_reports(
     seller: Seller,
     db: AsyncSession,
-    days: int = 30,
+    days: int = 14,
     verify_cz: bool = True,
+    trace_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Загружает еженедельные детальные отчеты реализации WB, сохраняет в БД и верифицирует КИЗ возвратов.
@@ -266,6 +269,28 @@ async def sync_seller_financial_reports(
     now_utc = datetime.now(timezone.utc)
     date_to = now_utc.strftime("%Y-%m-%dT23:59:59Z")
     date_from = (now_utc - timedelta(days=days)).strftime("%Y-%m-%dT00:00:00Z")
+    effective_trace_id = trace_id or str(uuid.uuid4())
+
+    # Фиксируем статус STARTED перед началом выполнения и сразу коммитим в БД
+    audit_entry = AuditLog(
+        id=str(uuid.uuid4()),
+        seller_id=seller.id,
+        agent="wb_finance_service",
+        action="SYNC_WB_FINANCIAL_REPORTS",
+        entity_type="seller",
+        entity_id=seller.id,
+        payload={
+            "status": "STARTED",
+            "days": days,
+            "started_at": now_utc.isoformat(),
+            "date_from": date_from,
+            "date_to": date_to,
+        },
+        trace_id=effective_trace_id,
+        created_at=now_utc,
+    )
+    db.add(audit_entry)
+    await db.commit()
 
     logger.info(f"[WB Finance] Syncing sales reports for seller {seller.name} ({seller.id}), {date_from}..{date_to}")
 
@@ -276,69 +301,93 @@ async def sync_seller_financial_reports(
     total_inserted = 0
     total_updated = 0
 
-    async with WBFinanceClient(wb_token) as client:
-        async for page in client.fetch_all_sales_reports(date_from=date_from, date_to=date_to, limit=1000):
-            if not page:
-                continue
+    try:
+        async with WBFinanceClient(wb_token) as client:
+            async for page in client.fetch_all_sales_reports(date_from=date_from, date_to=date_to, limit=1000):
+                if not page:
+                    continue
 
-            row_dicts = []
-            for raw_row in page:
-                parsed_row = _map_raw_row_to_dict(raw_row, seller.id)
-                row_dicts.append(parsed_row)
+                row_dicts = []
+                for raw_row in page:
+                    parsed_row = _map_raw_row_to_dict(raw_row, seller.id)
+                    row_dicts.append(parsed_row)
 
-                doc_type = (parsed_row.get("doc_type_name") or "").strip()
-                oper_name = (parsed_row.get("seller_oper_name") or "").strip()
-                clean_cis = parsed_row.get("clean_cis")
+                    doc_type = (parsed_row.get("doc_type_name") or "").strip()
+                    oper_name = (parsed_row.get("seller_oper_name") or "").strip()
+                    clean_cis = parsed_row.get("clean_cis")
 
-                if doc_type == "Продажа" or "Продажа" in oper_name:
-                    sales_count += 1
-                elif doc_type == "Возврат" or "Возврат" in oper_name or parsed_row.get("return_amount", 0) > 0:
-                    returns_count += 1
-                    if clean_cis:
-                        return_cises_to_verify.append(clean_cis)
+                    if doc_type == "Продажа" or "Продажа" in oper_name:
+                        sales_count += 1
+                    elif doc_type == "Возврат" or "Возврат" in oper_name or parsed_row.get("return_amount", 0) > 0:
+                        returns_count += 1
+                        if clean_cis:
+                            return_cises_to_verify.append(clean_cis)
 
-            ins, upd = await _upsert_sales_report_rows(db, seller.id, row_dicts)
+                ins, upd = await _upsert_sales_report_rows(db, seller.id, row_dicts)
+                await db.commit()
+                total_inserted += ins
+                total_updated += upd
+                total_rows += len(row_dicts)
+
+                # Очистка промежуточных списков и вызов gc.collect() после каждого коммита пачки в БД
+                row_dicts.clear()
+                del row_dicts
+                del page
+                gc.collect()
+
+        # Верификация принадлежности КИЗ возвратов в Честном Знаке
+        cz_verification_result = {"checked": 0, "seller_owned": 0, "other_owned": 0}
+        if verify_cz and return_cises_to_verify:
+            cz_verification_result = await _verify_and_update_return_cises(
+                seller=seller,
+                db=db,
+                returned_cises=return_cises_to_verify,
+            )
             await db.commit()
-            total_inserted += ins
-            total_updated += upd
-            total_rows += len(row_dicts)
+            return_cises_to_verify.clear()
+            del return_cises_to_verify
+            gc.collect()
 
-    # Верификация принадлежности КИЗ возвратов в Честном Знаке
-    cz_verification_result = {"checked": 0, "seller_owned": 0, "other_owned": 0}
-    if verify_cz and return_cises_to_verify:
-        cz_verification_result = await _verify_and_update_return_cises(
-            seller=seller,
-            db=db,
-            returned_cises=return_cises_to_verify,
-        )
-        await db.commit()
-
-    # Запись в аудит
-    audit = AuditLog(
-        seller_id=seller.id,
-        agent="wb_finance_service",
-        action="SYNC_WB_FINANCIAL_REPORTS",
-        payload={
+        # Обновление статуса на COMPLETED при успешном завершении
+        completed_at = datetime.now(timezone.utc)
+        audit_entry.payload = {
+            "status": "COMPLETED",
             "days": days,
             "total_rows": total_rows,
             "sales_count": sales_count,
             "returns_count": returns_count,
-            "returns_with_kiz": len(return_cises_to_verify),
+            "returns_with_kiz": cz_verification_result.get("checked", 0),
             "seller_owned_returns": cz_verification_result.get("seller_owned", 0),
             "other_owned_returns": cz_verification_result.get("other_owned", 0),
-        },
-    )
-    db.add(audit)
-    await db.commit()
+            "inserted_count": total_inserted,
+            "updated_count": total_updated,
+            "started_at": now_utc.isoformat(),
+            "completed_at": completed_at.isoformat(),
+        }
+        await db.commit()
 
-    return {
-        "success": True,
-        "seller_id": seller.id,
-        "total_rows": total_rows,
-        "sales_count": sales_count,
-        "returns_count": returns_count,
-        "returns_with_kiz": len(return_cises_to_verify),
-        "cz_audit": cz_verification_result,
-        "inserted_count": total_inserted,
-        "updated_count": total_updated,
-    }
+        return {
+            "success": True,
+            "seller_id": seller.id,
+            "status": "COMPLETED",
+            "total_rows": total_rows,
+            "sales_count": sales_count,
+            "returns_count": returns_count,
+            "returns_with_kiz": cz_verification_result.get("checked", 0),
+            "cz_audit": cz_verification_result,
+            "inserted_count": total_inserted,
+            "updated_count": total_updated,
+        }
+    except Exception as exc:
+        logger.error(f"[WB Finance] Failed sync for seller {seller.id}: {exc}")
+        try:
+            audit_entry.error = str(exc)
+            audit_entry.payload = {
+                **(audit_entry.payload or {}),
+                "status": "FAILED",
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.commit()
+        except Exception as log_err:
+            logger.error(f"[WB Finance] Failed to update audit log on error: {log_err}")
+        raise

@@ -4,11 +4,24 @@ Celery Application Configuration — WB FBS Manager
 Configures Celery instance, broker, result backend, queues, task routing,
 beat schedule, retry behavior, and time limits matching agents_config.json.
 """
+import html
+import json
+import logging
+import os
+import urllib.request
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Optional
+
 from celery import Celery
+from celery.exceptions import WorkerLostError
 from celery.schedules import crontab
+from celery.signals import task_failure
 from kombu import Queue
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Initialize Celery app with all agent modules included
 celery_app = Celery(
@@ -170,3 +183,172 @@ celery_app.conf.update(
 
 # Alias for standard Celery runner lookup (`celery -A app.celery_app worker`)
 app = celery_app
+
+
+# =============================================================================
+# Celery Signals: WorkerLostError / OOM Alerts
+# =============================================================================
+
+def send_worker_lost_telegram_alert(
+    task_name: str,
+    task_id: str,
+    exception: Exception,
+    args: Optional[tuple] = None,
+    kwargs: Optional[dict] = None,
+) -> bool:
+    """
+    Отправляет экстренное уведомление администратору в Telegram при падении воркера (WorkerLostError / SIGKILL / OOM).
+    Выполняет прямой синхронный HTTP-запрос к Telegram Bot API без зависимости от очередей Celery.
+    """
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+    from app.models.seller import Seller
+    from app.services.encryption import decrypt
+
+    seller_id = (kwargs or {}).get("seller_id")
+    if not seller_id and args and len(args) > 0 and isinstance(args[0], str):
+        seller_id = args[0]
+
+    seller_name = None
+    recipients: list[tuple[str, list[str]]] = []
+
+    # 1. Проверяем глобальный токен и чат администратора из конфигурации / .env
+    admin_bot_token = getattr(settings, "telegram_bot_token", None) or os.getenv("TELEGRAM_BOT_TOKEN")
+    admin_chat_id = getattr(settings, "telegram_admin_chat_id", None) or os.getenv("TELEGRAM_ADMIN_CHAT_ID")
+    if admin_bot_token and admin_chat_id:
+        recipients.append((admin_bot_token.strip(), [admin_chat_id.strip()]))
+
+    # 2. Ищем настройки Telegram в БД (целевой селлер или активные селлеры)
+    try:
+        engine = create_engine(settings.database_url_sync)
+        with Session(engine) as db:
+            if seller_id:
+                sel = db.execute(select(Seller).where(Seller.id == str(seller_id))).scalar_one_or_none()
+                if sel:
+                    seller_name = sel.name
+                    if sel.telegram_bot_token_encrypted and sel.telegram_chat_ids:
+                        try:
+                            tok = decrypt(sel.telegram_bot_token_encrypted)
+                            chats = [str(c).strip() for c in sel.telegram_chat_ids if str(c).strip()]
+                            if chats:
+                                recipients.append((tok, chats))
+                        except Exception as dec_err:
+                            logger.warning(f"[WorkerLost Alert] Decryption failed for seller {seller_id}: {dec_err}")
+
+            if not recipients:
+                active_sellers = db.execute(
+                    select(Seller).where(
+                        Seller.is_active == True,
+                        Seller.telegram_bot_token_encrypted.isnot(None),
+                    )
+                ).scalars().all()
+                for s in active_sellers:
+                    if s.telegram_chat_ids:
+                        try:
+                            tok = decrypt(s.telegram_bot_token_encrypted)
+                            chats = [str(c).strip() for c in s.telegram_chat_ids if str(c).strip()]
+                            if chats:
+                                recipients.append((tok, chats))
+                                break
+                        except Exception:
+                            continue
+    except Exception as db_err:
+        logger.error(f"[WorkerLost Alert] DB query failed: {db_err}")
+
+    seller_display = f"{seller_name} ({seller_id})" if seller_name else (str(seller_id) if seller_id else "Все / Система")
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    msg_text = (
+        "🚨 <b>АВАРИЙНОЕ ЗАВЕРШЕНИЕ CELERY WORKER</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚠️ <b>Тип сбоя:</b> <code>WorkerLostError</code> (SIGKILL / OOM)\n"
+        f"⚙️ <b>Задача:</b> <code>{html.escape(str(task_name or '—'))}</code>\n"
+        f"🆔 <b>Task ID:</b> <code>{html.escape(str(task_id or '—'))}</code>\n"
+        f"🏪 <b>Продавец:</b> {html.escape(seller_display)}\n"
+        f"⏰ <b>Время:</b> {now_str}\n"
+        f"💥 <b>Ошибка:</b> <code>{html.escape(str(exception))}</code>\n\n"
+        "🔴 <b>Причина:</b> Дочерний процесс воркера был принудительно убит ядром ОС (SIGKILL / Linux OOM Killer). "
+        "Превышен лимит оперативной памяти контейнера <code>wbfbs_worker</code>."
+    )
+
+    sent_any = False
+    for bot_tok, chat_list in recipients:
+        for cid in chat_list:
+            try:
+                payload = json.dumps({
+                    "chat_id": cid,
+                    "text": msg_text,
+                    "parse_mode": "HTML",
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    f"https://api.telegram.org/bot{bot_tok}/sendMessage",
+                    data=payload,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    if resp.status == 200:
+                        sent_any = True
+            except Exception as http_err:
+                logger.error(f"[WorkerLost Alert] HTTP Telegram send failed to {cid}: {http_err}")
+
+    # Запись в аудит-лог
+    try:
+        with Session(create_engine(settings.database_url_sync)) as db:
+            from app.models.audit import AuditLog
+            audit = AuditLog(
+                id=str(uuid.uuid4()),
+                seller_id=str(seller_id) if seller_id else None,
+                agent="celery_worker_supervisor",
+                action="WORKER_LOST_ALERT",
+                entity_type="celery_task",
+                entity_id=str(task_id),
+                payload={
+                    "task_name": str(task_name),
+                    "exception": str(exception),
+                    "args": [str(a) for a in (args or ())],
+                    "kwargs": {k: str(v) for k, v in (kwargs or {}).items()},
+                    "sent_telegram": sent_any,
+                },
+                error=str(exception),
+                trace_id=str(task_id),
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(audit)
+            db.commit()
+    except Exception as audit_err:
+        logger.error(f"[WorkerLost Alert] Failed to write AuditLog: {audit_err}")
+
+    return sent_any
+
+
+@task_failure.connect
+def handle_celery_task_failure(
+    sender=None,
+    task_id=None,
+    exception=None,
+    args=None,
+    kwargs=None,
+    traceback=None,
+    einfo=None,
+    **extra
+):
+    """
+    Перехватывает аварийные сбои задач в Celery.
+    Если задача упала по WorkerLostError (OOM / SIGKILL), немедленно отправляет алерт в Telegram.
+    """
+    if not isinstance(exception, WorkerLostError):
+        return
+
+    task_name = getattr(sender, "name", str(sender)) if sender else "unknown_task"
+    logger.critical(
+        f"[Celery WorkerLostError] Task {task_name} [{task_id}] terminated unexpectedly (WorkerLostError): {exception}"
+    )
+
+    send_worker_lost_telegram_alert(
+        task_name=task_name,
+        task_id=str(task_id or ""),
+        exception=exception,
+        args=args,
+        kwargs=kwargs,
+    )

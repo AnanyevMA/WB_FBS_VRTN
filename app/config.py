@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     wb_api_base_url: str = "https://marketplace-api.wildberries.ru"
     wb_marketplace_base_url: str = "https://marketplace-api.wildberries.ru"
 
+    # Telegram Bot & Admin Alerts
+    telegram_bot_token: Optional[str] = None
+    telegram_admin_chat_id: Optional[str] = None
+
     # Честный знак (True API / ГИС МТ)
     cz_api_base_url: str = "https://markirovka.crpt.ru"
     cz_api_sandbox_url: str = "https://markirovka.sandbox.crpt.tech"

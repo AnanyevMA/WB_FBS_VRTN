@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-05 14:45:55 UTC | **Файлов проиндексировано**: 155  
+> **Дата актуализации**: 2026-10-07 15:09:16 UTC | **Файлов проиндексировано**: 159  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -114,7 +114,7 @@
 | [`app/bot/handlers/messages.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot/handlers/messages.py) | — | `handle_text_message`, `register_message_handlers` | Telegram Bot Text Message Handlers — WB FBS Manager |
 | [`app/bot/helpers.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot/helpers.py) | — | `_get_active_seller` | Telegram Bot Helpers & Shared State — WB FBS Manager |
 | [`app/bot/keyboards.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot/keyboards.py) | — | `get_main_reply_keyboard`, `get_orders_list_keyboard`, `get_order_detail_keyboard` | Telegram Bot Keyboards — WB FBS Manager |
-| [`app/celery_app.py`](file:///D:/PyCharm_Projects/WB FBS/app/celery_app.py) | — | — | Celery Application Configuration — WB FBS Manager |
+| [`app/celery_app.py`](file:///D:/PyCharm_Projects/WB FBS/app/celery_app.py) | — | `send_worker_lost_telegram_alert`, `handle_celery_task_failure` | Celery Application Configuration — WB FBS Manager |
 | [`app/config.py`](file:///D:/PyCharm_Projects/WB FBS/app/config.py) | `Settings` | `get_settings` | Application Configuration — WB FBS Manager |
 | [`app/database.py`](file:///D:/PyCharm_Projects/WB FBS/app/database.py) | `Base` | `get_db`, `init_db` | Database setup — async SQLAlchemy engine + session factory |
 | [`app/main.py`](file:///D:/PyCharm_Projects/WB FBS/app/main.py) | — | `GET /` → `root`<br>`GET /health` → `health_check` | Модуль кодовой базы |
@@ -180,6 +180,7 @@
 | [`tests/test_wb_archive_api.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_archive_api.py) | — | `setup_test_db`, `test_get_recent_months_calculation`, `test_resolve_order_status`, `test_wb_client_get_archive_orders_call`, +еще 5 | Tests for WB Archive API Integration: |
 | [`tests/test_wb_finance.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance.py) | — | `setup_test_db`, `test_helpers_parsing`, `test_wb_finance_client_page_and_stream`, `test_sync_seller_financial_reports_and_ownership`, +еще 3 | Unit and Integration Tests for WB Finance Sales Reports & Return KIZ Audit. |
 | [`tests/test_wb_finance_signing.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance_signing.py) | — | `setup_test_db`, `test_cz_client_build_return_payload_with_receipt`, `test_cz_client_build_return_payload_fallback`, `test_prepare_batch_documents_for_signing_finance_returns` | Unit tests for WB Finance Return Signature Batch Document Preparation. |
+| [`tests/test_wb_finance_worker_lost_resilience.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_finance_worker_lost_resilience.py) | — | `setup_test_db`, `test_finance_agent_dispatches_with_14_days_and_audits`, `test_finance_service_status_lifecycle_and_gc`, `test_finance_service_records_failed_status_on_error`, +еще 2 | Tests for WB Finance OOM Resilience and Celery WorkerLostError Alerting. |
 | [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_wb_warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales.py) | — | `test_wb_analytics_client_success`, `test_wb_analytics_client_unauthorized`, `test_warehouse_sales_no_token`, `test_warehouse_sales_already_retired`, +еще 5 | Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing. |
 
@@ -189,10 +190,13 @@
 |---|---|---|---|
 | [`run_bot.py`](file:///D:/PyCharm_Projects/WB FBS/run_bot.py) | — | `get_active_sellers_with_tokens`, `check_bot`, `send_test_notification`, `run_polling`, +еще 1 | Run Telegram Bot — WB FBS Manager |
 | [`scripts/check_cz_doc.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/check_cz_doc.py) | — | `check_document_status` | CLI Utility to check Chestny Znak (GIS MT / True API) document status |
+| [`scripts/check_finance_status.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/check_finance_status.py) | — | `check` | Модуль кодовой базы |
 | [`scripts/dedup_kiz_product_info.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/dedup_kiz_product_info.py) | — | `dedup` | Deduplicates rows in kiz_product_info where the same clean_cis exists multiple times. |
+| [`scripts/diagnose_wb_api.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/diagnose_wb_api.py) | — | `test_wb` | Diagnostic script to test live Wildberries API methods and token status. |
 | [`scripts/do_heal.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/do_heal.py) | — | `main` | Модуль кодовой базы |
 | [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | `generate_fernet_key`, `generate_random_token`, `generate_password`, `main` | Generate Secure Keys and Passwords for WB FBS Manager |
 | [`scripts/retry_order_cz.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/retry_order_cz.py) | — | `main` | Script to trigger retry-withdrawal for an order. |
 | [`scripts/set_admin_password.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/set_admin_password.py) | — | `sync_local_env_file`, `is_running_in_docker`, `try_docker_forward`, `set_admin_password_direct`, +еще 1 | Set or Reset Admin Password for WB FBS Manager |
 | [`scripts/sync_order_cz_status.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/sync_order_cz_status.py) | — | `sync_order` | Script to synchronize order CZ withdrawal document status with True API v4. |
 | [`scripts/test_live_archive_sync.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/test_live_archive_sync.py) | — | `main` | Live test script for WB Archive API synchronization on VPS. |
+| [`scripts/test_sync_finance.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/test_sync_finance.py) | — | `run` | Модуль кодовой базы |

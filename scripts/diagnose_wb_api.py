@@ -38,10 +38,11 @@ async def test_wb():
             # 1. Test Warehouses
             t0 = time.time()
             try:
-                whs = await client.get_warehouses()
+                whs = await client._request("GET", "/api/v3/warehouses")
                 dt1 = time.time() - t0
-                print(f"1. GET /api/v3/warehouses: [SUCCESS] {len(whs)} warehouses found in {dt1:.2f}s")
-                for w in whs[:3]:
+                wh_list = whs if isinstance(whs, list) else []
+                print(f"1. GET /api/v3/warehouses: [SUCCESS] {len(wh_list)} warehouses found in {dt1:.2f}s")
+                for w in wh_list[:3]:
                     print(f"   • Warehouse: ID={w.get('id')}, Name='{w.get('name')}'")
             except Exception as e:
                 print(f"1. GET /api/v3/warehouses: [FAILED] {e}")
@@ -55,12 +56,14 @@ async def test_wb():
             except Exception as e:
                 print(f"2. GET /api/v3/orders/new: [FAILED] {e}")
 
-            # 3. Test Active Orders
+            # 3. Test Orders (last 7 days)
             t0 = time.time()
             try:
-                res_orders = await client.get_orders(limit=10)
+                from datetime import datetime, timezone, timedelta
+                now = datetime.now(timezone.utc)
+                week_ago = now - timedelta(days=7)
+                orders_list = await client.get_orders(date_start=week_ago, date_end=now)
                 dt3 = time.time() - t0
-                orders_list = res_orders.get("orders", []) if isinstance(res_orders, dict) else res_orders
                 print(f"3. GET /api/v3/orders: [SUCCESS] {len(orders_list)} orders fetched in {dt3:.2f}s")
             except Exception as e:
                 print(f"3. GET /api/v3/orders: [FAILED] {e}")

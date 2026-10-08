@@ -93,7 +93,7 @@ services:
       resources:
         limits:
           cpus: '0.60'
-          memory: 125M
+          memory: 160M
         reservations:
           memory: 48M
     logging:
@@ -127,7 +127,7 @@ services:
       resources:
         limits:
           cpus: '0.60'
-          memory: 250M
+          memory: 230M
         reservations:
           memory: 48M
     logging:
@@ -160,7 +160,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 140M
+          memory: 165M
         reservations:
           memory: 32M
     logging:

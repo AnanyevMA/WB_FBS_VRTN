@@ -133,7 +133,7 @@ class WBFinanceClient:
         self,
         date_from: str,
         date_to: str,
-        limit: int = 1000,
+        limit: int = 500,
         max_pages: int = 100,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """

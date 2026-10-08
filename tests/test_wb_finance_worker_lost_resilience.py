@@ -182,7 +182,7 @@ def test_worker_lost_error_telegram_alert():
             name="Alert Test Shop",
             wb_api_token_encrypted=encrypt("tok"),
             telegram_bot_token_encrypted=encrypt("123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"),
-            telegram_chat_ids=["987654321"],
+            telegram_chat_ids=["987654321", "-1002498223661"],
             is_active=True,
         )
         db.add(seller)
@@ -205,8 +205,8 @@ def test_worker_lost_error_telegram_alert():
         )
 
         assert sent is True
-        assert mock_urlopen.called
-        # Check HTTP request content
+        # Verify it was called only ONCE for the private chat, NOT for the group chat (-100...)
+        assert mock_urlopen.call_count == 1
         req_arg = mock_urlopen.call_args[0][0]
         assert "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" in req_arg.full_url
         req_data = req_arg.data.decode("utf-8")
@@ -214,6 +214,7 @@ def test_worker_lost_error_telegram_alert():
         assert "SIGKILL" in req_data
         assert test_task_id in req_data
         assert "987654321" in req_data
+        assert "-1002498223661" not in req_data
 
     # Check AuditLog written
     with Session(engine) as db:
@@ -259,3 +260,44 @@ def test_celery_task_failure_signal_trigger():
             args=("seller-123",),
             kwargs={"days": 14},
         )
+
+
+@pytest.mark.asyncio
+async def test_error_alerts_strictly_sent_to_private_chats():
+    """Verify send_error_alert and send_wb_token_expired_alert strictly filter out group chats (-100...)."""
+    from app.services.telegram_service import TelegramService
+
+    svc = TelegramService("fake_bot_token")
+    mock_bot = MagicMock()
+    mock_bot.send_message = AsyncMock(return_value=True)
+
+    with patch.object(svc, "_get_bot", AsyncMock(return_value=mock_bot)):
+        mixed_chats = ["12345678", "-100987654321", "-555444333", "87654321"]
+
+        # 1. send_error_alert
+        ok1 = await svc.send_error_alert(mixed_chats, "TestAgent", "Critical error message")
+        assert ok1 is True
+        # Only 2 private chats should receive message
+        assert mock_bot.send_message.call_count == 2
+        called_cids = [call.kwargs.get("chat_id") for call in mock_bot.send_message.call_args_list]
+        assert "12345678" in called_cids
+        assert "87654321" in called_cids
+        assert "-100987654321" not in called_cids
+        assert "-555444333" not in called_cids
+
+        # 2. Only group chats -> should return False and not send anything
+        mock_bot.send_message.reset_mock()
+        ok_groups = await svc.send_error_alert(["-100111222333"], "TestAgent", "Group only error")
+        assert ok_groups is False
+        assert mock_bot.send_message.call_count == 0
+
+        # 3. send_wb_token_expired_alert
+        mock_bot.send_message.reset_mock()
+        ok2 = await svc.send_wb_token_expired_alert(mixed_chats, "Test Seller", "Expired token")
+        assert ok2 is True
+        assert mock_bot.send_message.call_count == 2
+        called_cids_token = [call.kwargs.get("chat_id") for call in mock_bot.send_message.call_args_list]
+        assert "12345678" in called_cids_token
+        assert "87654321" in called_cids_token
+        assert "-100987654321" not in called_cids_token
+

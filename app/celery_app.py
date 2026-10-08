@@ -205,6 +205,8 @@ def send_worker_lost_telegram_alert(
     from app.models.seller import Seller
     from app.services.encryption import decrypt
 
+    from app.services.telegram_service import filter_private_chats, is_private_chat, get_personal_manager_chats
+
     seller_id = (kwargs or {}).get("seller_id")
     if not seller_id and args and len(args) > 0 and isinstance(args[0], str):
         seller_id = args[0]
@@ -212,13 +214,13 @@ def send_worker_lost_telegram_alert(
     seller_name = None
     recipients: list[tuple[str, list[str]]] = []
 
-    # 1. Проверяем глобальный токен и чат администратора из конфигурации / .env
+    # 1. Проверяем глобальный токен и чат администратора из конфигурации / .env (только личный чат!)
     admin_bot_token = getattr(settings, "telegram_bot_token", None) or os.getenv("TELEGRAM_BOT_TOKEN")
     admin_chat_id = getattr(settings, "telegram_admin_chat_id", None) or os.getenv("TELEGRAM_ADMIN_CHAT_ID")
-    if admin_bot_token and admin_chat_id:
-        recipients.append((admin_bot_token.strip(), [admin_chat_id.strip()]))
+    if admin_bot_token and admin_chat_id and is_private_chat(admin_chat_id):
+        recipients.append((admin_bot_token.strip(), [str(admin_chat_id).strip()]))
 
-    # 2. Ищем настройки Telegram в БД (целевой селлер или активные селлеры)
+    # 2. Ищем настройки Telegram в БД (целевой селлер или активные селлеры) — строго личные чаты
     try:
         engine = create_engine(settings.database_url_sync)
         with Session(engine) as db:
@@ -226,10 +228,10 @@ def send_worker_lost_telegram_alert(
                 sel = db.execute(select(Seller).where(Seller.id == str(seller_id))).scalar_one_or_none()
                 if sel:
                     seller_name = sel.name
-                    if sel.telegram_bot_token_encrypted and sel.telegram_chat_ids:
+                    if sel.telegram_bot_token_encrypted:
                         try:
                             tok = decrypt(sel.telegram_bot_token_encrypted)
-                            chats = [str(c).strip() for c in sel.telegram_chat_ids if str(c).strip()]
+                            chats = get_personal_manager_chats(sel) or filter_private_chats(sel.telegram_chat_ids or [])
                             if chats:
                                 recipients.append((tok, chats))
                         except Exception as dec_err:
@@ -243,15 +245,14 @@ def send_worker_lost_telegram_alert(
                     )
                 ).scalars().all()
                 for s in active_sellers:
-                    if s.telegram_chat_ids:
-                        try:
-                            tok = decrypt(s.telegram_bot_token_encrypted)
-                            chats = [str(c).strip() for c in s.telegram_chat_ids if str(c).strip()]
-                            if chats:
-                                recipients.append((tok, chats))
-                                break
-                        except Exception:
-                            continue
+                    try:
+                        tok = decrypt(s.telegram_bot_token_encrypted)
+                        chats = get_personal_manager_chats(s) or filter_private_chats(s.telegram_chat_ids or [])
+                        if chats:
+                            recipients.append((tok, chats))
+                            break
+                    except Exception:
+                        continue
     except Exception as db_err:
         logger.error(f"[WorkerLost Alert] DB query failed: {db_err}")
 
@@ -273,7 +274,8 @@ def send_worker_lost_telegram_alert(
 
     sent_any = False
     for bot_tok, chat_list in recipients:
-        for cid in chat_list:
+        private_chats = filter_private_chats(chat_list)
+        for cid in private_chats:
             try:
                 payload = json.dumps({
                     "chat_id": cid,

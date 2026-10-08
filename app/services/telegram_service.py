@@ -176,7 +176,11 @@ class TelegramService:
         agent: str,
         message: str,
     ) -> bool:
-        """Алерт об ошибке агента (эскалация)."""
+        """Алерт об ошибке агента (эскалация). Отправляется строго в личные чаты."""
+        private_chats = filter_private_chats(chat_ids)
+        if not private_chats:
+            logger.warning(f"[TelegramService] No private chats found for send_error_alert, skipping group broadcast (original chats: {chat_ids})")
+            return False
         agent_esc = html.escape(str(agent or "—"))
         message_esc = html.escape(str(message or "—"))
         text = (
@@ -185,7 +189,7 @@ class TelegramService:
             f"Сообщение: {message_esc}\n"
             f"Требуется ручное вмешательство!"
         )
-        return await self._broadcast(chat_ids, text)
+        return await self._broadcast(private_chats, text)
 
     async def send_wb_token_expired_alert(
         self,
@@ -193,7 +197,11 @@ class TelegramService:
         seller_name: str,
         reason: str = "",
     ) -> bool:
-        """Специализированное предупреждение: истёк срок действия токена Wildberries."""
+        """Специализированное предупреждение: истёк срок действия токена Wildberries. Отправляется строго в личные чаты."""
+        private_chats = filter_private_chats(chat_ids)
+        if not private_chats:
+            logger.warning(f"[TelegramService] No private chats found for send_wb_token_expired_alert, skipping group broadcast (original chats: {chat_ids})")
+            return False
         name_esc = html.escape(str(seller_name or "—"))
         reason_esc = html.escape(str(reason or ""))
         reason_line = f"\n<i>Причина: {reason_esc}</i>\n" if reason_esc else ""
@@ -209,7 +217,7 @@ class TelegramService:
             f"3. Создайте новый токен (с категориями «Контент», «Маркетплейс», «Цены и скидки»)\n"
             f"4. Вставьте новый токен в настройках магазина в WB FBS Manager и включите опрос."
         )
-        return await self._broadcast(chat_ids, text)
+        return await self._broadcast(private_chats, text)
 
     async def send_batch_orders_notification(
         self,

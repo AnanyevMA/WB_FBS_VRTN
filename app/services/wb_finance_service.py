@@ -113,7 +113,7 @@ def _map_raw_row_to_dict(row: Dict[str, Any], seller_id: str) -> Dict[str, Any]:
         "delivery_method": row.get("deliveryMethod"),
         "date_from": _parse_iso_date(row.get("dateFrom") or row.get("date_from")),
         "date_to": _parse_iso_date(row.get("dateTo") or row.get("date_to")),
-        "raw_payload": row,
+        "raw_payload": None,
     }
 
 
@@ -133,7 +133,7 @@ async def _upsert_sales_report_rows(
     if is_postgres:
         from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-        for chunk in [row_dicts[i:i + 200] for i in range(0, len(row_dicts), 200)]:
+        for chunk in [row_dicts[i:i + 100] for i in range(0, len(row_dicts), 100)]:
             for item in chunk:
                 if "id" not in item:
                     item["id"] = str(uuid.uuid4())
@@ -150,6 +150,9 @@ async def _upsert_sales_report_rows(
             )
             await db.execute(stmt)
             inserted_count += len(chunk)
+            del stmt
+            del update_cols
+            del chunk
     else:
         # SQLite / Unit test compatibility fallback
         rrd_ids = [r["rrd_id"] for r in row_dicts]
@@ -303,7 +306,7 @@ async def sync_seller_financial_reports(
 
     try:
         async with WBFinanceClient(wb_token) as client:
-            async for page in client.fetch_all_sales_reports(date_from=date_from, date_to=date_to, limit=1000):
+            async for page in client.fetch_all_sales_reports(date_from=date_from, date_to=date_to, limit=500):
                 if not page:
                     continue
 

@@ -232,14 +232,20 @@ def send_supply_notification(seller_id: str, supply_id: str, orders_count: int):
 
 @celery_app.task(name="app.agents.notifier.send_alert", queue="notifications")
 def send_alert(seller_id: str, agent: str, message: str):
-    """Send error alert to seller's admin."""
+    """Send error alert to seller's admin (strictly private chats)."""
     import asyncio
+    from app.services.telegram_service import get_personal_manager_chats, filter_private_chats
+
     with Session(sync_engine) as db:
         seller = _get_seller(db, seller_id)
         if not seller or not seller.telegram_bot_token_encrypted:
             return
         bot_token = decrypt(seller.telegram_bot_token_encrypted)
-        chat_ids = seller.telegram_chat_ids or []
+        chat_ids = get_personal_manager_chats(seller) or filter_private_chats(seller.telegram_chat_ids or [])
+
+    if not chat_ids:
+        logger.warning(f"[Notifier] No private chats found for seller {seller_id}, error alert skipped")
+        return
 
     from app.services.telegram_service import TelegramService
     async def _send():
@@ -262,15 +268,21 @@ def send_alert(seller_id: str, agent: str, message: str):
 
 @celery_app.task(name="app.agents.notifier.send_wb_token_expired_alert", queue="notifications")
 def send_wb_token_expired_alert(seller_id: str, reason: str = ""):
-    """Send dedicated Telegram alert that WB API token is expired."""
+    """Send dedicated Telegram alert that WB API token is expired (strictly private chats)."""
     import asyncio
+    from app.services.telegram_service import get_personal_manager_chats, filter_private_chats
+
     with Session(sync_engine) as db:
         seller = _get_seller(db, seller_id)
         if not seller or not seller.telegram_bot_token_encrypted:
             return
         bot_token = decrypt(seller.telegram_bot_token_encrypted)
-        chat_ids = seller.telegram_chat_ids or []
+        chat_ids = get_personal_manager_chats(seller) or filter_private_chats(seller.telegram_chat_ids or [])
         seller_name = seller.name
+
+    if not chat_ids:
+        logger.warning(f"[Notifier] No private chats found for seller {seller_id}, token expired alert skipped")
+        return
 
     from app.services.telegram_service import TelegramService
     async def _send():

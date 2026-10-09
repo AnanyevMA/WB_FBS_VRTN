@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-07T15:09:16.879592+00:00",
+  "updated_at": "2026-10-09T09:24:18.828228+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 159,
   "files": [
@@ -1148,7 +1148,7 @@
     {
       "file": "app/agents/notifier.py",
       "layer": "agents",
-      "hash": "8624c98af5be",
+      "hash": "556ca83e2e87",
       "docstring": "Notifier Agent — отправка уведомлений через Telegram",
       "classes": [],
       "functions": [
@@ -1241,7 +1241,7 @@
           "decorators": [
             "celery_app.task()"
           ],
-          "docstring": "Send error alert to seller's admin."
+          "docstring": "Send error alert to seller's admin (strictly private chats)."
         },
         {
           "name": "send_wb_token_expired_alert",
@@ -1253,7 +1253,7 @@
           "decorators": [
             "celery_app.task()"
           ],
-          "docstring": "Send dedicated Telegram alert that WB API token is expired."
+          "docstring": "Send dedicated Telegram alert that WB API token is expired (strictly private chats)."
         },
         {
           "name": "is_scheduled_slot_due",
@@ -1304,12 +1304,12 @@
         {
           "name": "app.agents.notifier.send_alert",
           "function": "send_alert",
-          "docstring": "Send error alert to seller's admin."
+          "docstring": "Send error alert to seller's admin (strictly private chats)."
         },
         {
           "name": "app.agents.notifier.send_wb_token_expired_alert",
           "function": "send_wb_token_expired_alert",
-          "docstring": "Send dedicated Telegram alert that WB API token is expired."
+          "docstring": "Send dedicated Telegram alert that WB API token is expired (strictly private chats)."
         },
         {
           "name": "app.agents.notifier.send_scheduled_orders_digest",
@@ -4018,7 +4018,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "4c7463e2eda4",
+      "hash": "4ac68f2d5110",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4061,6 +4061,7 @@
         "app.models.audit",
         "app.models.seller",
         "app.services.encryption",
+        "app.services.telegram_service",
         "celery",
         "celery.exceptions",
         "celery.schedules",
@@ -6178,7 +6179,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "3438936d50c5",
+      "hash": "e3267651e9e9",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -6413,7 +6414,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "9f9d16c47af3",
+      "hash": "32f32cc6d091",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -6772,7 +6773,7 @@
     {
       "file": "app/services/wb_finance_client.py",
       "layer": "services",
-      "hash": "d61d345b3de0",
+      "hash": "784710e32890",
       "docstring": "Wildberries Finance API Client.",
       "classes": [
         {
@@ -6827,7 +6828,7 @@
     {
       "file": "app/services/wb_finance_service.py",
       "layer": "services",
-      "hash": "b905fbe4e4fb",
+      "hash": "433e84d51cac",
       "docstring": "WB Finance Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -7189,7 +7190,7 @@
     {
       "file": "scripts/diagnose_wb_api.py",
       "layer": "config",
-      "hash": "8df090c533d7",
+      "hash": "2ca318788b69",
       "docstring": "Diagnostic script to test live Wildberries API methods and token status.",
       "classes": [],
       "functions": [
@@ -7210,6 +7211,7 @@
         "app.services.encryption",
         "app.services.wb_client",
         "asyncio",
+        "datetime",
         "sqlalchemy",
         "time"
       ]
@@ -10874,7 +10876,7 @@
     {
       "file": "tests/test_prevent_duplicate_batch_orders.py",
       "layer": "tests",
-      "hash": "5e20b249f401",
+      "hash": "ac718d0d933e",
       "docstring": "Unit tests verifying prevention of duplicate KIZ batch additions.",
       "classes": [],
       "functions": [
@@ -10931,6 +10933,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Test that an active KizOperation of type RETURN excludes the item from new return batches,"
+        },
+        {
+          "name": "test_order_with_checked_ok_status_is_excluded_from_return",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Test that an order with cz_doc_status='CHECKED_OK' and status=OrderStatus.CANCELLED"
         }
       ],
       "endpoints": [],
@@ -11757,7 +11768,7 @@
     {
       "file": "tests/test_wb_finance_worker_lost_resilience.py",
       "layer": "tests",
-      "hash": "fd9dd00d3075",
+      "hash": "36916fcc719d",
       "docstring": "Tests for WB Finance OOM Resilience and Celery WorkerLostError Alerting.",
       "classes": [],
       "functions": [
@@ -11810,6 +11821,15 @@
           "args": [],
           "decorators": [],
           "docstring": "Verify handle_celery_task_failure triggers alert on WorkerLostError and ignores normal exceptions."
+        },
+        {
+          "name": "test_error_alerts_strictly_sent_to_private_chats",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify send_error_alert and send_wb_token_expired_alert strictly filter out group chats (-100...)."
         }
       ],
       "endpoints": [],
@@ -11823,6 +11843,7 @@
         "app.models.audit",
         "app.models.seller",
         "app.services.encryption",
+        "app.services.telegram_service",
         "app.services.wb_finance_client",
         "app.services.wb_finance_service",
         "celery.exceptions",

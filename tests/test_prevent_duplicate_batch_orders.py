@@ -291,3 +291,49 @@ async def test_kiz_operation_return_excludes_item_from_batch():
         assert summary["returns_needing_cz_return"] == 0
         assert summary["returns_already_in_circulation"] == 1
 
+
+@pytest.mark.asyncio
+async def test_order_with_checked_ok_status_is_excluded_from_return():
+    """
+    Test that an order with cz_doc_status='CHECKED_OK' and status=OrderStatus.CANCELLED
+    (without kiz_status=RETURNED and without cz_return_doc_id) is excluded from returns
+    and executes line 188 with OrderStatus cleanly.
+    """
+    async with AsyncSessionLocal() as db:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Test Seller Doc Status OK",
+            wb_api_token_encrypted="mock_token",
+            cz_inn="190207495060",
+        )
+        db.add(seller)
+        await db.commit()
+
+        test_cis = f"0104630199251332215{uuid.uuid4().hex[:12]}"
+        unique_order_id = int(uuid.uuid4().int % 10000000000)
+        order = Order(
+            id=unique_order_id,
+            seller_id=seller_id,
+            status=OrderStatus.CANCELLED,
+            wb_status="canceled_by_client",
+            kiz_code=test_cis,
+            kiz_status=KizStatus.ATTACHED,
+            cz_doc_status="CHECKED_OK",
+            wb_created_at=datetime.now(timezone.utc) - timedelta(days=5),
+            price=2500.0,
+            article="hood.02",
+        )
+        db.add(order)
+        await db.commit()
+
+        with patch("app.services.unified_kiz_batch_service.batch_verify_and_sync_cises", return_value={}):
+            with patch("app.services.unified_kiz_batch_service.fetch_wb_excise_data", return_value=[]):
+                res = await create_unified_kiz_signature_batch(seller=seller, db=db, days=30)
+
+        assert res["success"] is True
+        summary = res["summary"]
+        assert summary["returns_needing_cz_return"] == 0
+        assert summary["returns_already_in_circulation"] == 1
+
+

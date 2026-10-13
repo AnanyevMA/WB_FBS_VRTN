@@ -158,6 +158,16 @@ async function loadCryptoProCerts() {
         console.warn("Direct cadesplugin store read note:", e);
     }
 
+    // Sort: valid certificates first (newest expiration date first), expired certificates last
+    results.sort((a, b) => {
+        if (a.isExpired !== b.isExpired) {
+            return a.isExpired ? 1 : -1;
+        }
+        const timeA = a.validTo ? new Date(a.validTo).getTime() : 0;
+        const timeB = b.validTo ? new Date(b.validTo).getTime() : 0;
+        return timeB - timeA;
+    });
+
     cryptoProCerts = results;
     return results;
 }
@@ -191,18 +201,67 @@ async function populateCertificatesDropdown(customTargetId = null, userTriggered
             return;
         }
 
-        updatePluginBadges('success', `🟢 Найдено: ${certs.length}`);
+        const validCerts = certs.filter(c => !c.isExpired);
+        const validCount = validCerts.length;
+        if (validCount > 0) {
+            updatePluginBadges('success', `🟢 ЭЦП готова (${validCount})`);
+        } else {
+            updatePluginBadges('warning', `⚠️ Все сертификаты истекли (${certs.length})`);
+        }
         
         const defaultOption = '<option value="">-- Выберите сертификат УКЭП --</option>';
         const optionsHtml = defaultOption + certs.map(cert => {
             const dateStr = cert.validTo ? new Date(cert.validTo).toLocaleDateString('ru-RU') : '';
-            const expLabel = cert.isExpired ? ` (истёк ${dateStr})` : ` — до ${dateStr}`;
-            return `<option value="${cert.thumbprint}">${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''}${expLabel}</option>`;
+            if (cert.isExpired) {
+                return `<option value="${cert.thumbprint}" style="color: #ef4444;" data-expired="1">⚠️ [ИСТЁК ${dateStr}] ${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''}</option>`;
+            } else {
+                return `<option value="${cert.thumbprint}" style="color: #10b981;" data-expired="0">🟢 ${cert.subject} ${cert.inn ? `(ИНН: ${cert.inn})` : ''} — действует до ${dateStr}</option>`;
+            }
         }).join('');
 
         updateOptions(optionsHtml);
 
-        // Auto-select match for active seller if configured
+        // Smart auto-selection:
+        // 1. Try seller's configured thumbprint (if not expired)
+        // 2. Otherwise pick first valid (non-expired) cert
+        // 3. Never auto-select an expired cert (keep placeholder if all expired)
+        const activeSeller = (typeof currentSellersList !== 'undefined' && currentSellersList)
+            ? currentSellersList.find(s => String(s.id) === String(typeof currentSellerId !== 'undefined' ? currentSellerId : ''))
+            : null;
+        const configuredThumb = (activeSeller?.cryptopro_cert_thumbprint || activeSeller?.cz_cert_path || '').trim().toUpperCase();
+
+        const findBestThumb = () => {
+            if (configuredThumb) {
+                const match = certs.find(c => c.thumbprint === configuredThumb && !c.isExpired);
+                if (match) return match.thumbprint;
+            }
+            const firstValid = certs.find(c => !c.isExpired);
+            return firstValid ? firstValid.thumbprint : '';
+        };
+
+        const preferredThumb = findBestThumb();
+
+        const applySmartSelection = (targetSelect) => {
+            if (!targetSelect || targetSelect.options.length <= 1) return;
+            if (preferredThumb) {
+                targetSelect.value = preferredThumb;
+            } else {
+                targetSelect.selectedIndex = 0;
+            }
+        };
+
+        if (select) {
+            applySmartSelection(select);
+            if (typeof onCertSelected === 'function' && select.id === 'kizSigningCertSelect') onCertSelected();
+            if (typeof onBatchCertChanged === 'function' && select.id === 'batchCertSelect') onBatchCertChanged();
+        }
+
+        if (batchCertSelect && !customTargetId) {
+            applySmartSelection(batchCertSelect);
+            if (typeof onBatchCertChanged === 'function') onBatchCertChanged();
+        }
+
+        // Auto-select match for active seller in seller settings modal
         if (sellerCertSelect && !customTargetId) {
             const certInput = document.getElementById('seller_cert_path');
             const targetThumb = certInput ? certInput.value.trim().toUpperCase() : '';
@@ -210,18 +269,15 @@ async function populateCertificatesDropdown(customTargetId = null, userTriggered
                 const match = Array.from(sellerCertSelect.options).find(o => o.value && o.value.toUpperCase() === targetThumb);
                 if (match) {
                     sellerCertSelect.value = match.value;
-                    if (typeof onSellerCertChanged === 'function') onSellerCertChanged();
                 }
+            } else if (preferredThumb) {
+                sellerCertSelect.value = preferredThumb;
             }
-        }
-
-        if (select && select.options.length > 1 && !select.value) {
-            select.selectedIndex = 1;
-            if (typeof onCertSelected === 'function') onCertSelected();
+            if (typeof onSellerCertChanged === 'function') onSellerCertChanged();
         }
 
         if (userTriggered) {
-            showToast('КриптоПро', `Обновлено! Доступно сертификатов: ${certs.length}`, 'success');
+            showToast('КриптоПро', `Обновлено! Доступно сертификатов: ${certs.length} (действующих: ${validCount})`, validCount > 0 ? 'success' : 'warning');
         }
     } catch (err) {
         console.error("populateCertificatesDropdown error:", err);
@@ -244,7 +300,8 @@ function onCertSelected() {
     }
     const cert = cryptoProCerts.find(c => c.thumbprint && c.thumbprint.toLowerCase() === thumb.toLowerCase());
     if (cert && detailsEl) {
-        detailsEl.innerHTML = `<strong>Владелец:</strong> ${cert.subject}<br><strong>Действителен до:</strong> ${new Date(cert.validTo).toLocaleString('ru-RU')}<br><span style="font-family:monospace; font-size:11px;">Отпечаток (SHA-1): ${cert.thumbprint}</span>`;
+        const expLabel = cert.isExpired ? '<span style="color:#ef4444; font-weight:700;">(ИСТЁК)</span>' : '<span style="color:#10b981;">(действителен)</span>';
+        detailsEl.innerHTML = `<strong>Владелец:</strong> ${cert.subject}<br><strong>Действителен до:</strong> ${new Date(cert.validTo).toLocaleString('ru-RU')} ${expLabel}<br><span style="font-family:monospace; font-size:11px;">Отпечаток (SHA-1): ${cert.thumbprint}</span>`;
     }
 }
 
@@ -256,23 +313,32 @@ async function signDataWithCryptoPro(base64Data, thumbprint) {
 
     // If no thumbprint passed, pick from UI or first available
     if (!targetThumb) {
-        const uiCertSelect = document.getElementById('kizSigningCertSelect') || document.getElementById('seller_cert_select');
+        const uiCertSelect = document.getElementById('kizSigningCertSelect') || document.getElementById('seller_cert_select') || document.getElementById('batchCertSelect');
         targetThumb = uiCertSelect ? uiCertSelect.value : null;
     }
 
     if (!targetThumb && cryptoProCerts.length > 0) {
-        targetThumb = cryptoProCerts[0].thumbprint;
+        const firstValid = cryptoProCerts.find(c => !c.isExpired);
+        targetThumb = firstValid ? firstValid.thumbprint : cryptoProCerts[0].thumbprint;
     }
 
     if (!targetThumb) {
         await loadCryptoProCerts();
         if (cryptoProCerts.length > 0) {
-            targetThumb = cryptoProCerts[0].thumbprint;
+            const firstValid = cryptoProCerts.find(c => !c.isExpired);
+            targetThumb = firstValid ? firstValid.thumbprint : cryptoProCerts[0].thumbprint;
         }
     }
 
     if (!targetThumb) {
         throw new Error("Не выбран сертификат УКЭП для подписания");
+    }
+
+    // Safety pre-check: prevent 0x800B0101 by rejecting expired certificate early with clear message
+    const certMeta = (cryptoProCerts || []).find(c => c.thumbprint && c.thumbprint.toUpperCase() === targetThumb.toUpperCase());
+    if (certMeta && certMeta.isExpired) {
+        const expStr = certMeta.validTo ? new Date(certMeta.validTo).toLocaleDateString('ru-RU') : 'ранее';
+        throw new Error(`Срок действия сертификата «${certMeta.subject}» истёк (${expStr}). КриптоПро блокирует подписание (ошибка 0x800B0101). Выберите действующую ЭЦП.`);
     }
 
     // Direct CAdES plugin

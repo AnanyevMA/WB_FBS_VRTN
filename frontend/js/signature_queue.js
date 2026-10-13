@@ -538,9 +538,10 @@ function renderActiveBatch(batch) {
                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 250px;">
                         <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Сертификат УКЭП (КриптоПро Browser Plugin):</label>
-                        <select id="batchCertSelect" class="form-control" style="width: 100%;">
+                        <select id="batchCertSelect" class="form-control" style="width: 100%;" onchange="onBatchCertChanged()">
                             <option value="">Поиск сертификатов ЭЦП...</option>
                         </select>
+                        <div id="batchCertWarning" style="font-size: 11px; margin-top: 4px; display: none;"></div>
                     </div>
                     <div style="width: 200px;">
                         <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Режим подписания:</label>
@@ -740,6 +741,34 @@ function toggleAllBatchCheckboxes(type, checked) {
     updateBatchSelectedCount();
 }
 
+function onBatchCertChanged() {
+    const select = document.getElementById('batchCertSelect');
+    const warningEl = document.getElementById('batchCertWarning');
+    if (!select || !warningEl) return;
+
+    const thumb = select.value;
+    if (!thumb) {
+        warningEl.style.display = 'none';
+        warningEl.innerHTML = '';
+        return;
+    }
+
+    const cert = (typeof cryptoProCerts !== 'undefined' ? cryptoProCerts : []).find(c => c.thumbprint && c.thumbprint.toUpperCase() === thumb.toUpperCase());
+    if (cert && cert.isExpired) {
+        const expDate = cert.validTo ? new Date(cert.validTo).toLocaleDateString('ru-RU') : '';
+        warningEl.style.display = 'block';
+        warningEl.innerHTML = `<span style="color:#ef4444; font-weight:600;">⚠️ Внимание: Срок действия этого сертификата истёк (${expDate})! КриптоПро отклонит подписание (ошибка 0x800B0101). Пожалуйста, выберите действующий сертификат.</span>`;
+    } else if (cert) {
+        const expDate = cert.validTo ? new Date(cert.validTo).toLocaleDateString('ru-RU') : '';
+        warningEl.style.display = 'block';
+        warningEl.innerHTML = `<span style="color:#10b981; font-weight:500;">🟢 Действителен до ${expDate}</span>`;
+    } else {
+        warningEl.style.display = 'none';
+        warningEl.innerHTML = '';
+    }
+}
+window.onBatchCertChanged = onBatchCertChanged;
+
 async function syncBatchCzLive(batchId) {
     if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
 
@@ -895,8 +924,19 @@ async function submitBatchSigningAction(batchId) {
     const certSelect = document.getElementById('batchCertSelect');
     const selectedThumbprint = certSelect?.value;
 
-    if (signMode === 'client_cades' && !selectedThumbprint) {
-        return showToast('Внимание', 'Пожалуйста, выберите сертификат ЭЦП в выпадающем списке', 'warning');
+    if (signMode === 'client_cades') {
+        if (!selectedThumbprint) {
+            return showToast('Внимание', 'Пожалуйста, выберите сертификат ЭЦП в выпадающем списке', 'warning');
+        }
+        const selectedCert = (typeof cryptoProCerts !== 'undefined' ? cryptoProCerts : []).find(c => c.thumbprint && c.thumbprint.toUpperCase() === selectedThumbprint.toUpperCase());
+        if (selectedCert && selectedCert.isExpired) {
+            const expDate = selectedCert.validTo ? new Date(selectedCert.validTo).toLocaleDateString('ru-RU') : '';
+            return showToast(
+                'Сертификат просрочен',
+                `Выбранный сертификат «${selectedCert.subject}» истёк ${expDate}. КриптоПро блокирует подписание (ошибка 0x800B0101). Пожалуйста, выберите действующий сертификат.`,
+                'error'
+            );
+        }
     }
 
     if (loader) loader.style.display = 'inline-block';

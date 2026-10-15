@@ -53,8 +53,9 @@ class Seller(Base):
     last_archive_uploaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_archive_reminder_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    # Auto KIZ queue settings (daily automated batch creation)
+    # Auto KIZ queue settings (automated batch creation every N hours)
     auto_kiz_queue_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    auto_kiz_queue_interval_hours: Mapped[int] = mapped_column(Integer, default=6, server_default="6")
     auto_kiz_queue_hour: Mapped[int] = mapped_column(Integer, default=17, server_default="17")
     auto_kiz_queue_minute: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     auto_kiz_auto_sign_server: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

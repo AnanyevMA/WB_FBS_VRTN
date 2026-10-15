@@ -808,9 +808,14 @@
                                 style="width:16px; height:16px; accent-color:#0284c7; cursor:pointer;">
                         </label>
                     </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label" style="font-size:12px;">Час запуска (0–23)</label>
+                            <label class="form-label" style="font-size:12px;">Интервал (часов)</label>
+                            <input type="number" class="form-control" id="seller_auto_kiz_queue_interval_hours"
+                                min="1" max="24" value="6" style="font-size:14px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Час отсчёта (0–23)</label>
                             <input type="number" class="form-control" id="seller_auto_kiz_queue_hour"
                                 min="0" max="23" value="17" style="font-size:14px;">
                         </div>
@@ -842,7 +847,7 @@
                         </div>
                     </div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-                        Автоматически 1 раз в сутки (по умолчанию в 17:00) опрашивает API Wildberries, отбирает проданные товары и возвраты, валидирует их в ЧЗ и формирует пакет операций без загрузки файла архива.
+                        Автоматически каждые 6 часов (настраиваемый интервал) опрашивает API Wildberries, отбирает проданные товары и возвраты, валидирует их в ЧЗ и формирует пакет операций без загрузки файла архива.
                     </div>
                 </div>
 

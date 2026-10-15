@@ -56,6 +56,7 @@ async def get_auto_kiz_settings(
 
     return {
         "auto_kiz_queue_enabled": getattr(seller, "auto_kiz_queue_enabled", True),
+        "auto_kiz_queue_interval_hours": getattr(seller, "auto_kiz_queue_interval_hours", 6),
         "auto_kiz_queue_hour": getattr(seller, "auto_kiz_queue_hour", 17),
         "auto_kiz_queue_minute": getattr(seller, "auto_kiz_queue_minute", 0),
         "auto_kiz_auto_sign_server": getattr(seller, "auto_kiz_auto_sign_server", False),
@@ -74,6 +75,7 @@ async def update_auto_kiz_settings(
     """
     Обновление настроек автоматической очереди КИЗ:
     - auto_kiz_queue_enabled: bool
+    - auto_kiz_queue_interval_hours: int (1-24)
     - auto_kiz_queue_hour: int (0-23)
     - auto_kiz_queue_minute: int (0-59)
     - auto_kiz_auto_sign_server: bool
@@ -85,6 +87,12 @@ async def update_auto_kiz_settings(
 
     if "auto_kiz_queue_enabled" in payload:
         seller.auto_kiz_queue_enabled = bool(payload["auto_kiz_queue_enabled"])
+
+    if "auto_kiz_queue_interval_hours" in payload:
+        interval = int(payload["auto_kiz_queue_interval_hours"])
+        if not (1 <= interval <= 24):
+            raise HTTPException(status_code=400, detail="Интервал должен быть от 1 до 24 часов")
+        seller.auto_kiz_queue_interval_hours = interval
 
     if "auto_kiz_queue_hour" in payload:
         hour = int(payload["auto_kiz_queue_hour"])
@@ -112,6 +120,7 @@ async def update_auto_kiz_settings(
         "message": "Настройки автоматической очереди КИЗ успешно сохранены",
         "settings": {
             "auto_kiz_queue_enabled": seller.auto_kiz_queue_enabled,
+            "auto_kiz_queue_interval_hours": seller.auto_kiz_queue_interval_hours,
             "auto_kiz_queue_hour": seller.auto_kiz_queue_hour,
             "auto_kiz_queue_minute": seller.auto_kiz_queue_minute,
             "auto_kiz_auto_sign_server": seller.auto_kiz_auto_sign_server,

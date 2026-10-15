@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-09T09:24:18.828228+00:00",
+  "updated_at": "2026-10-15T03:58:02.484481+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 159,
+  "total_files": 161,
   "files": [
     {
       "file": "alembic/env.py",
@@ -63,6 +63,37 @@
         "sqlalchemy",
         "sqlalchemy.engine",
         "sqlalchemy.ext.asyncio"
+      ]
+    },
+    {
+      "file": "alembic/versions/0a1b2c3d4e5f_add_auto_kiz_queue_interval_hours.py",
+      "layer": "migrations",
+      "hash": "c2b4cb804774",
+      "docstring": "add_auto_kiz_queue_interval_hours",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
       ]
     },
     {
@@ -604,10 +635,23 @@
     {
       "file": "app/agents/auto_kiz_queue_agent.py",
       "layer": "agents",
-      "hash": "8277604e6875",
+      "hash": "f2f47aea0e42",
       "docstring": "Auto KIZ Queue Agent — WB FBS Manager",
       "classes": [],
       "functions": [
+        {
+          "name": "get_seller_most_recent_slot",
+          "is_async": false,
+          "args": [
+            "seller_local_now",
+            "target_hour",
+            "target_minute",
+            "interval_hours",
+            "seller_tz"
+          ],
+          "decorators": [],
+          "docstring": "Вычисляет наиболее недавний контрольный слот времени (на сегодня или вчера),"
+        },
         {
           "name": "is_seller_auto_queue_due",
           "is_async": false,
@@ -617,7 +661,7 @@
             "grace_hours"
           ],
           "decorators": [],
-          "docstring": "Проверяет, наступило ли локальное время (по умолчанию 17:00) для формирования очереди КИЗ."
+          "docstring": "Проверяет, наступило ли локальное время для формирования очереди КИЗ с заданным интервалом (по умолчанию каждые 6 часов)."
         },
         {
           "name": "check_and_run_auto_kiz_queue",
@@ -628,7 +672,7 @@
           "decorators": [
             "celery_app.task()"
           ],
-          "docstring": "Периодическая задача Celery Beat (запускается раз в минуту)."
+          "docstring": "Периодическая задача Celery Beat (запускается каждые 5 минут)."
         },
         {
           "name": "trigger_seller_auto_kiz_queue",
@@ -649,7 +693,7 @@
         {
           "name": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
           "function": "check_and_run_auto_kiz_queue",
-          "docstring": "Периодическая задача Celery Beat (запускается раз в минуту)."
+          "docstring": "Периодическая задача Celery Beat (запускается каждые 5 минут)."
         },
         {
           "name": "app.agents.auto_kiz_queue_agent.trigger_seller_auto_kiz_queue",
@@ -2411,7 +2455,7 @@
     {
       "file": "app/api/kiz/auto_queue.py",
       "layer": "api",
-      "hash": "3992e729420d",
+      "hash": "8d7b63cd9c61",
       "docstring": "FastAPI Auto KIZ Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4018,7 +4062,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "4ac68f2d5110",
+      "hash": "2364423bccae",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4414,7 +4458,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "74b55b503641",
+      "hash": "04beb282e240",
       "docstring": "",
       "classes": [
         {
@@ -5326,7 +5370,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "12e7a0179537",
+      "hash": "6364f863dfba",
       "docstring": "",
       "classes": [
         {
@@ -7188,6 +7232,36 @@
       ]
     },
     {
+      "file": "scripts/diagnose_last_2_days.py",
+      "layer": "config",
+      "hash": "64e4552932c4",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "run",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "asyncio",
+        "datetime",
+        "json",
+        "sqlalchemy"
+      ]
+    },
+    {
       "file": "scripts/diagnose_wb_api.py",
       "layer": "config",
       "hash": "2ca318788b69",
@@ -7574,7 +7648,7 @@
     {
       "file": "tests/test_api_auto_kiz_queue.py",
       "layer": "tests",
-      "hash": "2a64c76eebfc",
+      "hash": "006353d91dc1",
       "docstring": "API Tests for Auto KIZ Queue Endpoints (app/api/kiz/auto_queue.py)",
       "classes": [],
       "functions": [
@@ -7586,21 +7660,33 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_is_seller_auto_queue_due_intervals",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Unit tests for 6-hour interval calculation and slot detection."
         }
       ],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "app.agents.auto_kiz_queue_agent",
         "app.database",
         "app.main",
         "app.models.seller",
         "app.services.auth_service",
         "app.services.encryption",
+        "datetime",
         "httpx",
         "pytest",
         "unittest.mock",
-        "uuid"
+        "uuid",
+        "zoneinfo"
       ]
     },
     {
@@ -12096,7 +12182,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "c1475a467fa4",
+      "hash": "95c8910d1fe9",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

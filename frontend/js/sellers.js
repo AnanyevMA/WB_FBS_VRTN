@@ -66,9 +66,11 @@ function openAddSellerModal() {
     const arcMinute = document.getElementById('seller_archive_reminder_minute');
     if (arcMinute) arcMinute.value = 0;
 
-    // Auto KIZ queue defaults (daily at 17:00)
+    // Auto KIZ queue defaults (every 6 hours)
     const autoKizEnabled = document.getElementById('seller_auto_kiz_queue_enabled');
     if (autoKizEnabled) autoKizEnabled.checked = true;
+    const autoKizInterval = document.getElementById('seller_auto_kiz_queue_interval_hours');
+    if (autoKizInterval) autoKizInterval.value = 6;
     const autoKizHour = document.getElementById('seller_auto_kiz_queue_hour');
     if (autoKizHour) autoKizHour.value = 17;
     const autoKizMinute = document.getElementById('seller_auto_kiz_queue_minute');
@@ -135,6 +137,8 @@ async function editSeller(sellerId) {
         // Auto KIZ queue settings
         const autoKizEnabled = document.getElementById('seller_auto_kiz_queue_enabled');
         if (autoKizEnabled) autoKizEnabled.checked = seller.auto_kiz_queue_enabled !== false;
+        const autoKizInterval = document.getElementById('seller_auto_kiz_queue_interval_hours');
+        if (autoKizInterval) autoKizInterval.value = seller.auto_kiz_queue_interval_hours ?? 6;
         const autoKizHour = document.getElementById('seller_auto_kiz_queue_hour');
         if (autoKizHour) autoKizHour.value = seller.auto_kiz_queue_hour ?? 17;
         const autoKizMinute = document.getElementById('seller_auto_kiz_queue_minute');
@@ -399,6 +403,7 @@ async function saveSeller() {
                 archive_reminder_hour: parseInt(document.getElementById('seller_archive_reminder_hour')?.value) ?? 14,
                 archive_reminder_minute: parseInt(document.getElementById('seller_archive_reminder_minute')?.value) ?? 0,
                 auto_kiz_queue_enabled: document.getElementById('seller_auto_kiz_queue_enabled')?.checked ?? true,
+                auto_kiz_queue_interval_hours: parseInt(document.getElementById('seller_auto_kiz_queue_interval_hours')?.value) || 6,
                 auto_kiz_queue_hour: parseInt(document.getElementById('seller_auto_kiz_queue_hour')?.value) ?? 17,
                 auto_kiz_queue_minute: parseInt(document.getElementById('seller_auto_kiz_queue_minute')?.value) ?? 0,
                 auto_kiz_auto_sign_server: document.getElementById('seller_auto_kiz_auto_sign_server')?.checked ?? false,
@@ -432,6 +437,7 @@ async function saveSeller() {
                 archive_reminder_hour: parseInt(document.getElementById('seller_archive_reminder_hour')?.value) ?? 14,
                 archive_reminder_minute: parseInt(document.getElementById('seller_archive_reminder_minute')?.value) ?? 0,
                 auto_kiz_queue_enabled: document.getElementById('seller_auto_kiz_queue_enabled')?.checked ?? true,
+                auto_kiz_queue_interval_hours: parseInt(document.getElementById('seller_auto_kiz_queue_interval_hours')?.value) || 6,
                 auto_kiz_queue_hour: parseInt(document.getElementById('seller_auto_kiz_queue_hour')?.value) ?? 17,
                 auto_kiz_queue_minute: parseInt(document.getElementById('seller_auto_kiz_queue_minute')?.value) ?? 0,
                 auto_kiz_auto_sign_server: document.getElementById('seller_auto_kiz_auto_sign_server')?.checked ?? false,

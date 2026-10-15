@@ -149,10 +149,10 @@ celery_app.conf.update(
             "schedule": 300.0,  # every 5 minutes for on-time delivery
             "options": {"queue": "notifications"},
         },
-        # Runs every 5 min to check sellers requiring daily auto KIZ queue (by default at 17:00 local time)
+        # Runs every 5 min to check sellers requiring auto KIZ queue (by default every 6 hours)
         "daily-auto-kiz-queue-check": {
             "task": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
-            "schedule": 300.0,  # every 5 minutes (grace window 3h, ±5 min is fine)
+            "schedule": 300.0,  # every 5 minutes (grace window adapted to interval, ±5 min is fine)
             "options": {"queue": "cz_operations"},
         },
         # Runs daily at 04:30 to sync repeat sales from WB warehouse (FBO / returns)

@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-09 09:24:18 UTC | **Файлов проиндексировано**: 159  
+> **Дата актуализации**: 2026-10-15 03:58:02 UTC | **Файлов проиндексировано**: 161  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -136,7 +136,7 @@
 |---|---|---|---|
 | [`tests/test_agent_delegation_sync.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_agent_delegation_sync.py) | — | `test_agent_task_registration_and_queues`, `test_celery_beat_schedule_synchronization`, `test_qa_agent_execution_and_audit_logging` | Integration test for Agent Task Delegation, Audit Logging, and Workflow Synchronization. |
 | [`tests/test_agent_manifest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_agent_manifest.py) | — | `test_load_manifest`, `test_development_rules_holistic_and_test_policies`, `test_polp_enforcer_global_forbidden`, `test_polp_enforcer_agent_permissions` | Unit tests for agents_config.json and app.agent_manifest PoLPEnforcer. |
-| [`tests/test_api_auto_kiz_queue.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_auto_kiz_queue.py) | — | `test_auto_kiz_queue_api_endpoints` | API Tests for Auto KIZ Queue Endpoints (app/api/kiz/auto_queue.py) |
+| [`tests/test_api_auto_kiz_queue.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_auto_kiz_queue.py) | — | `test_auto_kiz_queue_api_endpoints`, `test_is_seller_auto_queue_due_intervals` | API Tests for Auto KIZ Queue Endpoints (app/api/kiz/auto_queue.py) |
 | [`tests/test_api_sellers.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_sellers.py) | — | `_get_auth_headers`, `test_patch_seller_notification_settings_preserves_tokens_and_chat_ids`, `test_patch_seller_updates_tokens_when_non_empty_values_provided`, `test_patch_seller_schedule_validation_errors`, +еще 4 | Tests for Seller API Endpoints (PATCH, POST, GET) & Token/ChatID Preservation. |
 | [`tests/test_archive_reminder.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_reminder.py) | — | `sync_db`, `test_archive_reminder_never_uploaded`, `test_archive_reminder_uploaded_recently_skipped`, `test_archive_reminder_uploaded_3_days_ago_triggers`, +еще 4 | Unit & Integration Tests for Archive Upload Reminders Agent (Every 2 days) |
 | [`tests/test_archive_unified_reconcile.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_unified_reconcile.py) | — | `setup_test_db`, `test_unified_reconciliation_preserves_archive_batch_and_order_sync`, `test_signature_batch_submitter_syncs_status_and_handles_error_14` | Tests for Archive Orders Status Synchronization, Unified Reconciliation Preservation, |
@@ -192,6 +192,7 @@
 | [`scripts/check_cz_doc.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/check_cz_doc.py) | — | `check_document_status` | CLI Utility to check Chestny Znak (GIS MT / True API) document status |
 | [`scripts/check_finance_status.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/check_finance_status.py) | — | `check` | Модуль кодовой базы |
 | [`scripts/dedup_kiz_product_info.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/dedup_kiz_product_info.py) | — | `dedup` | Deduplicates rows in kiz_product_info where the same clean_cis exists multiple times. |
+| [`scripts/diagnose_last_2_days.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/diagnose_last_2_days.py) | — | `run` | Модуль кодовой базы |
 | [`scripts/diagnose_wb_api.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/diagnose_wb_api.py) | — | `test_wb` | Diagnostic script to test live Wildberries API methods and token status. |
 | [`scripts/do_heal.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/do_heal.py) | — | `main` | Модуль кодовой базы |
 | [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | `generate_fernet_key`, `generate_random_token`, `generate_password`, `main` | Generate Secure Keys and Passwords for WB FBS Manager |

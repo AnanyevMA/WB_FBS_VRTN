@@ -122,6 +122,7 @@ class SellerCreate(SellerBase):
     archive_reminder_minute: Optional[int] = Field(0, ge=0, le=59)
     # Auto KIZ queue settings
     auto_kiz_queue_enabled: Optional[bool] = True
+    auto_kiz_queue_interval_hours: Optional[int] = Field(6, ge=1, le=24, description="Интервал запуска очереди КИЗ в часах (1–24)")
     auto_kiz_queue_hour: Optional[int] = Field(17, ge=0, le=23, description="Час формирования очереди КИЗ (0–23)")
     auto_kiz_queue_minute: Optional[int] = Field(0, ge=0, le=59, description="Минута формирования очереди КИЗ (0–59)")
     auto_kiz_auto_sign_server: Optional[bool] = False
@@ -153,8 +154,9 @@ class SellerUpdate(BaseModel):
     archive_reminder_days: Optional[int] = Field(None, ge=1, le=30, description="Интервал напоминания о загрузке архива в днях")
     archive_reminder_hour: Optional[int] = Field(None, ge=0, le=23, description="Час напоминания (0–23)")
     archive_reminder_minute: Optional[int] = Field(None, ge=0, le=59, description="Минута напоминания (0–59)")
-    # Auto KIZ queue settings (daily automated batch creation)
+    # Auto KIZ queue settings (automated batch creation every N hours)
     auto_kiz_queue_enabled: Optional[bool] = None
+    auto_kiz_queue_interval_hours: Optional[int] = Field(None, ge=1, le=24, description="Интервал запуска очереди КИЗ в часах (1–24)")
     auto_kiz_queue_hour: Optional[int] = Field(None, ge=0, le=23, description="Час формирования очереди КИЗ (0–23)")
     auto_kiz_queue_minute: Optional[int] = Field(None, ge=0, le=59, description="Минута формирования очереди КИЗ (0–59)")
     auto_kiz_auto_sign_server: Optional[bool] = None
@@ -238,6 +240,7 @@ class SellerResponse(SellerBase):
     last_archive_uploaded_at: Optional[datetime] = None
     # Auto KIZ queue settings
     auto_kiz_queue_enabled: Optional[bool] = True
+    auto_kiz_queue_interval_hours: Optional[int] = 6
     auto_kiz_queue_hour: Optional[int] = 17
     auto_kiz_queue_minute: Optional[int] = 0
     auto_kiz_auto_sign_server: Optional[bool] = False
@@ -325,6 +328,7 @@ class SellerListItem(BaseModel):
     archive_reminder_minute: Optional[int] = 0
     last_archive_uploaded_at: Optional[datetime] = None
     auto_kiz_queue_enabled: Optional[bool] = True
+    auto_kiz_queue_interval_hours: Optional[int] = 6
     auto_kiz_queue_hour: Optional[int] = 17
     auto_kiz_queue_minute: Optional[int] = 0
     last_auto_kiz_queue_at: Optional[datetime] = None

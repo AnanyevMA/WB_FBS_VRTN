@@ -771,6 +771,51 @@
       "dependencies": [
         "cz_token_refresher"
       ]
+    },
+    {
+      "id": "auto_kiz_queue",
+      "name": "Auto KIZ Queue & Multi-Interval Reconciliation Agent",
+      "role": "Automated creation of KIZ withdrawal and return signature batches every 6 hours (configurable interval) from WB API statuses, True API validation, optional CryptoPro server signing, and manager Telegram notifications.",
+      "celery_task": "app.agents.auto_kiz_queue_agent.check_and_run_auto_kiz_queue",
+      "queue": "cz_operations",
+      "schedule": "every 5 min (checks 6-hour interval per seller)",
+      "timeout_seconds": 300,
+      "max_retries": 1,
+      "concurrency_limit": 1,
+      "arbitration_priority": 85,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/auto_kiz_queue_agent.py",
+          "app/services/auto_kiz_queue_service.py",
+          "app/services/wb_client.py",
+          "app/services/kiz_service.py"
+        ],
+        "allowed_write_paths": [
+          "logs/auto_kiz.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT_UPDATE",
+          "orders": "SELECT_UPDATE",
+          "kiz_signature_batches": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_MARKETPLACE_API",
+          "GIS_MT_TRUE_API",
+          "TELEGRAM_BOT_API"
+        ],
+        "crypto_key_access": "READ_TOKEN_AND_CERT"
+      },
+      "dependencies": [
+        "cz_token_refresher",
+        "order_poller"
+      ]
     }
   ],
   "arbitration_rules": {

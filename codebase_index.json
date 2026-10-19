@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-15T04:22:49.580022+00:00",
+  "updated_at": "2026-10-19T15:14:11.819604+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 161,
   "files": [
@@ -520,7 +520,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "b861ac5c5998",
+      "hash": "f750c818c176",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -626,7 +626,6 @@
         "datetime",
         "io",
         "logging",
-        "pandas",
         "sqlalchemy",
         "sqlalchemy.orm",
         "typing"
@@ -4062,7 +4061,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "2364423bccae",
+      "hash": "bf10853366f4",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4118,6 +4117,7 @@
         "os",
         "sqlalchemy",
         "sqlalchemy.orm",
+        "sys",
         "typing",
         "urllib.request",
         "uuid"
@@ -4209,7 +4209,7 @@
     {
       "file": "app/main.py",
       "layer": "core",
-      "hash": "4dce037a4a93",
+      "hash": "c03a71803541",
       "docstring": "",
       "classes": [],
       "functions": [

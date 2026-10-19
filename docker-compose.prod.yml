@@ -30,9 +30,9 @@ services:
       resources:
         limits:
           cpus: '0.40'
-          memory: 100M
+          memory: 180M
         reservations:
-          memory: 48M
+          memory: 64M
     logging:
       driver: "json-file"
       options:
@@ -41,12 +41,12 @@ services:
     networks:
       - internal_net
 
-  # ─── Redis (RAM-only broker, No heavy AOF disk thrashing) ──────
+  # ─── Redis (RAM-only broker, No heavy AOF/RDB disk thrashing) ──
   redis:
     image: redis:7-alpine
     container_name: wbfbs_redis
     restart: unless-stopped
-    command: redis-server --appendonly no --save 300 1 --maxmemory 64mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly no --save "" --maxmemory 48mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -58,7 +58,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 48M
+          memory: 64M
         reservations:
           memory: 16M
     logging:
@@ -93,9 +93,9 @@ services:
       resources:
         limits:
           cpus: '0.60'
-          memory: 160M
+          memory: 200M
         reservations:
-          memory: 48M
+          memory: 64M
     logging:
       driver: "json-file"
       options:
@@ -122,14 +122,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=160000 -Q default,orders,supplies,cz_operations,archive,notifications,maintenance
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=200 --max-memory-per-child=250000 --without-gossip --without-mingle --without-heartbeat -Q default,orders,supplies,cz_operations,archive,notifications,maintenance
     deploy:
       resources:
         limits:
           cpus: '0.60'
-          memory: 230M
+          memory: 290M
         reservations:
-          memory: 48M
+          memory: 64M
     logging:
       driver: "json-file"
       options:
@@ -222,7 +222,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: 32M
+          memory: 48M
         reservations:
           memory: 16M
     logging:

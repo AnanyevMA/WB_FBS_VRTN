@@ -90,10 +90,8 @@ if [[ -n "$REDIS_URL" ]]; then
     wait_for_redis
 fi
 
-# If starting API, initialize database schema
+# If starting API, run database migrations (init_db runs inside FastAPI lifespan)
 if [[ "$1" == *"uvicorn"* ]] || [[ "$*" == *"app.main:app"* ]]; then
-    echo "📦 Initializing database schema..."
-    python -c "import asyncio; from app.database import init_db; asyncio.run(init_db())" || echo "⚠️ init_db warning"
     echo "📦 Running alembic migrations..."
     alembic upgrade head || true
 fi

@@ -7,10 +7,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-try:
-    import pandas as pd
-except (ImportError, ModuleNotFoundError):
-    pd = None
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 

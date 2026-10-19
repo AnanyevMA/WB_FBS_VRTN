@@ -8,6 +8,7 @@ import html
 import json
 import logging
 import os
+import sys
 import urllib.request
 import uuid
 from datetime import datetime, timezone
@@ -23,28 +24,39 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialize Celery app with all agent modules included
+_AGENT_MODULES = [
+    "app.agents.order_poller",
+    "app.agents.supply_agent",
+    "app.agents.cz_withdrawal",
+    "app.agents.cz_return",
+    "app.agents.archive_processor",
+    "app.agents.notifier",
+    "app.agents.cleanup",
+    "app.agents.qa_test_agent",
+    "app.agents.cz_token_refresher",
+    "app.agents.morning_digest",
+    "app.agents.kb_sync_agent",
+    "app.agents.security_audit_agent",
+    "app.agents.auto_kiz_queue_agent",
+    "app.agents.wb_warehouse_sales_agent",
+    "app.agents.wb_finance_agent",
+]
+
+# Celery Beat only publishes task names by schedule and does not need to import
+# all 15 agent modules (which would instantiate 14 SQLAlchemy engines and heavy libraries).
+_is_beat_process = (
+    len(sys.argv) > 1
+    and "beat" in sys.argv
+    and "worker" not in sys.argv
+    and "pytest" not in sys.modules
+)
+
+# Initialize Celery app with agent modules included for workers
 celery_app = Celery(
     "wbfbs",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=[
-        "app.agents.order_poller",
-        "app.agents.supply_agent",
-        "app.agents.cz_withdrawal",
-        "app.agents.cz_return",
-        "app.agents.archive_processor",
-        "app.agents.notifier",
-        "app.agents.cleanup",
-        "app.agents.qa_test_agent",
-        "app.agents.cz_token_refresher",
-        "app.agents.morning_digest",
-        "app.agents.kb_sync_agent",
-        "app.agents.security_audit_agent",
-        "app.agents.auto_kiz_queue_agent",
-        "app.agents.wb_warehouse_sales_agent",
-        "app.agents.wb_finance_agent",
-    ],
+    include=[] if _is_beat_process else _AGENT_MODULES,
 )
 
 # Celery Configuration
@@ -221,6 +233,7 @@ def send_worker_lost_telegram_alert(
         recipients.append((admin_bot_token.strip(), [str(admin_chat_id).strip()]))
 
     # 2. Ищем настройки Telegram в БД (целевой селлер или активные селлеры) — строго личные чаты
+    engine = None
     try:
         engine = create_engine(settings.database_url_sync)
         with Session(engine) as db:
@@ -255,6 +268,9 @@ def send_worker_lost_telegram_alert(
                         continue
     except Exception as db_err:
         logger.error(f"[WorkerLost Alert] DB query failed: {db_err}")
+    finally:
+        if engine is not None:
+            engine.dispose()
 
     seller_display = f"{seller_name} ({seller_id})" if seller_name else (str(seller_id) if seller_id else "Все / Система")
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -295,8 +311,10 @@ def send_worker_lost_telegram_alert(
                 logger.error(f"[WorkerLost Alert] HTTP Telegram send failed to {cid}: {http_err}")
 
     # Запись в аудит-лог
+    audit_engine = None
     try:
-        with Session(create_engine(settings.database_url_sync)) as db:
+        audit_engine = create_engine(settings.database_url_sync)
+        with Session(audit_engine) as db:
             from app.models.audit import AuditLog
             audit = AuditLog(
                 id=str(uuid.uuid4()),
@@ -320,6 +338,9 @@ def send_worker_lost_telegram_alert(
             db.commit()
     except Exception as audit_err:
         logger.error(f"[WorkerLost Alert] Failed to write AuditLog: {audit_err}")
+    finally:
+        if audit_engine is not None:
+            audit_engine.dispose()
 
     return sent_any
 

@@ -5,8 +5,8 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from contextlib import asynccontextmanager
 import logging
 
-# Import all routers
-from app.api import auth, sellers, orders, supplies, kiz, audit, debug, qa, finance
+# Import core routers (debug and qa are lazy-loaded only when DEBUG=True)
+from app.api import auth, sellers, orders, supplies, kiz, audit, finance
 from app.api.auth import get_current_active_user, require_admin
 from app.national_catalog import nk_router
 from app.database import init_db
@@ -93,6 +93,7 @@ app.include_router(
 
 # Debug and QA routers (only available if DEBUG=True and require Admin role)
 if settings.debug:
+    from app.api import debug, qa
     logger.info("DEBUG mode enabled: mounting /debug and /qa endpoints with Admin protection.")
     app.include_router(
         debug.router, 

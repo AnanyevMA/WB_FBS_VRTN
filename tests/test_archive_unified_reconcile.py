@@ -40,7 +40,7 @@ async def test_unified_reconciliation_preserves_archive_batch_and_order_sync():
         order = Order(
             id=ord_id,
             seller_id=seller_id,
-            wb_created_at=datetime.now(timezone.utc),
+            wb_created_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
             status=OrderStatus.DELIVERED,
             wb_status="sold",
             kiz_status=KizStatus.WITHDRAWN,

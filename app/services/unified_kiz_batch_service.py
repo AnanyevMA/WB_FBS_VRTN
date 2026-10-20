@@ -39,6 +39,16 @@ from app.services.unified_kiz_payload_builder import (
 logger = logging.getLogger(__name__)
 
 
+def _normalize_dt(dt: Any) -> datetime:
+    if isinstance(dt, datetime):
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+    if hasattr(dt, "year") and hasattr(dt, "month") and hasattr(dt, "day"):
+        from datetime import date
+        if isinstance(dt, date):
+            return datetime.combine(dt, datetime.min.time(), tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
+
+
 def _is_return_row(row: WbSalesReportRow) -> bool:
     n = (row.doc_type_name or row.seller_oper_name or "").lower()
     return "возврат" in n or "отказ" in n or "отмен" in n
@@ -129,7 +139,7 @@ async def create_unified_kiz_signature_batch(
             continue
         parsed = parse_kiz_code(o.kiz_code)
         cis = parsed.get("clean_cis") or o.kiz_code
-        ev_date = o.updated_at or o.created_at or now_utc
+        ev_date = o.wb_created_at or o.created_at or now_utc
         if o.status == OrderStatus.CANCELLED or o.kiz_status == KizStatus.RETURNED or o.wb_status in ["canceled", "canceled_by_client", "declined_by_client", "defect"]:
             if o.kiz_status == KizStatus.WITHDRAWN or o.cz_withdrawal_doc_id:
                 history_by_cis.setdefault(cis, []).append({"source": "fbs_order", "type": "SALE", "date": o.created_at or ev_date, "order": o})
@@ -223,7 +233,7 @@ async def create_unified_kiz_signature_batch(
     resold_after_return_count = 0
 
     for cis, events in history_by_cis.items():
-        sorted_ev = sorted(events, key=lambda x: x["date"])
+        sorted_ev = sorted(events, key=lambda x: _normalize_dt(x["date"]))
         last_ev = sorted_ev[-1]
         had_return = any(e["type"] == "RETURN" for e in sorted_ev)
 

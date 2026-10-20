@@ -153,12 +153,16 @@ async def create_unified_kiz_signature_batch(
         try:
             excise_rows = await fetch_wb_excise_data(seller=seller, days=min(days, 30))
             excise_count = len(excise_rows)
+            srid_to_cis: Dict[str, str] = {}
             for er in excise_rows:
                 raw_kiz = str(er.get("excise_short") or "").strip()
                 if not raw_kiz:
                     continue
                 parsed = parse_kiz_code(raw_kiz)
                 cis = parsed.get("clean_cis") or raw_kiz
+                srid = str(er.get("srid") or "").strip()
+                if srid:
+                    srid_to_cis[srid] = cis
                 dt_str = str(er.get("fiscal_dt") or "").strip()
                 try:
                     ev_date = datetime.strptime(dt_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
@@ -174,8 +178,29 @@ async def create_unified_kiz_signature_batch(
                     "price": float(er.get("price") or 0.0),
                     "article": str(er.get("nm_id") or ""),
                     "raw_kiz": raw_kiz,
-                    "srid": str(er.get("srid") or ""),
+                    "srid": srid,
                 })
+
+            # 2.5.1. Сквозная подгрузка возвратов по srid из финансовых отчетов WB
+            if srid_to_cis:
+                stmt_srid_fin = select(WbSalesReportRow).where(
+                    WbSalesReportRow.seller_id == seller.id,
+                    WbSalesReportRow.srid.in_(list(srid_to_cis.keys())),
+                )
+                res_srid_fin = await db.execute(stmt_srid_fin)
+                for r in res_srid_fin.scalars().all():
+                    if _is_return_row(r) and r.srid in srid_to_cis:
+                        cis = srid_to_cis[r.srid]
+                        ev_date = r.sale_dt or (datetime.combine(r.rr_date, datetime.min.time(), tzinfo=timezone.utc) if r.rr_date else now_utc)
+                        history_by_cis.setdefault(cis, []).append({
+                            "source": "wb_finance_srid",
+                            "type": "RETURN",
+                            "date": ev_date,
+                            "rrd_id": r.rrd_id,
+                            "rr_date": r.rr_date,
+                            "price": float(r.retail_amount or r.retail_price or 0.0),
+                            "srid": r.srid,
+                        })
         except Exception as exc_err:
             logger.warning(f"Could not load online excise report: {exc_err}")
 

@@ -14,6 +14,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
 from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
+from app.models.wb_finance import WbSalesReportRow
 from app.models.audit import AuditLog
 from app.services.encryption import decrypt
 from app.services.wb_client import WBClient
@@ -151,11 +152,14 @@ async def collect_auto_kiz_candidates(
     res_w = await db.execute(stmt_withdrawals)
     withdrawal_orders = res_w.scalars().all()
 
-    # 3. Кандидаты на возврат в оборот (Возвраты): отмененные/возвращенные заказы, где КИЗ БЫЛ выведен
+    # 3. Кандидаты на возврат в оборот (Возвраты): отмененные/возвращенные заказы, где КИЗ БЫЛ выведен.
+    # ИСКЛЮЧАЕМ заказы со статусом DELIVERED или wb_status == 'sold', так как они уже проданы покупателю!
     stmt_returns = select(Order).where(
         Order.seller_id == seller.id,
         Order.kiz_code.isnot(None),
         Order.kiz_status == KizStatus.WITHDRAWN,
+        Order.status != OrderStatus.DELIVERED,
+        or_(Order.wb_status.is_(None), Order.wb_status != "sold"),
         or_(
             Order.status == OrderStatus.CANCELLED,
             Order.wb_status.in_(["canceled", "canceled_by_client", "declined_by_client", "defect"]),
@@ -165,7 +169,38 @@ async def collect_auto_kiz_candidates(
         stmt_returns = stmt_returns.where(Order.id.not_in(already_queued_order_ids))
 
     res_r = await db.execute(stmt_returns)
-    return_orders = res_r.scalars().all()
+    raw_return_orders = res_r.scalars().all()
+
+    # Фильтруем возвраты: проверяем, не был ли данный КИЗ впоследствии продан (FBO / финотчет)
+    return_orders = []
+    for r_ord in raw_return_orders:
+        if not r_ord.kiz_code:
+            continue
+        parsed_k = parse_kiz_code(r_ord.kiz_code)
+        c_cis = parsed_k.get("clean_cis") or r_ord.kiz_code
+
+        stmt_sold = (
+            select(WbSalesReportRow)
+            .where(
+                WbSalesReportRow.seller_id == seller.id,
+                or_(
+                    WbSalesReportRow.clean_cis == c_cis,
+                    WbSalesReportRow.clean_cis == r_ord.kiz_code,
+                    WbSalesReportRow.kiz == c_cis,
+                    WbSalesReportRow.kiz == r_ord.kiz_code,
+                ),
+            )
+            .order_by(WbSalesReportRow.sale_dt.desc().nullslast(), WbSalesReportRow.rrd_id.desc())
+        )
+        res_sold = await db.execute(stmt_sold)
+        fin_rows = res_sold.scalars().all()
+        if fin_rows:
+            latest = fin_rows[0]
+            name = (latest.doc_type_name or latest.seller_oper_name or "").lower()
+            if ("продаж" in name or "продано" in name) and not ("возврат" in name or "отказ" in name or "отмен" in name):
+                # Товар реально продан на WB и не возвращен покупателем — ввод в оборот ЗАПРЕЩЕН!
+                continue
+        return_orders.append(r_ord)
 
     # 4. Также проверяем отмененные заказы, где КИЗ НЕ выводился (kiz_status != WITHDRAWN)
     # Они не требуют документов в ГИС МТ — просто освобождаем КИЗ в БД
@@ -173,6 +208,8 @@ async def collect_auto_kiz_candidates(
         Order.seller_id == seller.id,
         Order.kiz_code.isnot(None),
         Order.kiz_status.in_([KizStatus.ATTACHED, KizStatus.VALIDATED, KizStatus.ERROR]),
+        Order.status != OrderStatus.DELIVERED,
+        or_(Order.wb_status.is_(None), Order.wb_status != "sold"),
         or_(
             Order.status == OrderStatus.CANCELLED,
             Order.wb_status.in_(["canceled", "canceled_by_client", "declined_by_client", "defect"]),

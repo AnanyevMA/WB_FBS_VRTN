@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-19T15:14:11.819604+00:00",
+  "updated_at": "2026-10-20T22:59:24.732082+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 161,
   "files": [
@@ -5643,7 +5643,7 @@
     {
       "file": "app/services/auto_kiz_queue_service.py",
       "layer": "services",
-      "hash": "64c36857927f",
+      "hash": "31cfe18ddd0e",
       "docstring": "Auto KIZ Queue Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5699,6 +5699,7 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
+        "app.models.wb_finance",
         "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
@@ -6182,7 +6183,7 @@
     {
       "file": "app/services/signature_batch_submitter.py",
       "layer": "services",
-      "hash": "ec445fbe226c",
+      "hash": "54ae563683e8",
       "docstring": "Signature Batch Submitter Service.",
       "classes": [],
       "functions": [
@@ -6397,10 +6398,19 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "a3985537b0d6",
+      "hash": "c9e7a42cd3de",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
+        {
+          "name": "_normalize_dt",
+          "is_async": false,
+          "args": [
+            "dt"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
         {
           "name": "_is_return_row",
           "is_async": false,
@@ -7896,7 +7906,7 @@
     {
       "file": "tests/test_archive_unified_reconcile.py",
       "layer": "tests",
-      "hash": "6a4102a68527",
+      "hash": "8433a7a90c53",
       "docstring": "Tests for Archive Orders Status Synchronization, Unified Reconciliation Preservation,",
       "classes": [],
       "functions": [
@@ -8067,7 +8077,7 @@
     {
       "file": "tests/test_auto_kiz_queue_service.py",
       "layer": "tests",
-      "hash": "1fe1725a1802",
+      "hash": "f011f8134360",
       "docstring": "Tests for Auto KIZ Queue Service (app/services/auto_kiz_queue_service.py)",
       "classes": [],
       "functions": [
@@ -8097,6 +8107,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "test_cancelled_fbs_order_resold_fbo_not_picked_as_return",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Тест защиты от бесконечного цикла вывода-ввода:"
         }
       ],
       "endpoints": [],
@@ -8107,6 +8126,7 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
+        "app.models.wb_finance",
         "app.services.auto_kiz_queue_service",
         "app.services.encryption",
         "app.services.telegram_service",

@@ -103,6 +103,7 @@ async def execute_signed_batch_submission(
                         ord_obj.kiz_status = KizStatus.WITHDRAWN
                         ord_obj.kiz_cz_status = target_cz_status
                         ord_obj.status = OrderStatus.DELIVERED
+                        ord_obj.wb_status = "sold"
                         ord_obj.cz_withdrawal_doc_id = doc_id
                     elif action == "RETURN":
                         ord_obj.kiz_status = KizStatus.RETURNED

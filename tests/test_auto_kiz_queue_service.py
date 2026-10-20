@@ -10,6 +10,7 @@ from app.database import AsyncSessionLocal, init_db
 from app.models.seller import Seller
 from app.models.order import Order, KizStatus, OrderStatus
 from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
+from app.models.wb_finance import WbSalesReportRow
 from app.services.encryption import encrypt
 from app.services.telegram_service import TelegramService
 from app.services.auto_kiz_queue_service import (
@@ -245,3 +246,82 @@ async def test_process_auto_kiz_queue_flow():
         res_dup = await process_auto_kiz_queue_for_seller(seller, session)
         assert res_dup["created"] is False
         assert res_dup["sales_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_cancelled_fbs_order_resold_fbo_not_picked_as_return():
+    """
+    Тест защиты от бесконечного цикла вывода-ввода:
+    Заказ был отменен на FBS (wb_status='canceled_by_client'), но позже перепродан на FBO
+    и выведен в Честном Знаке (kiz_status=WITHDRAWN).
+    Такой заказ НЕ должен отбираться как возврат в оборот.
+    """
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        seller = Seller(
+            id=seller_id,
+            name="Resold FBO Seller",
+            wb_api_token_encrypted=encrypt("test_wb_token"),
+            is_active=True,
+        )
+        session.add(seller)
+
+        kiz_code = "0104630199251318215RESOLD>4sVc+."
+        clean_cis = "0104630199251318215RESOLD"
+
+        # Case 1: Order marked DELIVERED and wb_status='sold' after withdrawal
+        ord1_id = int(str(uuid.uuid4().int)[:9])
+        ord1 = Order(
+            id=ord1_id,
+            seller_id=seller_id,
+            name="Капор",
+            article="hood-01",
+            price=3500,
+            status=OrderStatus.DELIVERED,
+            wb_status="sold",
+            kiz_required=True,
+            kiz_code=kiz_code,
+            kiz_status=KizStatus.WITHDRAWN,
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+
+        # Case 2: Order still has wb_status='canceled_by_client', but WbSalesReportRow has a confirmed SALE
+        kiz2_code = "0104630199251318215CANDID>4sVc+."
+        clean_cis2 = "0104630199251318215CANDID"
+        ord2_id = int(str(uuid.uuid4().int)[:9])
+        ord2 = Order(
+            id=ord2_id,
+            seller_id=seller_id,
+            name="Брюки",
+            article="pants-02",
+            price=6000,
+            status=OrderStatus.CANCELLED,
+            wb_status="canceled_by_client",
+            kiz_required=True,
+            kiz_code=kiz2_code,
+            kiz_status=KizStatus.WITHDRAWN,
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+
+        sale_row = WbSalesReportRow(
+            seller_id=seller_id,
+            rrd_id=12345678,
+            clean_cis=clean_cis2,
+            kiz=kiz2_code,
+            doc_type_name="Продажа",
+            retail_amount=6000.0,
+            sale_dt=datetime.now(timezone.utc),
+        )
+
+        session.add_all([ord1, ord2, sale_row])
+        await session.commit()
+
+        withdrawals, returns = await collect_auto_kiz_candidates(seller, session)
+        return_ids = [r.id for r in returns]
+
+        # Ни один из перепроданных заказов не должен попасть в возвраты
+        assert ord1_id not in return_ids
+        assert ord2_id not in return_ids

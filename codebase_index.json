@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-25T04:45:16.365478+00:00",
+  "updated_at": "2026-10-25T23:26:35.772404+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 161,
   "files": [
@@ -520,7 +520,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "f750c818c176",
+      "hash": "8ba76b3f6a82",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -617,6 +617,7 @@
         "app.database",
         "app.models.order",
         "app.models.seller",
+        "app.services.crypto_service",
         "app.services.encryption",
         "app.services.telegram_service",
         "app.services.time_service",
@@ -6569,7 +6570,7 @@
     {
       "file": "app/services/wb_archive_service.py",
       "layer": "services",
-      "hash": "911145f7ed30",
+      "hash": "b551d0e92ded",
       "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (>3 дней).",
       "classes": [],
       "functions": [

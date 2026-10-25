@@ -129,6 +129,11 @@ async def _upsert_archive_order(
     if existing_order:
         ord_obj = existing_order
         target_status = resolve_order_status(wb_status, supplier_status, ord_obj.status)
+        # Если заказ уже выведен из оборота (продажа подтверждена чеком), не откатываем его в CANCELLED
+        if ord_obj.kiz_status == KizStatus.WITHDRAWN or ord_obj.cz_withdrawal_doc_id:
+            if target_status == OrderStatus.CANCELLED:
+                target_status = OrderStatus.DELIVERED
+                wb_status = ord_obj.wb_status or "sold"
         ord_obj.status = target_status
         if wb_status:
             ord_obj.wb_status = wb_status

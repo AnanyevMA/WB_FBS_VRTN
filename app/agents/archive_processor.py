@@ -103,38 +103,47 @@ def process_seller_archive(self, seller_id: str):
         f"{len(pending_return)} pending returns"
     )
 
-    # Queue withdrawal tasks
-    from app.agents.cz_withdrawal import withdraw_order_kiz
-    for order in pending_withdrawal:
-        price_kopecks = int((order.price or 0) * 100)
-        withdraw_order_kiz.apply_async(
-            kwargs={
-                "seller_id": seller_id,
-                "order_id": order.id,
-                "kiz_code": order.kiz_code,
-                "price_kopecks": price_kopecks,
-            },
-            queue="cz_operations",
-            countdown=5,  # stagger requests
-        )
+    from app.services.crypto_service import is_cryptopro_available
+    can_server_sign = getattr(seller, "auto_kiz_auto_sign_server", False) and is_cryptopro_available()
 
-    # Queue return tasks
-    from app.agents.cz_return import return_order_kiz
-    for order in pending_return:
-        return_order_kiz.apply_async(
-            kwargs={
-                "seller_id": seller_id,
-                "order_id": order.id,
-                "kiz_code": order.kiz_code,
-            },
-            queue="cz_operations",
-            countdown=5,
-        )
+    if can_server_sign:
+        # Queue withdrawal tasks
+        from app.agents.cz_withdrawal import withdraw_order_kiz
+        for order in pending_withdrawal:
+            price_kopecks = int((order.price or 0) * 100)
+            withdraw_order_kiz.apply_async(
+                kwargs={
+                    "seller_id": seller_id,
+                    "order_id": order.id,
+                    "kiz_code": order.kiz_code,
+                    "price_kopecks": price_kopecks,
+                },
+                queue="cz_operations",
+                countdown=5,  # stagger requests
+            )
 
-    logger.info(
-        f"[Archive] Queued {len(pending_withdrawal)} withdrawals "
-        f"and {len(pending_return)} returns for seller {seller_id}"
-    )
+        # Queue return tasks
+        from app.agents.cz_return import return_order_kiz
+        for order in pending_return:
+            return_order_kiz.apply_async(
+                kwargs={
+                    "seller_id": seller_id,
+                    "order_id": order.id,
+                    "kiz_code": order.kiz_code,
+                },
+                queue="cz_operations",
+                countdown=5,
+            )
+
+        logger.info(
+            f"[Archive] Queued {len(pending_withdrawal)} withdrawals "
+            f"and {len(pending_return)} returns for seller {seller_id}"
+        )
+    else:
+        logger.info(
+            f"[Archive] Server auto-signing disabled or CryptoPro CSP not installed on server for seller {seller_id}. "
+            f"{len(pending_withdrawal)} withdrawals and {len(pending_return)} returns will be handled via signature batches."
+        )
 
 
 @celery_app.task(

@@ -227,33 +227,56 @@ class TelegramService:
     ) -> bool:
         """
         Пакетное уведомление о нескольких новых заказах за один цикл опроса.
+        Группирует одинаковые позиции (по названию и артикулу) в формат:
+        'Товар (арт. ...) — N шт.'
 
         orders: список словарей с ключами:
-            id, name, price (коп.), kiz_required, article
+            id, name, price (коп. или руб.), kiz_required, article
         """
         count = len(orders)
-        kiz_count = sum(1 for o in orders if o.get("kiz_required"))
+        if count == 0:
+            return True
+
         total_price = sum((o.get("price") or 0) for o in orders)
         total_rub = total_price / 100 if isinstance(total_price, int) else float(total_price or 0)
 
+        # Группировка заказов по товарам
+        groups: list[dict] = []
+        group_map: dict[tuple[str, str], dict] = {}
+
+        for o in orders:
+            raw_name = str(o.get("name") or "").strip()
+            raw_article = str(o.get("article") or "").strip()
+
+            if not raw_name and not raw_article:
+                raw_name = f"Заказ #{o.get('id') or '—'}"
+            elif not raw_name:
+                raw_name = raw_article
+
+            key = (raw_name, raw_article)
+            if key not in group_map:
+                entry = {
+                    "name": raw_name,
+                    "article": raw_article,
+                    "count": 0,
+                }
+                group_map[key] = entry
+                groups.append(entry)
+
+            group_map[key]["count"] += 1
+
         lines = []
-        for i, o in enumerate(orders[:10], start=1):  # показываем максимум 10
-            raw_name = o.get("name") or o.get("article") or f"Заказ #{o.get('id')}"
-            name = html.escape(str(raw_name))
-            price = o.get("price") or 0
-            price_rub = price / 100 if isinstance(price, int) else float(price or 0)
-            kiz_tag = " ⚠️<b>КИЗ</b>" if o.get("kiz_required") else ""
-            order_id_esc = html.escape(str(o.get('id') or '—'))
-            lines.append(f"  {i}. <code>#{order_id_esc}</code> · {name}\n     💰 {price_rub:.0f} ₽{kiz_tag}")
+        is_single_group = len(groups) == 1
+        for i, g in enumerate(groups[:10], start=1):
+            name_esc = html.escape(str(g["name"]))
+            art_val = str(g.get("article") or "").strip()
+            art_esc = html.escape(art_val) if art_val and art_val != g["name"] else ""
+            art_str = f" (арт. {art_esc})" if art_esc else ""
+            prefix = "• " if is_single_group else f"{i}. "
+            lines.append(f"{prefix}{name_esc}{art_str} — {g['count']} шт.")
 
-        if count > 10:
-            lines.append(f"  <i>... и ещё {count - 10} заказов</i>")
-
-        kiz_line = (
-            f"\n⚠️ <b>Требуют КИЗ:</b> {kiz_count} из {count}"
-            if kiz_count > 0
-            else ""
-        )
+        if len(groups) > 10:
+            lines.append(f"  <i>... и ещё {len(groups) - 10} товаров</i>")
 
         text = (
             f"📦 <b>НОВЫЕ ЗАКАЗЫ FBS — {count} шт.</b>\n"
@@ -261,7 +284,6 @@ class TelegramService:
             + "\n".join(lines)
             + f"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"💰 <b>Итого:</b> {total_rub:.0f} ₽"
-            + kiz_line
         )
 
         keyboard = InlineKeyboardMarkup(

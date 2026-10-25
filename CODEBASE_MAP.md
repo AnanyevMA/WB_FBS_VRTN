@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-20 22:59:24 UTC | **Файлов проиндексировано**: 161  
+> **Дата актуализации**: 2026-10-25 04:45:16 UTC | **Файлов проиндексировано**: 161  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -173,7 +173,7 @@
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |
 | [`tests/test_telegram_adversarial_stress.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_adversarial_stress.py) | `TelegramHTMLValidator` | `_stub_aiogram`, `_verify_telegram_html_validity`, `test_send_new_order_adversarial_html_xss_injection`, `test_all_methods_adversarial_html_escaping`, +еще 4 | Empirical Adversarial Stress Test Suite for TelegramService. |
 | [`tests/test_telegram_chat_filters.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_chat_filters.py) | — | `test_is_group_chat`, `test_is_private_chat`, `test_filter_private_chats`, `test_get_personal_manager_chats` | Unit tests for Telegram chat filtering and manager chat routing |
-| [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 7 | Модуль кодовой базы |
+| [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 8 | Модуль кодовой базы |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
 | [`tests/test_unified_kiz_batch.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_batch.py) | — | `setup_test_db`, `test_unified_reconciliation_ownership_and_chronology`, `test_sync_batch_with_cz_data_preserves_owner_safety`, `test_unified_reconcile_api_endpoint`, +еще 1 | Unit tests for Unified KIZ Batch Reconciliation and Owner Validation. |
 | [`tests/test_warehouse_sales_returns_correlation.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_warehouse_sales_returns_correlation.py) | — | `test_warehouse_sales_skips_returned_srid` | Tests for Warehouse Sales and Returns Correlation (WbSalesReportRow cross-check). |

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-20T22:59:24.732082+00:00",
+  "updated_at": "2026-10-25T04:45:16.365478+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 161,
   "files": [
@@ -6224,7 +6224,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "e3267651e9e9",
+      "hash": "627bc19a1f30",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -8307,7 +8307,7 @@
     {
       "file": "tests/test_challenger_r2_adversarial.py",
       "layer": "tests",
-      "hash": "0eb4f0d87977",
+      "hash": "c6c47969155b",
       "docstring": "Challenger 2 Adversarial Verification Test Harness for Objective R2.",
       "classes": [],
       "functions": [
@@ -9643,7 +9643,7 @@
     {
       "file": "tests/test_kiz_heuristics_r2.py",
       "layer": "tests",
-      "hash": "eb86a8885322",
+      "hash": "a0f59f740f8d",
       "docstring": "Unit and integration tests for Milestone 2 (R2):",
       "classes": [],
       "functions": [
@@ -10362,7 +10362,7 @@
     {
       "file": "tests/test_morning_digest.py",
       "layer": "tests",
-      "hash": "cdd8b6e9e3af",
+      "hash": "ccbe024d1e98",
       "docstring": "Tests: morning_digest agent — timezone-aware fire logic, Telegram message content,",
       "classes": [
         {
@@ -11174,7 +11174,7 @@
     {
       "file": "tests/test_telegram_adversarial_stress.py",
       "layer": "tests",
-      "hash": "96dead01cc36",
+      "hash": "fe6969e431df",
       "docstring": "Empirical Adversarial Stress Test Suite for TelegramService.",
       "classes": [
         {
@@ -11323,7 +11323,7 @@
     {
       "file": "tests/test_telegram_notifications.py",
       "layer": "tests",
-      "hash": "50d6c1a0f040",
+      "hash": "3d205c687599",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -11378,6 +11378,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify send_batch_orders_notification correctly formats multiple items, total price, and KIZ summary."
+        },
+        {
+          "name": "test_telegram_send_batch_orders_groups_identical_products",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify batch notification groups multiple orders for the same product into 'Товар (арт. ...) — N шт.'."
         },
         {
           "name": "test_notify_new_order_task_with_payload",

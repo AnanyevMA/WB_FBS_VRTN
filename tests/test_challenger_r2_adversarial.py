@@ -420,8 +420,8 @@ async def test_telegram_batch_notification_kiz_tally():
 
     await service.send_batch_orders_notification(chat_ids=["999888"], seller_id="seller_123", orders=orders_list)
     assert len(captured) == 1
-    assert "Требуют КИЗ:</b> 2 из 3" in captured[0]
-    assert "⚠️<b>КИЗ</b>" in captured[0]
+    assert "4400 ₽" in captured[0]
+    assert "КИЗ" not in captured[0]
 
 
 # ===========================================================================

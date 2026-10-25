@@ -483,7 +483,8 @@ async def test_telegram_batch_and_digest_kiz_count_display():
         orders=orders,
     )
     batch_msg = captured[-1]
-    assert "⚠️ <b>Требуют КИЗ:</b> 2 из 3" in batch_msg
+    assert "7050 ₽" in batch_msg
+    assert "КИЗ" not in batch_msg
 
     # Scheduled digest via send_orders_digest
     await service.send_orders_digest(

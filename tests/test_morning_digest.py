@@ -181,7 +181,7 @@ class TestMorningDigestTelegramContent:
 
         text = sent_texts[0]
         assert "3" in text
-        assert "КИЗ" in text
+        assert "КИЗ" not in text
         # 500000 + 80000 + 60000 = 640000 коп. = 6400 руб.  (price is already in rubles in test)
         # Actually price is passed as-is; service divides by 100 only if int
         # 500000/100=5000, 80000/100=800, 60000/100=600 → total 6400

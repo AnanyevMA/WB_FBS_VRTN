@@ -180,11 +180,49 @@ async def test_telegram_send_batch_orders_notification():
     msg = captured_messages[0]["text"]
 
     assert "НОВЫЕ ЗАКАЗЫ FBS — 3 шт." in msg
-    assert "#101" in msg and "Кроссовки беговые 42" in msg
-    assert "#102" in msg and "Носки спортивные 3 пары" in msg
-    assert "#103" in msg and "Футболка белая XL" in msg
+    assert "Кроссовки беговые 42 — 1 шт." in msg
+    assert "Носки спортивные 3 пары — 1 шт." in msg
+    assert "Футболка белая XL — 1 шт." in msg
     assert "6200 ₽" in msg  # 4500 + 500 + 1200 = 6200
-    assert "Требуют КИЗ:</b> 1 из 3" in msg
+    assert "КИЗ" not in msg
+
+
+@pytest.mark.asyncio
+async def test_telegram_send_batch_orders_groups_identical_products():
+    """Verify batch notification groups multiple orders for the same product into 'Товар (арт. ...) — N шт.'."""
+    _stub_aiogram()
+    from app.services.telegram_service import TelegramService
+
+    service = TelegramService("mock_token")
+    captured_messages = []
+
+    async def mock_broadcast(chat_ids, text, keyboard=None):
+        captured_messages.append({"chat_ids": chat_ids, "text": text, "keyboard": keyboard})
+        return True
+
+    service._broadcast = mock_broadcast
+
+    orders = [
+        {"id": 6113774141, "name": "Капор утепленный съемный капюшон с манишкой", "article": "VRTN-KAP", "price": 3736.0, "kiz_required": True},
+        {"id": 6114775798, "name": "Капор утепленный съемный капюшон с манишкой", "article": "VRTN-KAP", "price": 3836.0, "kiz_required": True},
+        {"id": 6114811445, "name": "Капор утепленный съемный капюшон с манишкой", "article": "VRTN-KAP", "price": 3844.0, "kiz_required": True},
+        {"id": 6115070385, "name": "Капор утепленный съемный капюшон с манишкой", "article": "VRTN-KAP", "price": 3927.0, "kiz_required": True},
+    ]
+
+    res = await service.send_batch_orders_notification(
+        chat_ids=["100200300"],
+        seller_id="seller-vrtn",
+        orders=orders,
+    )
+
+    assert res is True
+    assert len(captured_messages) == 1
+    msg = captured_messages[0]["text"]
+
+    assert "НОВЫЕ ЗАКАЗЫ FBS — 4 шт." in msg
+    assert "• Капор утепленный съемный капюшон с манишкой (арт. VRTN-KAP) — 4 шт." in msg
+    assert "15343 ₽" in msg
+    assert "КИЗ" not in msg
 
 
 # ---------------------------------------------------------------------------
@@ -373,4 +411,4 @@ async def test_telegram_send_batch_orders_with_null_prices_and_html():
     assert "&lt;Nike &amp; Adidas&gt;" in msg
     assert "ART&lt;TEST&gt;" in msg
     assert "2000 ₽" in msg  # 0 + 1500 + 500 = 2000
-    assert "Требуют КИЗ:</b> 1 из 3" in msg
+    assert "КИЗ" not in msg

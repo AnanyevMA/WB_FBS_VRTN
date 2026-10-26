@@ -215,15 +215,22 @@ async def create_unified_kiz_signature_batch(
     for pb in pending_batches:
         p_payload = pb.data_payload or {}
         for r_item in p_payload.get("returns", []):
+            if not r_item.get("needs_cz_return", True) or not r_item.get("selected", True):
+                continue
             raw_k = r_item.get("kiz_code")
             if not raw_k:
                 continue
             parsed_k = parse_kiz_code(raw_k)
             c_cis = parsed_k.get("clean_cis") or raw_k
+            r_dt_str = str(r_item.get("receipt_date") or "").strip()
+            try:
+                ev_date = datetime.strptime(r_dt_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except Exception:
+                ev_date = pb.created_at or now_utc
             history_by_cis.setdefault(c_cis, []).append({
                 "source": "archive_upload",
                 "type": "RETURN",
-                "date": pb.created_at or now_utc,
+                "date": ev_date,
                 "order_id": r_item.get("order_id"),
                 "price": float(r_item.get("price") or 0.0),
                 "article": str(r_item.get("article") or ""),
@@ -233,15 +240,22 @@ async def create_unified_kiz_signature_batch(
                 "receipt_date": r_item.get("receipt_date"),
             })
         for w_item in p_payload.get("withdrawals", []):
+            if not w_item.get("needs_withdrawal", True) or not w_item.get("selected", True):
+                continue
             raw_k = w_item.get("kiz_code")
             if not raw_k:
                 continue
             parsed_k = parse_kiz_code(raw_k)
             c_cis = parsed_k.get("clean_cis") or raw_k
+            w_dt_str = str(w_item.get("receipt_date") or "").strip()
+            try:
+                ev_date = datetime.strptime(w_dt_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except Exception:
+                ev_date = pb.created_at or now_utc
             history_by_cis.setdefault(c_cis, []).append({
                 "source": "archive_upload",
                 "type": "SALE",
-                "date": pb.created_at or now_utc,
+                "date": ev_date,
                 "order_id": w_item.get("order_id"),
                 "price": float(w_item.get("price") or 0.0),
                 "article": str(w_item.get("article") or ""),

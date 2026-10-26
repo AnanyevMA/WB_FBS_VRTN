@@ -231,3 +231,104 @@ async def test_bot_ignores_non_wb_excel_files_in_groups():
     # Should NOT have sent any reply in the group
     assert not mock_msg.reply.called
 
+
+@pytest.mark.asyncio
+async def test_bot_archive_resold_fbo_order_not_proposed_as_return():
+    """
+    Confirms that when an old FBS cancellation is re-uploaded via archive Excel,
+    if the order was subsequently resold (DELIVERED + WITHDRAWN), it is NOT
+    proposed for return into circulation and its DELIVERED status is preserved.
+    """
+    await init_db()
+
+    seller_id = str(uuid.uuid4())
+    order_id = int(str(uuid.uuid4().int)[:9])
+    chat_id = int(str(uuid.uuid4().int)[:9])
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name=f"Bot Test Resold Seller {chat_id}",
+            wb_api_token_encrypted=encrypt("wb_test_token"),
+            telegram_bot_token_encrypted=encrypt("tg_test_token"),
+            telegram_chat_ids=[str(chat_id)],
+            is_active=True,
+        )
+        session.add(seller)
+
+        order = Order(
+            id=order_id,
+            seller_id=seller_id,
+            name="Капор VRTN",
+            article="vrtn-hood-01",
+            price=3500,
+            status=OrderStatus.DELIVERED,
+            wb_status="sold",
+            kiz_required=True,
+            kiz_code="0104630199251318215RESOLD1",
+            kiz_status=KizStatus.WITHDRAWN,
+            cz_withdrawal_doc_id="mock-doc-fbo-sale-123",
+            wb_created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+        session.add(order)
+        await session.commit()
+
+    # Create mock WB archive where order has status "Отказ покупателем"
+    wb = openpyxl.Workbook()
+    ws_kiz = wb.active
+    ws_kiz.title = "КИЗ"
+    ws_kiz.append(["№ задания", "Стикер", "КИЗ", "Номер чека", "Номер фискального накопителя", "Дата", "Тип операции", "Стоимость"])
+    ws_kiz.append([order_id, "998899", "0104630199251318215RESOLD1", "", "", "2026-09-28", "Возврат", 3500])
+
+    ws_tasks = wb.create_sheet(title="Сборочные задания")
+    ws_tasks.append(["№ задания", "Стикер", "Артикул продавца", "Наименование", "Статус задания"])
+    ws_tasks.append([order_id, "998899", "vrtn-hood-01", "Капор VRTN", "Отказ покупателем"])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    mock_archive_bytes = buf.getvalue()
+
+    from app.bot import create_bot_router
+    router = create_bot_router()
+
+    doc_handler = next((h.callback for h in router.message.handlers if getattr(h.callback, "__name__", "") == "handle_document"), None)
+    assert doc_handler is not None
+
+    mock_bot = AsyncMock()
+    mock_file_info = MagicMock()
+    mock_file_info.file_path = "documents/archive.xlsx"
+    mock_bot.get_file.return_value = mock_file_info
+
+    async def _mock_download(file_path, destination):
+        destination.write(mock_archive_bytes)
+    mock_bot.download_file.side_effect = _mock_download
+
+    mock_msg = MagicMock()
+    mock_msg.bot = mock_bot
+    mock_msg.chat.id = chat_id
+    mock_msg.document.file_name = "archive.xlsx"
+    mock_msg.document.file_id = "doc_resold_123"
+
+    mock_status_msg = AsyncMock()
+    mock_msg.reply = AsyncMock(return_value=mock_status_msg)
+
+    await doc_handler(mock_msg)
+
+    async with AsyncSessionLocal() as session:
+        # Order status must REMAIN DELIVERED (not overwritten to CANCELLED)
+        ord_db = await session.get(Order, order_id)
+        assert ord_db.status == OrderStatus.DELIVERED
+        assert ord_db.wb_status == "sold"
+
+        # Batch must have returns_count == 0 and status COMPLETED (since 0 items to sign)
+        from sqlalchemy import select
+        res = await session.execute(select(KizSignatureBatch).where(KizSignatureBatch.seller_id == seller_id))
+        batches = res.scalars().all()
+        assert len(batches) == 1
+        b = batches[0]
+        assert b.returns_count == 0
+        assert b.sales_count == 0
+        assert b.status == BatchStatus.COMPLETED
+
+

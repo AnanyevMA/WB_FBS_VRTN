@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.seller import Seller
-from app.models.order import Order, OrderStatus
+from app.models.order import Order, OrderStatus, KizStatus
 from app.models.audit import AuditLog
 from app.services.kiz_service import (
     batch_verify_and_sync_cises,
@@ -229,6 +229,8 @@ async def process_wb_archive(
             if oid:
                 ord_to_upd = await db.get(Order, oid)
                 if ord_to_upd and ord_to_upd.status != OrderStatus.CANCELLED:
+                    if ord_to_upd.kiz_status == KizStatus.WITHDRAWN or ord_to_upd.cz_withdrawal_doc_id:
+                        continue
                     ord_to_upd.status = OrderStatus.CANCELLED
                     ord_to_upd.wb_status = "canceled_by_client"
                     ord_to_upd.updated_at = now

@@ -11,7 +11,7 @@ from aiogram.types import Message
 from sqlalchemy import select
 
 from app.models.seller import Seller
-from app.models.order import Order, OrderStatus
+from app.models.order import Order, OrderStatus, KizStatus
 from app.models.audit import AuditLog
 from app.database import AsyncSessionLocal
 from app.services.archive_service import parse_wb_archive_excel, analyze_archive_data
@@ -132,6 +132,9 @@ async def handle_document(message: Message):
                 if r_oid:
                     r_ord = await db.get(Order, r_oid)
                     if r_ord and str(r_ord.seller_id) == str(target_seller.id):
+                        # Не сбрасываем статус в CANCELLED, если заказ уже выведен из оборота по подтверждённому чеку продажи
+                        if r_ord.kiz_status == KizStatus.WITHDRAWN or r_ord.cz_withdrawal_doc_id:
+                            continue
                         if r_ord.status != OrderStatus.CANCELLED:
                             r_ord.status = OrderStatus.CANCELLED
                             r_ord.wb_status = "canceled_by_client"
@@ -152,13 +155,14 @@ async def handle_document(message: Message):
             returns_needing_cz_return = summary.get("returns_needing_cz_return") if summary.get("returns_needing_cz_return") is not None else sum(1 for r in returns if r.get("needs_cz_return", True))
             returns_already_in_circulation = summary.get("returns_already_in_circulation") if summary.get("returns_already_in_circulation") is not None else sum(1 for r in returns if not r.get("needs_cz_return", True))
             total_processed = summary.get("total_rows") or (len(withdrawals) + len(returns))
+            total_to_sign = sales_needing_withdrawal + returns_needing_cz_return
 
             # Создаем пакет на подписание в БД (сохраняем количество позиций, требующих подписания)
             new_batch = KizSignatureBatch(
                 seller_id=target_seller.id,
                 filename=filename,
                 source="telegram",
-                status=BatchStatus.PENDING_SIGNATURE,
+                status=BatchStatus.PENDING_SIGNATURE if total_to_sign > 0 else BatchStatus.COMPLETED,
                 sales_count=sales_needing_withdrawal,
                 returns_count=returns_needing_cz_return,
                 already_withdrawn_count=sales_already_withdrawn,

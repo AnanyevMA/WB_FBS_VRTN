@@ -217,8 +217,6 @@ async def analyze_archive_data(
 
         receipt_num = str(k.get("Номер чека") or "").strip()
         fn_num = str(k.get("Номер фискального накопителя") or "").strip()
-        date_raw = k.get("Дата")
-        date_formatted = _parse_date_str(date_raw) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         op_type = str(k.get("Тип операции") or "").strip().lower()
         price_val = k.get("Стоимость") or 0
         try:
@@ -233,6 +231,11 @@ async def analyze_archive_data(
 
         db_order = existing_orders_map.get(order_id) if order_id else None
         db_kiz_status = db_order.kiz_status.value if db_order and db_order.kiz_status else None
+
+        date_raw = k.get("Дата") or task_info.get("Дата создания") or task_info.get("Дата задания")
+        if not date_raw and db_order:
+            date_raw = db_order.wb_created_at or db_order.created_at
+        date_formatted = _parse_date_str(date_raw) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         # Look up canonical KizProductInfo
         kinfo_record = kiz_info_map.get(kiz_code) or kiz_info_map.get(clean_cis)
@@ -305,13 +308,31 @@ async def analyze_archive_data(
             raw_cz = (kinfo_record.raw_cz_payload or {}) if kinfo_record else {}
             kinfo_owner = (kinfo_record.cz_owner_inn if kinfo_record else None) or raw_cz.get("ownerInn") or ""
             is_foreign_owner = bool(kinfo_owner and seller.cz_inn and kinfo_owner.strip() != seller.cz_inn.strip())
-            needs_cz_return = is_already_withdrawn and not is_foreign_owner
-            needs_remarking = is_foreign_owner and is_already_withdrawn
-            action_rec = (
-                f"⛔ Баланс стороннего владельца ({kinfo_owner}). Требуется Перемаркировка."
-                if is_foreign_owner
-                else ("⚠️ Требует возврата в оборот" if needs_cz_return else "✅ Уже в обороте (готов к привязке)")
+
+            # Если заказ уже был успешно продан/доставлен (DELIVERED / sold)
+            # с подтверждённым выводом из оборота (kiz_status == WITHDRAWN или cz_withdrawal_doc_id),
+            # то исторический отказ FBS из файла архива не подлежит возврату в оборот!
+            is_resold_or_withdrawn_sale = bool(
+                db_order and (
+                    db_order.status == OrderStatus.DELIVERED
+                    or (db_order.wb_status or "").lower() in ("sold", "delivered")
+                ) and (
+                    db_order.kiz_status == KizStatus.WITHDRAWN
+                    or db_order.cz_withdrawal_doc_id
+                )
             )
+
+            needs_cz_return = is_already_withdrawn and not is_foreign_owner and not is_resold_or_withdrawn_sale
+            needs_remarking = is_foreign_owner and is_already_withdrawn and not is_resold_or_withdrawn_sale
+
+            if is_resold_or_withdrawn_sale:
+                action_rec = "✅ Товар перепродан (выведен из оборота по чеку FBO)"
+            elif is_foreign_owner:
+                action_rec = f"⛔ Баланс стороннего владельца ({kinfo_owner}). Требуется Перемаркировка."
+            elif needs_cz_return:
+                action_rec = "⚠️ Требует возврата в оборот"
+            else:
+                action_rec = "✅ Уже в обороте (готов к привязке)"
 
             returns.append({
                 "order_id": order_id,

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-25T23:26:35.772404+00:00",
+  "updated_at": "2026-10-26T13:54:47.831153+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 161,
   "files": [
@@ -2219,7 +2219,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "013f837b0025",
+      "hash": "999e819b097a",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3900,7 +3900,7 @@
     {
       "file": "app/bot/handlers/documents.py",
       "layer": "core",
-      "hash": "29319ef87dee",
+      "hash": "4f3d59570218",
       "docstring": "Telegram Bot Document Handlers — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5471,7 +5471,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "4912b2c6dba3",
+      "hash": "aae9bef42520",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -6399,7 +6399,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "c9e7a42cd3de",
+      "hash": "c83737b56426",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -8140,7 +8140,7 @@
     {
       "file": "tests/test_bot_archive_upload.py",
       "layer": "tests",
-      "hash": "5c86595450b0",
+      "hash": "388c5cc62733",
       "docstring": "Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing)",
       "classes": [],
       "functions": [
@@ -8189,6 +8189,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Confirms that a random non-WB excel workbook uploaded in a group chat is silently ignored."
+        },
+        {
+          "name": "test_bot_archive_resold_fbo_order_not_proposed_as_return",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Confirms that when an old FBS cancellation is re-uploaded via archive Excel,"
         }
       ],
       "endpoints": [],

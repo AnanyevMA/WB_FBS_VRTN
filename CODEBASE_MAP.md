@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-25 23:26:35 UTC | **Файлов проиндексировано**: 161  
+> **Дата актуализации**: 2026-10-26 13:54:47 UTC | **Файлов проиндексировано**: 161  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -142,7 +142,7 @@
 | [`tests/test_archive_unified_reconcile.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_unified_reconcile.py) | — | `setup_test_db`, `test_unified_reconciliation_preserves_archive_batch_and_order_sync`, `test_signature_batch_submitter_syncs_status_and_handles_error_14` | Tests for Archive Orders Status Synchronization, Unified Reconciliation Preservation, |
 | [`tests/test_auth.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auth.py) | — | `test_password_hashing_and_verification`, `test_jwt_token_generation_and_decode`, `test_admin_bootstrap_and_login_flow`, `test_protected_routes_require_authentication`, +еще 6 | Tests for Authentication, JWT, User Management, and Endpoint Security Protection |
 | [`tests/test_auto_kiz_queue_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auto_kiz_queue_service.py) | — | `test_sync_wb_orders_status`, `test_collect_candidates_and_deduplication`, `test_process_auto_kiz_queue_flow`, `test_cancelled_fbs_order_resold_fbo_not_picked_as_return` | Tests for Auto KIZ Queue Service (app/services/auto_kiz_queue_service.py) |
-| [`tests/test_bot_archive_upload.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_bot_archive_upload.py) | — | `_create_mock_wb_archive_bytes`, `test_bot_archive_excel_parsing_and_batch_creation`, `test_bot_ignores_non_excel_files_in_groups`, `test_bot_warns_non_excel_files_in_private_chat`, +еще 1 | Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing) |
+| [`tests/test_bot_archive_upload.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_bot_archive_upload.py) | — | `_create_mock_wb_archive_bytes`, `test_bot_archive_excel_parsing_and_batch_creation`, `test_bot_ignores_non_excel_files_in_groups`, `test_bot_warns_non_excel_files_in_private_chat`, +еще 2 | Unit Tests for Telegram Bot Document Upload Handler (Archive XLSX Processing) |
 | [`tests/test_challenger_r1_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_challenger_r1_adversarial.py) | — | `clean_digest_and_poller_state`, `_get_auth_headers`, `test_patch_empty_and_whitespace_tokens_preserves_originals`, `test_patch_schedule_normalization_and_validation`, +еще 4 | Adversarial Stress Test Suite for Objective R1 (Challenger 1). |
 | [`tests/test_challenger_r2_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_challenger_r2_adversarial.py) | — | `_ensure_aiogram_mock`, `setup_db`, `test_kiz_required_clothing_categories_with_empty_meta`, `test_kiz_required_perfume_cosmetics_with_empty_meta`, +еще 15 | Challenger 2 Adversarial Verification Test Harness for Objective R2. |
 | [`tests/test_challenger_r3_m1_1_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_challenger_r3_m1_1_adversarial.py) | — | `test_clean_31_kiz_with_91_92_in_serial_must_stay_31_chars`, `test_concatenated_barcode_with_91_92_in_serial`, `test_space_delimited_barcode_with_91_92_in_serial`, `test_gs_delimited_barcode_with_91_92_in_serial`, +еще 4 | Adversarial Challenge & Empirical Bug Reproduction Test Suite. |

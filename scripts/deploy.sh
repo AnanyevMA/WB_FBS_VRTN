@@ -32,11 +32,17 @@ if [ -w / ] && [ $(swapon --show | wc -l) -le 1 ]; then
     echo "✅ Swap память (2 ГБ) успешно подключена."
 fi
 
-# 3. Получение свежего кода из Git
+# 3. Получение свежего кода из Git (с сохранением локальных кастомных конфигов Nginx)
 if [ -d ".git" ]; then
     echo "📥 Получение обновлений из Git..."
+    if [ -f "nginx/conf.d/app.conf" ]; then
+        cp nginx/conf.d/app.conf /tmp/nginx_app_conf.backup
+    fi
     git fetch origin main
     git reset --hard origin/main
+    if [ -f "/tmp/nginx_app_conf.backup" ]; then
+        cp /tmp/nginx_app_conf.backup nginx/conf.d/app.conf
+    fi
 else
     echo "ℹ️  Git репозиторий не инициализирован локально, сборка текущих файлов..."
 fi

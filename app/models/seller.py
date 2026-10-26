@@ -62,6 +62,11 @@ class Seller(Base):
     auto_kiz_manager_chat_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     last_auto_kiz_queue_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Item returns settings (WB Analytics item-returns reconciliation)
+    item_returns_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    item_returns_interval_hours: Mapped[int] = mapped_column(Integer, default=6, server_default="6")
+    last_item_returns_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

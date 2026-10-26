@@ -40,6 +40,7 @@ _AGENT_MODULES = [
     "app.agents.auto_kiz_queue_agent",
     "app.agents.wb_warehouse_sales_agent",
     "app.agents.wb_finance_agent",
+    "app.agents.wb_item_returns_agent",
 ]
 
 # Celery Beat only publishes task names by schedule and does not need to import
@@ -98,6 +99,7 @@ celery_app.conf.update(
         "app.agents.auto_kiz_queue_agent.*": {"queue": "cz_operations"},
         "app.agents.wb_warehouse_sales_agent.*": {"queue": "cz_operations"},
         "app.agents.wb_finance_agent.*": {"queue": "cz_operations"},
+        "app.agents.wb_item_returns_agent.*": {"queue": "cz_operations"},
     },
     # Periodic Tasks Beat Schedule matching agents_config.json
     beat_schedule={
@@ -177,6 +179,12 @@ celery_app.conf.update(
         "sync-financial-reports-daily": {
             "task": "app.agents.wb_finance_agent.sync_all_sellers_financial_reports",
             "schedule": crontab(hour=5, minute=0),  # daily at 05:00 Moscow time
+            "options": {"queue": "cz_operations"},
+        },
+        # Runs every 5 min to check sellers due for item returns sync (6h interval)
+        "check-item-returns-schedule": {
+            "task": "app.agents.wb_item_returns_agent.check_and_sync_item_returns",
+            "schedule": 300.0,
             "options": {"queue": "cz_operations"},
         },
     },

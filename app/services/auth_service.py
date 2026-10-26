@@ -113,13 +113,13 @@ def decode_access_token(token: str) -> Optional[TokenPayload]:
             algorithms=[settings.jwt_algorithm]
         )
         user_id: str = payload.get("sub")
-        username: str = payload.get("username")
+        username: str = payload.get("username") or user_id
         role: str = payload.get("role", UserRole.ADMIN.value)
         is_superuser: bool = payload.get("is_superuser", False)
         must_change_password: bool = payload.get("must_change_password", False)
         exp: Optional[int] = payload.get("exp")
 
-        if user_id is None or username is None:
+        if user_id is None:
             return None
 
         return TokenPayload(

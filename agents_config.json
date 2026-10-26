@@ -816,6 +816,64 @@
         "cz_token_refresher",
         "order_poller"
       ]
+    },
+    {
+      "id": "wb_item_returns_agent",
+      "name": "WB Item Returns Agent",
+      "role": "Periodically reconciles item returns from Wildberries Analytics and True API",
+      "celery_task": "app.agents.wb_item_returns_agent.check_and_sync_item_returns",
+      "queue": "cz_operations",
+      "schedule": "every 300s (checks 6-hour interval per seller)",
+      "timeout_seconds": 600,
+      "max_retries": 2,
+      "concurrency_limit": 1,
+      "arbitration_priority": 75,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/wb_item_returns_agent.py",
+          "app/services/wb_analytics_client.py",
+          "app/services/wb_item_returns_service.py",
+          "app/services/cz_client.py"
+        ],
+        "allowed_write_paths": [
+          "logs/wb_item_returns.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "allowed_read_tables": [
+          "sellers",
+          "orders",
+          "kiz_product_info",
+          "kiz_signature_batches",
+          "audit_logs"
+        ],
+        "allowed_write_tables": [
+          "sellers",
+          "orders",
+          "kiz_product_info",
+          "kiz_signature_batches",
+          "audit_logs"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT_UPDATE",
+          "orders": "SELECT_UPDATE",
+          "kiz_product_info": "SELECT_UPDATE",
+          "kiz_signature_batches": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_ANALYTICS_API",
+          "GIS_MT_TRUE_API"
+        ],
+        "crypto_key_access": "READ_TOKEN"
+      },
+      "dependencies": [
+        "cz_token_refresher"
+      ]
     }
   ],
   "arbitration_rules": {

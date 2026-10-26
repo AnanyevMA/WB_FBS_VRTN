@@ -1,18 +1,19 @@
 """
 WB Warehouse Sales Service — WB FBS Manager
 Отслеживание повторных продаж маркированных товаров со склада WB (FBO / остатки после возвратов FBS).
-Сверка с True API ГИС МТ и формирование очереди пакетов ЭЦП на вывод по фискальным чекам WB.
+Сверка с True API ГИС МТ и формирование очереди пакетов ЭЦП на вывод (LK_RECEIPT) и возврат (LP_RETURN).
+Strict line limit: < 330 lines (PROJECT_RULES.md).
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.seller import Seller
-from app.models.order import Order, KizStatus
-from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
+from app.models.order import Order, KizStatus, OrderStatus
+from app.models.kiz import KizSignatureBatch, BatchStatus
 from app.models.wb_finance import WbSalesReportRow
 from app.models.audit import AuditLog
 from app.services.encryption import decrypt
@@ -23,6 +24,11 @@ from app.services.kiz_service import (
     parse_kiz_code,
 )
 from app.services.telegram_service import TelegramService
+from app.services.wb_warehouse_sales_builder import (
+    build_warehouse_return_item,
+    build_warehouse_sale_item,
+    extract_owner_inn,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,58 +64,14 @@ async def get_already_queued_cises(seller_id: str, db: AsyncSession) -> Set[str]
     for b in batches:
         payload = b.data_payload or {}
         for w in payload.get("withdrawals", []):
-            code = w.get("kiz_code")
+            code = w.get("kiz_code") or w.get("clean_cis") or w.get("ki")
+            if code:
+                queued.add(code.strip())
+        for r in payload.get("returns", []):
+            code = r.get("kiz_code") or r.get("clean_cis") or r.get("ki")
             if code:
                 queued.add(code.strip())
     return queued
-
-
-def extract_owner_inn(payload: Optional[Dict[str, Any]]) -> Optional[str]:
-    """Извлекает ИНН текущего владельца КИЗ из ответа True API."""
-    if not payload or not isinstance(payload, dict):
-        return None
-    c_info = payload.get("cisInfo") if isinstance(payload.get("cisInfo"), dict) else payload
-    inn = c_info.get("ownerInn") or c_info.get("owner_inn") or payload.get("ownerInn")
-    return str(inn).strip() if inn else None
-
-
-def build_warehouse_sale_item(
-    record: Dict[str, Any],
-    clean_cis: str,
-    matched_order: Optional[Order],
-) -> Dict[str, Any]:
-    """Формирует структуру элемента вывода для пакета ЭЦП."""
-    price = float(record.get("price") or 0.0)
-    price_kop = int(round(price * 100))
-    doc_num = str(record.get("fiscal_doc_number") or "").strip()
-    fn_num = str(record.get("fiscal_drive_number") or "").strip()
-    doc_date = str(record.get("fiscal_dt") or "").strip()
-    nm_id = str(record.get("nm_id") or "")
-    srid = str(record.get("srid") or "")
-
-    return {
-        "order_id": matched_order.id if matched_order else None,
-        "sticker_id": matched_order.sticker_id if matched_order else None,
-        "kiz_code": clean_cis,
-        "receipt_number": doc_num,
-        "fn_number": fn_num,
-        "receipt_date": doc_date,
-        "document_type": "OTHER",
-        "primary_document_custom_name": f"Фискальный чек WB (ФД №{doc_num}, ФН №{fn_num})",
-        "price": price,
-        "price_kopecks": price_kop,
-        "article": matched_order.article if matched_order and matched_order.article else nm_id,
-        "name": matched_order.name if matched_order and matched_order.name else f"Товар со склада WB (Арт. {nm_id})",
-        "task_status": "Продажа со склада WB (FBO)",
-        "srid": srid,
-        "db_status": matched_order.status.value if matched_order else "FBO_WAREHOUSE",
-        "db_kiz_status": matched_order.kiz_status.value if matched_order else "UNATTACHED",
-        "cz_status": "INTRODUCED",
-        "cz_status_desc": "В обороте на балансе ИП",
-        "is_already_withdrawn": False,
-        "needs_withdrawal": True,
-        "selected": True,
-    }
 
 
 async def process_warehouse_sales_for_seller(
@@ -118,52 +80,45 @@ async def process_warehouse_sales_for_seller(
     days: int = 30,
 ) -> Dict[str, Any]:
     """
-    Основной метод обработки продаж со склада WB:
+    Основной метод обработки продаж и возвратов со склада WB:
     1. Загружает операции из WB excise-report.
     2. Сопоставляет КИЗ с локальной базой и запрашивает True API ГИС МТ.
-    3. Для RETIRED — обновляет статус в БД (без лишних документов).
-    4. Для INTRODUCED — формирует KizSignatureBatch (source='wb_warehouse_sale') на подпись.
+    3. Для RETIRED продаж — обновляет статус в БД (без лишних документов).
+    4. Для RETIRED возвратов/сторно — добавляет в batch.returns (LP_RETURN).
+    5. Для INTRODUCED продаж — формирует batch.withdrawals (LK_RECEIPT).
     """
     logger.info(f"[Warehouse Sales] Running for seller {seller.id} ({seller.name}), days={days}")
     excise_rows = await fetch_wb_excise_data(seller, days=days)
 
     if not excise_rows:
         return {
-            "success": True,
-            "seller_id": seller.id,
-            "created": False,
+            "success": True, "seller_id": seller.id, "created": False,
             "message": "Нет записей в отчете маркировки WB за указанный период",
-            "total_wb_records": 0,
-            "needs_withdrawal_count": 0,
-            "already_retired_count": 0,
+            "total_wb_records": 0, "needs_withdrawal_count": 0,
+            "already_retired_count": 0, "returns_count": 0, "sales_count": 0,
         }
 
-    # 1. Сбор уникальных кодов КИЗ
     kiz_to_record: Dict[str, Dict[str, Any]] = {}
     for r in excise_rows:
         raw_cis = str(r.get("excise_short") or "").strip()
         if raw_cis:
             parsed = parse_kiz_code(raw_cis)
-            clean = parsed.get("clean_cis") or raw_cis
+            clean = parsed.get("clean_cis") if (parsed.get("crypto_tail") or parsed.get("crypto_key")) else raw_cis
             kiz_to_record[clean] = r
 
     unique_cises = list(kiz_to_record.keys())
     logger.info(f"[Warehouse Sales] Found {len(unique_cises)} unique KIZ codes in WB report")
 
-    # 2. Поиск связанных заказов и возвратов в локальной БД
-    stmt_orders = select(Order).where(
-        Order.seller_id == seller.id,
-        Order.kiz_code.isnot(None),
-    )
+    stmt_orders = select(Order).where(Order.seller_id == seller.id, Order.kiz_code.isnot(None))
     res_orders = await db.execute(stmt_orders)
     orders_map: Dict[str, Order] = {}
     for ord_obj in res_orders.scalars().all():
         if ord_obj.kiz_code:
             p = parse_kiz_code(ord_obj.kiz_code)
-            c = p.get("clean_cis") or ord_obj.kiz_code
-            orders_map[c] = ord_obj
+            orders_map[ord_obj.kiz_code] = ord_obj
+            if p.get("clean_cis"):
+                orders_map[p["clean_cis"]] = ord_obj
 
-    # 2.1. Сквозная проверка возвратов в финансовых отчетах WB (WbSalesReportRow)
     returned_cises: Set[str] = set()
     returned_srids: Set[str] = set()
     excise_srids = [str(r.get("srid") or "").strip() for r in excise_rows if r.get("srid")]
@@ -175,55 +130,74 @@ async def process_warehouse_sales_for_seller(
         if excise_srids:
             conds.append(WbSalesReportRow.srid.in_(excise_srids))
 
-        stmt_fin = select(WbSalesReportRow).where(
-            WbSalesReportRow.seller_id == seller.id,
-            or_(*conds),
-        )
+        stmt_fin = select(WbSalesReportRow).where(WbSalesReportRow.seller_id == seller.id, or_(*conds))
         res_fin = await db.execute(stmt_fin)
         for f_row in res_fin.scalars().all():
             doc_name = (f_row.doc_type_name or f_row.seller_oper_name or "").lower()
-            if "возврат" in doc_name or "отказ" in doc_name or "отмен" in doc_name:
+            amt = float(f_row.retail_amount or 0.0)
+            if "возврат" in doc_name or "отказ" in doc_name or "отмен" in doc_name or amt < 0:
                 if f_row.clean_cis:
                     returned_cises.add(f_row.clean_cis)
                 if f_row.srid:
                     returned_srids.add(f_row.srid)
 
-    # 3. Живая пакетная проверка в True API ГИС МТ
-    verified_map = await batch_verify_and_sync_cises(
-        seller=seller,
-        kiz_codes=unique_cises,
-        db=db,
-        force_refresh=True,
-    )
-
+    verified_map = await batch_verify_and_sync_cises(seller=seller, kiz_codes=unique_cises, db=db, force_refresh=True)
     already_queued = await get_already_queued_cises(seller.id, db)
     seller_inn = str(seller.cz_inn or "").strip()
+
     now = datetime.now(timezone.utc)
     batch_withdrawals: List[Dict[str, Any]] = []
+    batch_returns: List[Dict[str, Any]] = []
     already_retired_count = 0
     other_owner_count = 0
     total_sales_sum = 0.0
+    total_returns_sum = 0.0
 
     for clean_cis, record in kiz_to_record.items():
-        # Проверяем, не был ли товар возвращен покупателем по фин. отчету (по SRID или КИЗ):
         r_srid = str(record.get("srid") or "").strip()
-        if (r_srid and r_srid in returned_srids) or (clean_cis in returned_cises):
-            logger.info(
-                f"[Warehouse Sales] KIZ {clean_cis} (srid={r_srid}) was returned in WB finance report. "
-                "Skipping withdrawal (product returned to stock)."
-            )
-            continue
+        rec_doc = str(record.get("doc_type") or record.get("operation") or record.get("operation_type") or "").lower()
+        rec_price = float(record.get("price") or 0.0)
+        is_return_record = bool(
+            (r_srid and r_srid in returned_srids)
+            or (clean_cis in returned_cises)
+            or any(w in rec_doc for w in ("возврат", "сторно", "отказ", "отмен"))
+            or rec_price < 0
+        )
 
-        kinfo = verified_map.get(clean_cis)
+        p_cis = parse_kiz_code(clean_cis).get("clean_cis")
+        kinfo = verified_map.get(clean_cis) or (verified_map.get(p_cis) if p_cis else None)
         cz_st = kinfo.cz_status if kinfo else None
         cz_ex = kinfo.cz_status_ex if kinfo else None
         raw_pl = kinfo.raw_cz_payload if kinfo else {}
+        matched_order = orders_map.get(clean_cis) or (orders_map.get(p_cis) if p_cis else None)
+
+        owner_inn = extract_owner_inn(raw_pl)
+        if owner_inn and seller_inn and owner_inn != seller_inn:
+            other_owner_count += 1
+            logger.info(f"[Warehouse Sales] KIZ {clean_cis} owner {owner_inn} != seller {seller_inn}. Skipping.")
+            continue
 
         withdrawn, _ = is_kiz_withdrawn(status=cz_st, status_ex=cz_ex, raw_payload=raw_pl)
-        matched_order = orders_map.get(clean_cis)
+
+        if is_return_record:
+            if cz_st == "INTRODUCED" or not withdrawn:
+                logger.debug(f"[Warehouse Sales] Return KIZ {clean_cis} already INTRODUCED in True API. Skipping return batch.")
+                if matched_order:
+                    matched_order.cz_withdrawal_doc_id = None
+                    matched_order.kiz_status = KizStatus.RETURNED
+                    matched_order.kiz_cz_status = cz_st or "INTRODUCED"
+                    matched_order.updated_at = now
+                    if matched_order.status != OrderStatus.DELIVERED:
+                        matched_order.status = OrderStatus.CANCELLED
+                continue
+            if clean_cis in already_queued:
+                continue
+            ret_item = build_warehouse_return_item(record, clean_cis, matched_order)
+            batch_returns.append(ret_item)
+            total_returns_sum += ret_item["price"]
+            continue
 
         if withdrawn:
-            # Товар уже выбыл в Честном Знаке (например, по ОФД чеку WB)
             already_retired_count += 1
             if matched_order and matched_order.kiz_status != KizStatus.WITHDRAWN:
                 matched_order.kiz_status = KizStatus.WITHDRAWN
@@ -231,18 +205,6 @@ async def process_warehouse_sales_for_seller(
                 matched_order.updated_at = now
             continue
 
-        # Проверяем принадлежность: выводить может ТОЛЬКО текущий владелец кода
-        owner_inn = extract_owner_inn(raw_pl)
-        if owner_inn and seller_inn and owner_inn != seller_inn:
-            # Товар передан на баланс Wildberries (ООО "РВБ" 9714053621) или другого участника
-            other_owner_count += 1
-            logger.info(
-                f"[Warehouse Sales] KIZ {clean_cis} owner is {owner_inn} (seller is {seller_inn}). "
-                "Skipping withdrawal batch (responsible for withdrawal: current owner)."
-            )
-            continue
-
-        # Товар числится в обороте на балансе ИП — требует вывода по чеку WB
         if clean_cis in already_queued:
             logger.debug(f"[Warehouse Sales] KIZ {clean_cis} already in pending signature batch")
             continue
@@ -253,7 +215,7 @@ async def process_warehouse_sales_for_seller(
 
     await db.commit()
 
-    if not batch_withdrawals:
+    if not batch_withdrawals and not batch_returns:
         details = []
         if already_retired_count:
             details.append(f"{already_retired_count} уже выведены из оборота")
@@ -261,29 +223,26 @@ async def process_warehouse_sales_for_seller(
             details.append(f"{other_owner_count} на балансе Wildberries (ООО «РВБ»)")
         msg_details = ", ".join(details) if details else "нет товаров на балансе ИП"
         return {
-            "success": True,
-            "seller_id": seller.id,
-            "created": False,
+            "success": True, "seller_id": seller.id, "created": False,
             "message": f"Сверка завершена: {msg_details}",
-            "total_wb_records": len(excise_rows),
-            "needs_withdrawal_count": 0,
-            "already_retired_count": already_retired_count,
-            "other_owner_count": other_owner_count,
+            "total_wb_records": len(excise_rows), "needs_withdrawal_count": 0,
+            "already_retired_count": already_retired_count, "other_owner_count": other_owner_count,
+            "returns_count": 0, "sales_count": 0,
         }
 
-    # 4. Формирование KizSignatureBatch
     timestamp_tag = now.strftime("%Y%m%d_%H%M%S")
     summary = {
-        "total_rows": len(batch_withdrawals),
+        "total_rows": len(batch_withdrawals) + len(batch_returns),
         "sales_count": len(batch_withdrawals),
         "sales_needing_withdrawal": len(batch_withdrawals),
         "sales_already_withdrawn": already_retired_count,
         "other_owner_count": other_owner_count,
-        "returns_count": 0,
-        "returns_needing_cz_return": 0,
+        "returns_count": len(batch_returns),
+        "returns_needing_cz_return": len(batch_returns),
         "total_sales_sum": total_sales_sum,
+        "total_returns_sum": total_returns_sum,
         "source_type": "wb_warehouse_sale",
-        "description": "Повторные продажи со склада Wildberries (FBO)",
+        "description": "Повторные продажи и возвраты со склада Wildberries (FBO)",
     }
 
     batch = KizSignatureBatch(
@@ -292,19 +251,14 @@ async def process_warehouse_sales_for_seller(
         source="wb_warehouse_sale",
         status=BatchStatus.PENDING_SIGNATURE,
         sales_count=len(batch_withdrawals),
-        returns_count=0,
+        returns_count=len(batch_returns),
         already_withdrawn_count=already_retired_count,
-        total_count=len(batch_withdrawals),
-        data_payload={
-            "summary": summary,
-            "withdrawals": batch_withdrawals,
-            "returns": [],
-        },
+        total_count=len(batch_withdrawals) + len(batch_returns),
+        data_payload={"summary": summary, "withdrawals": batch_withdrawals, "returns": batch_returns},
     )
     db.add(batch)
     await db.flush()
 
-    # 5. Лог аудита
     audit = AuditLog(
         seller_id=seller.id,
         agent="wb_warehouse_sales",
@@ -313,6 +267,7 @@ async def process_warehouse_sales_for_seller(
         entity_id=batch.id,
         payload={
             "sales_count": len(batch_withdrawals),
+            "returns_count": len(batch_returns),
             "already_retired_count": already_retired_count,
             "other_owner_count": other_owner_count,
             "total_sales_sum": total_sales_sum,
@@ -321,26 +276,21 @@ async def process_warehouse_sales_for_seller(
     db.add(audit)
     await db.commit()
 
-    # 6. Уведомление в Telegram
-    await _send_telegram_notification(seller, len(batch_withdrawals), total_sales_sum, batch.id)
+    await _send_telegram_notification(seller, len(batch_withdrawals), len(batch_returns), total_sales_sum, batch.id)
 
     return {
-        "success": True,
-        "seller_id": seller.id,
-        "created": True,
-        "batch_id": batch.id,
-        "sales_count": len(batch_withdrawals),
-        "already_retired_count": already_retired_count,
-        "other_owner_count": other_owner_count,
-        "total_sales_sum": total_sales_sum,
-        "status": batch.status.value,
-        "message": f"Сформирован пакет на вывод {len(batch_withdrawals)} товаров со склада WB",
+        "success": True, "seller_id": seller.id, "created": True, "batch_id": batch.id,
+        "sales_count": len(batch_withdrawals), "returns_count": len(batch_returns),
+        "already_retired_count": already_retired_count, "other_owner_count": other_owner_count,
+        "total_sales_sum": total_sales_sum, "status": batch.status.value,
+        "message": f"Сформирован пакет на вывод {len(batch_withdrawals)} и возврат {len(batch_returns)} товаров со склада WB",
     }
 
 
 async def _send_telegram_notification(
     seller: Seller,
-    count: int,
+    sales_count: int,
+    returns_count: int,
     total_sum: float,
     batch_id: str,
 ) -> None:
@@ -360,8 +310,8 @@ async def _send_telegram_notification(
             await tg.send_auto_kiz_batch_notification(
                 chat_ids=target_chats,
                 seller_name=seller.name,
-                sales_count=count,
-                returns_count=0,
+                sales_count=sales_count,
+                returns_count=returns_count,
                 total_sum_rub=total_sum,
                 batch_id=batch_id,
                 is_auto_signed=False,

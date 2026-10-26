@@ -89,6 +89,10 @@ async def init_db() -> None:
                         sync_conn.exec_driver_sql("UPDATE sellers SET notification_schedule = '[\"10:00\", \"14:00\", \"18:00\"]' WHERE notification_schedule IS NULL")
                     if "timezone" in seller_cols:
                         sync_conn.exec_driver_sql("UPDATE sellers SET timezone = 'Europe/Moscow' WHERE timezone IS NULL")
+                    if "item_returns_enabled" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET item_returns_enabled = 1 WHERE item_returns_enabled IS NULL")
+                    if "item_returns_interval_hours" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET item_returns_interval_hours = 6 WHERE item_returns_interval_hours IS NULL")
             await conn.run_sync(sync_sqlite_columns)
 
         # PostgreSQL auto-migration for missing columns and TIMESTAMP WITH TIME ZONE
@@ -131,6 +135,10 @@ async def init_db() -> None:
                         sync_conn.exec_driver_sql("UPDATE sellers SET notification_schedule = '[\"10:00\", \"14:00\", \"18:00\"]'::json WHERE notification_schedule IS NULL")
                     if "timezone" in seller_cols:
                         sync_conn.exec_driver_sql("UPDATE sellers SET timezone = 'Europe/Moscow' WHERE timezone IS NULL")
+                    if "item_returns_enabled" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET item_returns_enabled = true WHERE item_returns_enabled IS NULL")
+                    if "item_returns_interval_hours" in seller_cols:
+                        sync_conn.exec_driver_sql("UPDATE sellers SET item_returns_interval_hours = 6 WHERE item_returns_interval_hours IS NULL")
             await conn.run_sync(sync_postgres_columns)
 
     # Bootstrap default admin user if database has no users

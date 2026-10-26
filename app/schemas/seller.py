@@ -43,6 +43,8 @@ class SellerBase(BaseModel):
     notification_mode: Optional[str] = "instant"
     notification_schedule: Optional[List[str]] = Field(default_factory=lambda: ["10:00", "14:00", "18:00"])
     timezone: Optional[str] = "Europe/Moscow"
+    item_returns_enabled: Optional[bool] = True
+    item_returns_interval_hours: Optional[int] = Field(6, ge=1, le=168, description="Интервал сверки возвратов в часах (1–168)")
 
     @field_validator("notification_mode", mode="before")
     @classmethod
@@ -127,6 +129,8 @@ class SellerCreate(SellerBase):
     auto_kiz_queue_minute: Optional[int] = Field(0, ge=0, le=59, description="Минута формирования очереди КИЗ (0–59)")
     auto_kiz_auto_sign_server: Optional[bool] = False
     auto_kiz_manager_chat_id: Optional[str] = None
+    item_returns_enabled: Optional[bool] = True
+    item_returns_interval_hours: Optional[int] = Field(6, ge=1, le=168, description="Интервал сверки возвратов в часах (1–168)")
 
 
 class SellerUpdate(BaseModel):
@@ -161,6 +165,8 @@ class SellerUpdate(BaseModel):
     auto_kiz_queue_minute: Optional[int] = Field(None, ge=0, le=59, description="Минута формирования очереди КИЗ (0–59)")
     auto_kiz_auto_sign_server: Optional[bool] = None
     auto_kiz_manager_chat_id: Optional[str] = None
+    item_returns_enabled: Optional[bool] = None
+    item_returns_interval_hours: Optional[int] = Field(None, ge=1, le=168, description="Интервал сверки возвратов в часах (1–168)")
     # Digest settings (flat for simple PATCH, or nested via digest object)
     digest_enabled: Optional[bool] = None
     digest_hour: Optional[int] = Field(None, ge=0, le=23)
@@ -246,6 +252,9 @@ class SellerResponse(SellerBase):
     auto_kiz_auto_sign_server: Optional[bool] = False
     auto_kiz_manager_chat_id: Optional[str] = None
     last_auto_kiz_queue_at: Optional[datetime] = None
+    item_returns_enabled: Optional[bool] = True
+    item_returns_interval_hours: Optional[int] = 6
+    last_item_returns_at: Optional[datetime] = None
     created_at: datetime
     has_wb_token: bool = False
     has_cz_token: bool = False
@@ -332,6 +341,9 @@ class SellerListItem(BaseModel):
     auto_kiz_queue_hour: Optional[int] = 17
     auto_kiz_queue_minute: Optional[int] = 0
     last_auto_kiz_queue_at: Optional[datetime] = None
+    item_returns_enabled: Optional[bool] = True
+    item_returns_interval_hours: Optional[int] = 6
+    last_item_returns_at: Optional[datetime] = None
     wb_token_status: str = "valid"
     wb_token_expires_at: Optional[datetime] = None
     wb_token_days_left: Optional[int] = None

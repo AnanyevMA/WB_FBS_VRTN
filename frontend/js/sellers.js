@@ -80,6 +80,12 @@ function openAddSellerModal() {
     const autoKizManagerChatId = document.getElementById('seller_auto_kiz_manager_chat_id');
     if (autoKizManagerChatId) autoKizManagerChatId.value = '';
 
+    // Item returns defaults
+    const itemReturnsEl = document.getElementById('sellerItemReturnsEnabled') || document.getElementById('seller_item_returns_enabled');
+    if (itemReturnsEl) itemReturnsEl.checked = true;
+    const itemReturnsIntervalEl = document.getElementById('sellerItemReturnsIntervalHours') || document.getElementById('seller_item_returns_interval_hours');
+    if (itemReturnsIntervalEl) itemReturnsIntervalEl.value = 6;
+
     // Populate crypto certificates
     safePopulateCertificatesDropdown();
     openModal('sellerModal');
@@ -147,6 +153,12 @@ async function editSeller(sellerId) {
         if (autoKizServerSign) autoKizServerSign.checked = !!seller.auto_kiz_auto_sign_server;
         const autoKizManagerChatId = document.getElementById('seller_auto_kiz_manager_chat_id');
         if (autoKizManagerChatId) autoKizManagerChatId.value = seller.auto_kiz_manager_chat_id || '';
+
+        // Item returns settings
+        const itemReturnsEl = document.getElementById('sellerItemReturnsEnabled') || document.getElementById('seller_item_returns_enabled');
+        if (itemReturnsEl) itemReturnsEl.checked = seller.item_returns_enabled !== false;
+        const itemReturnsIntervalEl = document.getElementById('sellerItemReturnsIntervalHours') || document.getElementById('seller_item_returns_interval_hours');
+        if (itemReturnsIntervalEl) itemReturnsIntervalEl.value = seller.item_returns_interval_hours ?? 6;
         
         // Token inputs & persistent status indicators
         const wbInput = document.getElementById('seller_wb_token');
@@ -408,6 +420,8 @@ async function saveSeller() {
                 auto_kiz_queue_minute: parseInt(document.getElementById('seller_auto_kiz_queue_minute')?.value) ?? 0,
                 auto_kiz_auto_sign_server: document.getElementById('seller_auto_kiz_auto_sign_server')?.checked ?? false,
                 auto_kiz_manager_chat_id: document.getElementById('seller_auto_kiz_manager_chat_id')?.value.trim() || null,
+                item_returns_enabled: (document.getElementById('sellerItemReturnsEnabled') || document.getElementById('seller_item_returns_enabled'))?.checked ?? true,
+                item_returns_interval_hours: parseInt((document.getElementById('sellerItemReturnsIntervalHours') || document.getElementById('seller_item_returns_interval_hours'))?.value) || 6,
             };
             await apiFetch('/sellers', {
                 method: 'POST',
@@ -442,6 +456,8 @@ async function saveSeller() {
                 auto_kiz_queue_minute: parseInt(document.getElementById('seller_auto_kiz_queue_minute')?.value) ?? 0,
                 auto_kiz_auto_sign_server: document.getElementById('seller_auto_kiz_auto_sign_server')?.checked ?? false,
                 auto_kiz_manager_chat_id: document.getElementById('seller_auto_kiz_manager_chat_id')?.value.trim() || null,
+                item_returns_enabled: (document.getElementById('sellerItemReturnsEnabled') || document.getElementById('seller_item_returns_enabled'))?.checked ?? true,
+                item_returns_interval_hours: parseInt((document.getElementById('sellerItemReturnsIntervalHours') || document.getElementById('seller_item_returns_interval_hours'))?.value) || 6,
             };
             // Only send tokens if user typed new values (prevent resetting encrypted secrets)
             if (wbToken) payload.wb_api_token = wbToken;

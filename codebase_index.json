@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-26T13:54:47.831153+00:00",
+  "updated_at": "2026-10-26T22:25:21.500441+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 161,
+  "total_files": 176,
   "files": [
     {
       "file": "alembic/env.py",
@@ -421,7 +421,7 @@
     {
       "file": "app/agent_manifest.py",
       "layer": "core",
-      "hash": "6bd683790740",
+      "hash": "a4e5550284e7",
       "docstring": "Agent Configuration & PoLP Manifest Module — WB FBS Manager",
       "classes": [
         {
@@ -430,7 +430,10 @@
             "BaseModel"
           ],
           "docstring": "",
-          "methods": []
+          "methods": [
+            "allowed_read_tables",
+            "allowed_write_tables"
+          ]
         },
         {
           "name": "AgentConfig",
@@ -1744,6 +1747,119 @@
       ]
     },
     {
+      "file": "app/agents/wb_item_returns_agent.py",
+      "layer": "agents",
+      "hash": "47ca79e572fe",
+      "docstring": "WB Item Returns Celery Agent — WB FBS Manager",
+      "classes": [
+        {
+          "name": "AsyncTask",
+          "bases": [
+            "Task"
+          ],
+          "docstring": "Custom Celery Task supporting both awaitable pytest runs and synchronous Celery execution.",
+          "methods": [
+            "__call__"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "_get_session",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "asynccontextmanager"
+          ],
+          "docstring": "Resolve database session from explicit argument or default sessionmaker."
+        },
+        {
+          "name": "_record_audit",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id",
+            "action",
+            "entity_type",
+            "entity_id",
+            "payload",
+            "error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_sync_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "check_and_sync_item_returns",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Periodic Celery Beat task (every 300s). Reconciles returns for active sellers."
+        },
+        {
+          "name": "sync_seller_item_returns_task",
+          "is_async": true,
+          "args": [
+            "self",
+            "seller_id",
+            "days",
+            "db"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Single-seller on-demand or dispatched returns reconciliation task."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.wb_item_returns_agent.check_and_sync_item_returns",
+          "function": "check_and_sync_item_returns",
+          "docstring": "Periodic Celery Beat task (every 300s). Reconciles returns for active sellers."
+        },
+        {
+          "name": "app.agents.wb_item_returns_agent.sync_seller_item_returns_task",
+          "function": "sync_seller_item_returns_task",
+          "docstring": "Single-seller on-demand or dispatched returns reconciliation task."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.database",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services",
+        "asyncio",
+        "celery",
+        "contextlib",
+        "datetime",
+        "inspect",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
       "file": "app/agents/wb_warehouse_sales_agent.py",
       "layer": "agents",
       "hash": "8ab12c167104",
@@ -2199,7 +2315,7 @@
     {
       "file": "app/api/kiz/__init__.py",
       "layer": "api",
-      "hash": "339363b2b367",
+      "hash": "b69c835bf2e6",
       "docstring": "FastAPI KIZ Router Package — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -2211,6 +2327,7 @@
         "app.api.kiz.attach",
         "app.api.kiz.auto_queue",
         "app.api.kiz.documents",
+        "app.api.kiz.item_returns",
         "app.api.kiz.signature_batches",
         "app.api.kiz.warehouse_sales",
         "fastapi"
@@ -2649,6 +2766,82 @@
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_service",
+        "datetime",
+        "fastapi",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/api/kiz/item_returns.py",
+      "layer": "api",
+      "hash": "91fde2170748",
+      "docstring": "FastAPI WB Item Returns Endpoints — WB FBS Manager (< 100 lines).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_resolve_days",
+          "is_async": false,
+          "args": [
+            "days",
+            "date_from",
+            "date_to"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "sync_item_returns",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "days",
+            "date_from",
+            "date_to",
+            "db"
+          ],
+          "decorators": [
+            "router.post('/item-returns/sync')"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "get_item_returns_history",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "limit",
+            "db"
+          ],
+          "decorators": [
+            "router.get('/item-returns/history')"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/item-returns/sync",
+          "handler": "sync_item_returns",
+          "docstring": ""
+        },
+        {
+          "method": "GET",
+          "path": "/item-returns/history",
+          "handler": "get_item_returns_history",
+          "docstring": ""
+        }
+      ],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.services",
         "datetime",
         "fastapi",
         "logging",
@@ -4062,7 +4255,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "bf10853366f4",
+      "hash": "3cc3f17a2564",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4166,7 +4359,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "4c805a33e57f",
+      "hash": "6793c979c485",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -4459,7 +4652,7 @@
     {
       "file": "app/models/seller.py",
       "layer": "models",
-      "hash": "04beb282e240",
+      "hash": "6adcc7a8009c",
       "docstring": "",
       "classes": [
         {
@@ -5371,7 +5564,7 @@
     {
       "file": "app/schemas/seller.py",
       "layer": "schemas",
-      "hash": "6364f863dfba",
+      "hash": "bd371d23d93e",
       "docstring": "",
       "classes": [
         {
@@ -5526,7 +5719,7 @@
     {
       "file": "app/services/auth_service.py",
       "layer": "services",
-      "hash": "4e9d71bc2400",
+      "hash": "10263804c2ac",
       "docstring": "Authentication Service — Password hashing, JWT token handling, and user authentication",
       "classes": [],
       "functions": [
@@ -6516,7 +6709,7 @@
     {
       "file": "app/services/wb_analytics_client.py",
       "layer": "services",
-      "hash": "291fbcfb9dde",
+      "hash": "7177e5f57673",
       "docstring": "Wildberries Analytics API Client.",
       "classes": [
         {
@@ -6551,7 +6744,8 @@
             "__init__",
             "__aenter__",
             "__aexit__",
-            "get_excise_report"
+            "get_excise_report",
+            "get_item_returns"
           ]
         }
       ],
@@ -6561,6 +6755,7 @@
       "db_tables": [],
       "imports": [
         "asyncio",
+        "datetime",
         "httpx",
         "logging",
         "tenacity",
@@ -6984,9 +7179,170 @@
       ]
     },
     {
+      "file": "app/services/wb_item_returns_service.py",
+      "layer": "services",
+      "hash": "caf2177af3f6",
+      "docstring": "WB Item Returns Service - WB FBS Manager.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_get_seller_lock",
+          "is_async": false,
+          "args": [
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "fetch_wb_item_returns_data",
+          "is_async": true,
+          "args": [
+            "seller",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "Fetch client return records from WB Seller Analytics API."
+        },
+        {
+          "name": "get_already_queued_return_cises",
+          "is_async": true,
+          "args": [
+            "seller_id",
+            "db"
+          ],
+          "decorators": [],
+          "docstring": "Return set of KIZ codes currently queued in pending signature batches."
+        },
+        {
+          "name": "_extract_owner_inn",
+          "is_async": false,
+          "args": [
+            "payload"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_build_return_item",
+          "is_async": false,
+          "args": [
+            "record",
+            "clean_cis",
+            "order",
+            "today"
+          ],
+          "decorators": [],
+          "docstring": "Construct return item dictionary for KizSignatureBatch payload."
+        },
+        {
+          "name": "process_item_returns_for_seller",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "Core returns engine: fetch, 3-tier match, True API bifurcate, batch and audit."
+        },
+        {
+          "name": "sync_seller_returns",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "Top-level entrypoint for syncing seller item returns with concurrency serialization."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.telegram_service",
+        "app.services.wb_analytics_client",
+        "asyncio",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_warehouse_sales_builder.py",
+      "layer": "services",
+      "hash": "aebf05afc2e1",
+      "docstring": "WB Warehouse Sales and Returns Builder — WB FBS Manager.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "extract_owner_inn",
+          "is_async": false,
+          "args": [
+            "payload"
+          ],
+          "decorators": [],
+          "docstring": "Извлекает ИНН текущего владельца КИЗ из ответа True API."
+        },
+        {
+          "name": "_resolve_fields",
+          "is_async": false,
+          "args": [
+            "record",
+            "clean_cis",
+            "matched_order",
+            "kw"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "build_warehouse_sale_item",
+          "is_async": false,
+          "args": [
+            "record",
+            "clean_cis",
+            "matched_order"
+          ],
+          "decorators": [],
+          "docstring": "Формирует структуру элемента вывода (WITHDRAWAL) для пакета ЭЦП."
+        },
+        {
+          "name": "build_warehouse_return_item",
+          "is_async": false,
+          "args": [
+            "record",
+            "clean_cis",
+            "matched_order"
+          ],
+          "decorators": [],
+          "docstring": "Формирует структуру элемента возврата (RETURN / LP_RETURN) для пакета ЭЦП."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.order",
+        "datetime",
+        "typing"
+      ]
+    },
+    {
       "file": "app/services/wb_warehouse_sales_service.py",
       "layer": "services",
-      "hash": "ac4d524fd527",
+      "hash": "fc6ea4888e47",
       "docstring": "WB Warehouse Sales Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -7011,26 +7367,6 @@
           "docstring": "Возвращает множество КИЗ, уже находящихся в очереди неподписанных пакетов."
         },
         {
-          "name": "extract_owner_inn",
-          "is_async": false,
-          "args": [
-            "payload"
-          ],
-          "decorators": [],
-          "docstring": "Извлекает ИНН текущего владельца КИЗ из ответа True API."
-        },
-        {
-          "name": "build_warehouse_sale_item",
-          "is_async": false,
-          "args": [
-            "record",
-            "clean_cis",
-            "matched_order"
-          ],
-          "decorators": [],
-          "docstring": "Формирует структуру элемента вывода для пакета ЭЦП."
-        },
-        {
           "name": "process_warehouse_sales_for_seller",
           "is_async": true,
           "args": [
@@ -7039,14 +7375,15 @@
             "days"
           ],
           "decorators": [],
-          "docstring": "Основной метод обработки продаж со склада WB:"
+          "docstring": "Основной метод обработки продаж и возвратов со склада WB:"
         },
         {
           "name": "_send_telegram_notification",
           "is_async": true,
           "args": [
             "seller",
-            "count",
+            "sales_count",
+            "returns_count",
             "total_sum",
             "batch_id"
           ],
@@ -7067,6 +7404,7 @@
         "app.services.kiz_service",
         "app.services.telegram_service",
         "app.services.wb_analytics_client",
+        "app.services.wb_warehouse_sales_builder",
         "datetime",
         "logging",
         "sqlalchemy",
@@ -7698,6 +8036,168 @@
         "unittest.mock",
         "uuid",
         "zoneinfo"
+      ]
+    },
+    {
+      "file": "tests/test_api_item_returns_and_frontend.py",
+      "layer": "tests",
+      "hash": "9cb408f29ee9",
+      "docstring": "Tier 1 & Tier 2 Tests for REST API Kiz Item Returns Router, Seller Settings, and Frontend Coverage.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Isolated in-memory SQLite database session fixture."
+        },
+        {
+          "name": "_create_test_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_seller_schemas_accept_item_returns_settings",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify SellerCreate and SellerUpdate accept item_returns_enabled and interval."
+        },
+        {
+          "name": "test_seller_response_schema_serializes_item_returns",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify SellerResponse serializes item_returns settings."
+        },
+        {
+          "name": "test_api_item_returns_sync_endpoint",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "POST /sellers/{seller_id}/item-returns/sync executes manual return sync."
+        },
+        {
+          "name": "test_api_item_returns_history_endpoint",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "GET /sellers/{seller_id}/item-returns/history returns batches/reconciliations."
+        },
+        {
+          "name": "test_frontend_html_contains_seller_item_returns_modal_elements",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify frontend/index.html contains sellerModal controls for item returns."
+        },
+        {
+          "name": "test_api_sync_unauthorized_returns_401",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Calling item-returns sync endpoint without auth returns HTTP 401."
+        },
+        {
+          "name": "test_api_sync_nonexistent_seller_returns_404",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Calling sync endpoint with non-existent seller returns HTTP 404."
+        },
+        {
+          "name": "test_seller_update_token_preservation",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Updating item returns settings must NOT overwrite or wipe existing encrypted tokens."
+        },
+        {
+          "name": "test_frontend_sellers_js_edit_and_save_coverage",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify frontend/js/sellers.js covers item returns form population and save payload."
+        },
+        {
+          "name": "test_frontend_kiz_returned_badge_and_state_mapping",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify frontend CSS and state.js contain styling and localization for RETURNED status."
+        },
+        {
+          "name": "test_seller_schemas_file_line_length_under_limit",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify app/schemas/seller.py line count is strictly under 400 lines."
+        },
+        {
+          "name": "test_frontend_html_has_returned_filter_option",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify frontend/index.html includes RETURNED option in KIZ status filter dropdown."
+        },
+        {
+          "name": "test_seller_schema_file_exists_and_valid",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify app/schemas/seller.py exports SellerCreate and SellerUpdate models."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz",
+        "app.database",
+        "app.main",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.models.user",
+        "app.schemas.seller",
+        "app.services.auth_service",
+        "app.services.encryption",
+        "httpx",
+        "json",
+        "os",
+        "pathlib",
+        "pytest",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -9219,6 +9719,492 @@
         "pytest",
         "sqlalchemy",
         "sqlalchemy.orm",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_e2e_item_returns_lifecycle.py",
+      "layer": "tests",
+      "hash": "e513552181ae",
+      "docstring": "Tier 3 & Tier 4 Tests: End-to-End Item Returns Lifecycle & Cross-Feature Integration.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Isolated in-memory SQLite database session fixture."
+        },
+        {
+          "name": "_create_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id",
+            "name"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_cross_returns_then_excise_report_correlation",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify order returned via item-returns prevents duplicate withdrawal in excise report."
+        },
+        {
+          "name": "test_cross_celery_periodic_and_manual_rest_sync_idempotence",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Running periodic celery sync followed by manual sync does not duplicate batches."
+        },
+        {
+          "name": "test_cross_seller_settings_toggle_and_agent_dispatch",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Toggling item_returns_enabled stops agent processing for that seller."
+        },
+        {
+          "name": "test_cross_multi_seller_tenant_isolation",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify returns for Seller A do not touch Seller B orders or batches."
+        },
+        {
+          "name": "test_cross_signature_batch_submission_dual_actions",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify batch with both WITHDRAWAL and RETURN items processes both to target states."
+        },
+        {
+          "name": "test_cross_audit_trail_complete_chain",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify complete audit trail from returns sync to batch submission."
+        },
+        {
+          "name": "test_cross_kiz_product_info_and_order_synchronization",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Order.kiz_cz_status and KizProductInfo.cz_status remain synchronized."
+        },
+        {
+          "name": "test_cross_return_document_golden_schema_compliance",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify generated return payload strictly matches ГИС МТ LP_RETURN schema."
+        },
+        {
+          "name": "test_cross_storno_with_negative_price_and_excise_match",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify financial storno row with negative price correlates with return."
+        },
+        {
+          "name": "test_cross_wb_token_expiration_alert_flow",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify expired WB token alert is isolated to private admin chat without crashing."
+        },
+        {
+          "name": "test_scenario_1_post_sale_customer_return",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Scenario 1: Customer return after delivery -> RETIRED -> LP_RETURN -> INTRODUCED."
+        },
+        {
+          "name": "test_scenario_2_pre_sale_customer_refusal",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Scenario 2: Cancellation before delivery -> INTRODUCED -> RETURNED without batch."
+        },
+        {
+          "name": "test_scenario_3_excise_report_storno_handling",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Scenario 3: Excise report contains return receipt -> batch with LP_RETURN created."
+        },
+        {
+          "name": "test_scenario_4_concurrent_polling_manual_sync_429",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Scenario 4: High volume polling hits 429 backoff, state converges cleanly."
+        },
+        {
+          "name": "test_scenario_5_seller_lifecycle_roundtrip",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Scenario 5: Full Seller Lifecycle: Create -> Configure -> Return sync -> Batch -> Audit."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.cz_client",
+        "app.services.encryption",
+        "app.services.signature_batch_submitter",
+        "app.services.wb_analytics_client",
+        "app.services.wb_item_returns_service",
+        "datetime",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_item_returns_adversarial.py",
+      "layer": "tests",
+      "hash": "6d9f450747fe",
+      "docstring": "Adversarial Stress Test Suite for Item Returns Celery Agent (Milestone 3 Iteration 2).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "adv_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_add_seller",
+          "is_async": true,
+          "args": [
+            "db",
+            "sid",
+            "active",
+            "token"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_adv_interval_boundary_fine_granularity",
+          "is_async": true,
+          "args": [
+            "adv_db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress test boundary at exact, -1s, +1s, -100ms, +100ms."
+        },
+        {
+          "name": "test_adv_disabled_seller_skipping",
+          "is_async": true,
+          "args": [
+            "adv_db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress test disabled seller (item_returns_enabled=False) and inactive seller."
+        },
+        {
+          "name": "test_adv_timezone_naive_and_offset_awareness",
+          "is_async": true,
+          "args": [
+            "adv_db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Ensure naive timestamps and non-UTC offsets compute difference accurately without exception."
+        },
+        {
+          "name": "test_adv_celery_task_routing_and_beat_spec",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify beat cadence, options queue, and celery router resolution."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.wb_item_returns_agent",
+        "app.celery_app",
+        "app.database",
+        "app.models.seller",
+        "app.services.encryption",
+        "asyncio",
+        "datetime",
+        "pytest",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "unittest.mock"
+      ]
+    },
+    {
+      "file": "tests/test_item_returns_agent_celery.py",
+      "layer": "tests",
+      "hash": "d41d9e786444",
+      "docstring": "Tier 1 & Tier 2 Tests for Celery Item Returns Agent & PoLP Security.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Isolated in-memory SQLite database session fixture."
+        },
+        {
+          "name": "_create_test_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_celery_task_registration_and_queue_routing",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify task routes, task definitions, and Celery router configure cz_operations queue."
+        },
+        {
+          "name": "test_celery_beat_schedule_configuration",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify beat schedule contains periodic item returns check with interval >= 300s."
+        },
+        {
+          "name": "test_agent_manifest_polp_matrix",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify agents_config.json contains wb_item_returns_agent with strict PoLP matrix."
+        },
+        {
+          "name": "test_audit_log_success_entry_contract",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify AuditLog structure for item returns sync operation."
+        },
+        {
+          "name": "test_audit_log_error_entry_contract",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify AuditLog records error details upon service exception."
+        },
+        {
+          "name": "test_celery_app_file_line_length_under_limit",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify app/celery_app.py line count is strictly under 400 lines."
+        },
+        {
+          "name": "test_agent_modules_contains_item_returns",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify app.celery_app._AGENT_MODULES includes wb_item_returns_agent."
+        },
+        {
+          "name": "test_celery_task_skips_disabled_seller",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When seller has is_active=False or item_returns_enabled=False, tasks skip seller."
+        },
+        {
+          "name": "test_celery_task_interval_boundary_stress",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress test interval boundary throttling:"
+        },
+        {
+          "name": "test_celery_task_expired_wb_token_handled_safely",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Task handles seller with expired WB token gracefully without worker crash."
+        },
+        {
+          "name": "test_celery_task_audit_log_trace_id_uniqueness",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify separate audit logs have distinct trace_id identifiers."
+        },
+        {
+          "name": "test_celery_task_seller_returns_enabled_attribute",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Seller model supports item_returns_enabled boolean check."
+        },
+        {
+          "name": "test_multi_seller_isolation_when_seller_fails",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Multi-seller resilience: Seller 1 failure does not abort Seller 2; audits and traces unique."
+        },
+        {
+          "name": "test_multi_seller_interleaved_exceptions_and_trace_uniqueness",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Multi-seller: 2 failing sellers (401, 429) do not poison 2 succeeding sellers; 4 distinct traces."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agent_manifest",
+        "app.agents.wb_item_returns_agent",
+        "app.celery_app",
+        "app.database",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.wb_analytics_client",
+        "datetime",
+        "json",
+        "os",
+        "pathlib",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
         "unittest.mock",
         "uuid"
       ]
@@ -11079,6 +12065,202 @@
       ]
     },
     {
+      "file": "tests/test_returns_challenges.py",
+      "layer": "tests",
+      "hash": "330e22539c71",
+      "docstring": "Empirical Adversarial Challenge Test Suite for Milestone 1:",
+      "classes": [],
+      "functions": [
+        {
+          "name": "shared_db_factory",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Create in-memory SQLite engine with StaticPool and return session maker."
+        },
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [
+            "shared_db_factory"
+          ],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Single session fixture for individual tests."
+        },
+        {
+          "name": "_create_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id",
+            "cz_inn"
+          ],
+          "decorators": [],
+          "docstring": "Helper to create seller with valid encrypted tokens."
+        },
+        {
+          "name": "test_challenge_b1_rvb_third_party_inn_poisoning_prevented",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B1.1: Return record has KIZ owned by RVB (9714053621) while seller is 7700000000."
+        },
+        {
+          "name": "test_challenge_b1_mixed_rvb_and_seller_kiz_filters_poisoned_item",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B1.2: Two return records:"
+        },
+        {
+          "name": "test_challenge_b1_nested_cisinfo_and_integer_inn_coercion",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B1.3: True API returns ownerInn as integer 9714053621 or nested inside cisInfo."
+        },
+        {
+          "name": "test_challenge_b2_pre_sale_cancellation_cancels_withdrawal_and_sets_returned",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B2.1: Pre-sale cancellation where KIZ is in INTRODUCED status."
+        },
+        {
+          "name": "test_challenge_b2_delivered_order_retains_delivered_status_on_introduced_kiz",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B2.2: If order was already in DELIVERED status when INTRODUCED return occurs,"
+        },
+        {
+          "name": "test_challenge_b3_dirty_aim_prefix_and_gs_crypto_tails_cleaned",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B3.1: Return record contains dirty KIZ with:"
+        },
+        {
+          "name": "test_challenge_b3_space_separated_and_parentheses_delimiters",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B3.2: Return record contains parentheses GS1 delimiters and space-separated crypto-tails:"
+        },
+        {
+          "name": "test_challenge_b3_serial_number_crypto_trap_not_truncated",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B3.3: Serial number contains '91' and '92' substrings within its 13 characters:"
+        },
+        {
+          "name": "test_challenge_b4_sequential_reentrant_sync_zero_duplicate_batches",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B4.1: Re-entrant sequential sync calls for the exact same seller and date window."
+        },
+        {
+          "name": "test_challenge_b4_overlapping_returns_partial_idempotency",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B4.2: Partially overlapping return sets across consecutive sync runs."
+        },
+        {
+          "name": "test_challenge_b4_concurrent_independent_sync_calls",
+          "is_async": true,
+          "args": [
+            "shared_db_factory"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Challenge B4.3: Two concurrent async tasks execute sync_seller_returns simultaneously"
+        },
+        {
+          "name": "test_challenge_true_api_failure_must_not_falsely_classify_as_introduced",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Vulnerability Challenge: True API is temporarily unreachable or throws error."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.wb_item_returns_service",
+        "asyncio",
+        "datetime",
+        "pytest",
+        "re",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "typing",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_scheduled_orders_digest.py",
       "layer": "tests",
       "hash": "1ab0915ba0bf",
@@ -11631,6 +12813,753 @@
       ]
     },
     {
+      "file": "tests/test_warehouse_sales_storno_returns.py",
+      "layer": "tests",
+      "hash": "25e7a1c9b68d",
+      "docstring": "Tier 1 & Tier 2 In-Memory SQLite Test Suite for WB Warehouse Sales Storno & Return Receipts.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Isolated in-memory SQLite database session fixture with StaticPool."
+        },
+        {
+          "name": "_create_test_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id",
+            "cz_inn"
+          ],
+          "decorators": [],
+          "docstring": "Helper to persist an active test Seller with encrypted tokens."
+        },
+        {
+          "name": "test_warehouse_sales_service_line_length_under_limit",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify wb_warehouse_sales_service.py line count is strictly under 400 lines (PROJECT_RULES.md)."
+        },
+        {
+          "name": "test_builder_file_line_length_under_limit",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify wb_warehouse_sales_builder.py line count is strictly under 400 lines if present."
+        },
+        {
+          "name": "test_builder_build_warehouse_return_item_contract",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify build_warehouse_return_item returns valid dictionary satisfying LP_RETURN schema."
+        },
+        {
+          "name": "test_builder_build_warehouse_sale_item_contract",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify build_warehouse_sale_item returns valid dictionary with WITHDRAWAL action."
+        },
+        {
+          "name": "test_warehouse_sales_normal_sale_zero_regression",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Zero-regression baseline: Normal sale with INTRODUCED KIZ on seller balance"
+        },
+        {
+          "name": "test_excise_row_with_return_storno_and_retired_kiz_generates_lp_return",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Invariant: Return row in finance report (doc_type_name='Возврат') matching excise report"
+        },
+        {
+          "name": "test_excise_row_with_introduced_kiz_skips_lp_return",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Invariant: Return row matching excise report where True API status is INTRODUCED"
+        },
+        {
+          "name": "test_excise_return_foreign_inn_wb_isolated",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Invariant: Return row where True API ownerInn is Wildberries (ООО 'РВБ' 9714053621)"
+        },
+        {
+          "name": "test_excise_return_foreign_inn_third_party_isolated",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Invariant: Return row where True API ownerInn is an unrelated 3rd party (e.g. 7701234567)"
+        },
+        {
+          "name": "test_excise_mixed_batch_sales_and_returns",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Invariant: When excise data contains both normal sales (INTRODUCED) and returns (RETIRED),"
+        },
+        {
+          "name": "test_excise_storno_negative_amount_correlation",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Edge case: Return identified by negative retail amount in finance report"
+        },
+        {
+          "name": "test_excise_return_deduplication_already_pending",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Idempotency: When a return KIZ is already present in a pending signature batch,"
+        },
+        {
+          "name": "test_excise_return_unnormalized_crypto_tail_order_lookup",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Normalization: Order stores raw DataMatrix with crypto-tail (GS separator '\u001d91EE10\u001d92...')."
+        },
+        {
+          "name": "test_excise_return_missing_fiscal_fields_fallback",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Fault tolerance: Missing fiscal doc number or drive number uses safe defaults."
+        },
+        {
+          "name": "test_adversarial_batch_generation_sales_only",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial verification: Report contains ONLY sales (3 items, INTRODUCED on seller balance)."
+        },
+        {
+          "name": "test_adversarial_batch_generation_returns_only",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial verification: Report contains ONLY returns (3 items, RETIRED on seller balance)."
+        },
+        {
+          "name": "test_adversarial_batch_generation_mixed_complex",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial stress-test: Complex mixed excise report containing simultaneous:"
+        },
+        {
+          "name": "test_adversarial_idempotency_exact_repeated_runs",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial verification of idempotency:"
+        },
+        {
+          "name": "test_adversarial_idempotency_incremental_new_sale",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial verification of incremental deduplication:"
+        },
+        {
+          "name": "test_adversarial_empty_and_corrupted_fiscal_fields",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial fault tolerance: Excise rows with all fiscal fields missing/corrupted"
+        },
+        {
+          "name": "test_adversarial_duplicate_cises_in_same_excise_report",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Adversarial verification: Report returns duplicate occurrences of the same CIS"
+        },
+        {
+          "name": "test_adversarial_non_delivered_orders_mutated_to_cancelled_on_introduced_return",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress-Test Invariant:"
+        },
+        {
+          "name": "test_adversarial_order_state_transitions_concurrency_and_reentrancy",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Stress-Test Invariant:"
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.wb_warehouse_sales_builder",
+        "app.services.wb_warehouse_sales_service",
+        "datetime",
+        "decimal",
+        "os",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "typing",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_wb_analytics_challenger_m1_iter2.py",
+      "layer": "tests",
+      "hash": "4427838a59b0",
+      "docstring": "Challenger M1 Iteration 2 Adversarial Stress Suite.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_make_req",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_multi_page_pagination_traversal",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify clean traversal of 3 consecutive pages ending with an empty page."
+        },
+        {
+          "name": "test_multi_page_pagination_mid_stream_429_recovery",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify mid-stream 429 during page 2 is handled by inline retry and pagination finishes."
+        },
+        {
+          "name": "test_date_variations_date_datetime_and_timezone",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify date, datetime, and timezone-aware instances are formatted to YYYY-MM-DD."
+        },
+        {
+          "name": "test_date_inversion_api_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify inverted dates returning 400 Bad Request raises WBAnalyticsAPIError."
+        },
+        {
+          "name": "test_nm_ids_parameter_serialization",
+          "is_async": true,
+          "args": [
+            "nm_input",
+            "expected_query_val"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('nm_input,expected_query_val', List(elts=[Tuple(elts=[List(elts=[Constant(value=111), Constant(value=222), Constant(value=333)], ctx=Load()), Constant(value='111,222,333')], ctx=Load()), Tuple(elts=[Tuple(elts=[Constant(value=444), Constant(value=555)], ctx=Load()), Constant(value='444,555')], ctx=Load()), Tuple(elts=[Set(elts=[Constant(value=777)]), Constant(value='777')], ctx=Load()), Tuple(elts=[Constant(value=999999), Constant(value='999999')], ctx=Load()), Tuple(elts=[Constant(value='888,999'), Constant(value='888,999')], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": "Verify various formats of nm_ids are serialized into nmIds parameter."
+        },
+        {
+          "name": "test_empty_nm_ids_omitted_from_params",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify empty nm_ids list does not inject empty nmIds parameter."
+        },
+        {
+          "name": "test_tenacity_multi_layer_recovery_attempt_2",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify tenacity catches WBAnalyticsRateLimitError from inline retry and recovers on attempt 2."
+        },
+        {
+          "name": "test_massive_payload_10000_items",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify parsing and returning 10,000 items completes quickly without OOM or truncation."
+        },
+        {
+          "name": "test_standalone_call_closes_client_on_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify standalone call (without async with) closes its internal httpx.AsyncClient."
+        },
+        {
+          "name": "test_standalone_call_closes_client_on_failure",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify standalone call closes its internal httpx.AsyncClient on HTTP error."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.wb_analytics_client",
+        "asyncio",
+        "datetime",
+        "httpx",
+        "pytest",
+        "unittest.mock"
+      ]
+    },
+    {
+      "file": "tests/test_wb_analytics_client_returns.py",
+      "layer": "tests",
+      "hash": "507154378f93",
+      "docstring": "Tier 1 & Tier 2 Tests for Wildberries Analytics Client: get_item_returns.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_client_supports_returns",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_wb_analytics_client_base_contract",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify client initialization, base URL, and auth header format."
+        },
+        {
+          "name": "test_get_item_returns_basic_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify basic item returns fetch with date_from and date_to."
+        },
+        {
+          "name": "test_get_item_returns_with_nm_ids_filter",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify request with specific nm_ids list."
+        },
+        {
+          "name": "test_get_item_returns_pagination_limit_and_offset",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify pagination parameters (limit and offset) propagation."
+        },
+        {
+          "name": "test_get_item_returns_response_wrapping_variations",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify unwrapping response formatted as {'response': {'data': [...]}} and {'data': [...]}}."
+        },
+        {
+          "name": "test_get_item_returns_empty_list",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify empty response returns empty list [] without raising."
+        },
+        {
+          "name": "test_get_item_returns_429_rate_limit_inline_retry_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 429 with X-RateLimit-Retry header waits and succeeds on retry."
+        },
+        {
+          "name": "test_get_item_returns_429_excessive_wait_raises_rate_limit_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 429 with wait > 60s raises WBAnalyticsRateLimitError immediately."
+        },
+        {
+          "name": "test_get_item_returns_401_unauthorized",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 401 raises WBAnalyticsUnauthorizedError."
+        },
+        {
+          "name": "test_get_item_returns_500_api_error",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 500 server error raises WBAnalyticsAPIError."
+        },
+        {
+          "name": "test_get_item_returns_corrupted_json",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify corrupted / non-JSON response raises WBAnalyticsAPIError."
+        },
+        {
+          "name": "test_get_item_returns_context_manager_lifecycle",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify WBAnalyticsClient context manager cleanly opens and closes client."
+        },
+        {
+          "name": "test_get_item_returns_custom_timeout_propagation",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify custom timeout is propagated to httpx client."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.wb_analytics_client",
+        "asyncio",
+        "datetime",
+        "httpx",
+        "pytest",
+        "unittest.mock"
+      ]
+    },
+    {
+      "file": "tests/test_wb_analytics_stress.py",
+      "layer": "tests",
+      "hash": "4c71eda28fb0",
+      "docstring": "Adversarial Stress Testing Suite for WBAnalyticsClient (Milestone 1).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_mock_req",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_a1_burst_inline_retry_recovery",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 429 burst recovers on 1st inline retry and sleeps wait_sec + 2."
+        },
+        {
+          "name": "test_a1_burst_dynamic_headers_across_retries",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify client handles alternating header names across consecutive 429s."
+        },
+        {
+          "name": "test_a1_burst_persistent_429_exhaustion",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify persistent 429 exhaust retries and raises WBAnalyticsRateLimitError."
+        },
+        {
+          "name": "test_a1_concurrent_burst_stress",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify concurrent requests hitting 429 bursts do not cause race conditions."
+        },
+        {
+          "name": "test_a2_huge_retry_after_no_infinite_hang",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Retry-After > 60s raises immediately without sleeping 999999 seconds."
+        },
+        {
+          "name": "test_a2_erratic_headers_fallback_to_default_wait",
+          "is_async": true,
+          "args": [
+            "bad_header"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('bad_header', List(elts=[Constant(value='-1'), Constant(value='-999'), Constant(value='abc'), Constant(value='NaN'), Constant(value='null'), Constant(value=''), Constant(value='12.5'), Constant(value='Wed, 21 Oct 2026 07:28:00 GMT')], ctx=Load()))"
+          ],
+          "docstring": "Verify non-positive-integer headers safely fallback to default 35s wait."
+        },
+        {
+          "name": "test_a2_missing_retry_headers_entirely",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify 429 response without any retry headers defaults safely to 35s."
+        },
+        {
+          "name": "test_a2_zero_retry_after_header",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Retry-After: 0 is parsed as 0 and sleeps minimum 2 seconds."
+        },
+        {
+          "name": "test_a3_empty_and_null_envelope_payloads",
+          "is_async": true,
+          "args": [
+            "payload"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('payload', List(elts=[Dict(), Dict(keys=[Constant(value='response')], values=[Dict()]), Dict(keys=[Constant(value='data')], values=[Constant(value=None)]), Dict(keys=[Constant(value='response')], values=[Dict(keys=[Constant(value='data')], values=[Constant(value=None)])]), Dict(keys=[Constant(value='response')], values=[Constant(value=None)]), Dict(keys=[Constant(value='other_key')], values=[Constant(value=123)])], ctx=Load()))"
+          ],
+          "docstring": "Verify empty dictionaries and null-data envelopes return empty list []."
+        },
+        {
+          "name": "test_a3_raw_list_payload",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify bare JSON array response is unwrapped directly."
+        },
+        {
+          "name": "test_a3_primitive_json_responses",
+          "is_async": true,
+          "args": [
+            "primitive_json"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('primitive_json', List(elts=[Constant(value='\"plain_string\"'), Constant(value='12345'), Constant(value='true'), Constant(value='null')], ctx=Load()))"
+          ],
+          "docstring": "Verify JSON containing top-level primitive returns empty list []."
+        },
+        {
+          "name": "test_a3_unicode_emojis_and_cyrillic",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify unicode characters, emojis, cyrillic and special chars are preserved."
+        },
+        {
+          "name": "test_a3_corrupted_json_syntax_raises_analytics_api_error",
+          "is_async": true,
+          "args": [
+            "corrupted_content"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('corrupted_content', List(elts=[Constant(value=b'<html><head><title>502 Bad Gateway</title></head></html>'), Constant(value=b'{\\ninvalid_json: 123'), Constant(value=b'\\x00\\x01\\x02\\xff\\xfe'), Constant(value=b'')], ctx=Load()))"
+          ],
+          "docstring": "Verify invalid JSON syntax or HTML error pages raise WBAnalyticsAPIError."
+        },
+        {
+          "name": "test_a4_gateway_and_server_failures",
+          "is_async": true,
+          "args": [
+            "status_code"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('status_code', List(elts=[Constant(value=500), Constant(value=502), Constant(value=503), Constant(value=504)], ctx=Load()))"
+          ],
+          "docstring": "Verify HTTP 500, 502, 503, 504 raise WBAnalyticsAPIError with status details."
+        },
+        {
+          "name": "test_a4_network_timeouts_propagation_and_client_cleanup",
+          "is_async": true,
+          "args": [
+            "timeout_exc"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('timeout_exc', List(elts=[Call(func=Attribute(value=Name(id='httpx', ctx=Load()), attr='ConnectTimeout', ctx=Load()), args=[Constant(value='Connection timed out')]), Call(func=Attribute(value=Name(id='httpx', ctx=Load()), attr='ReadTimeout', ctx=Load()), args=[Constant(value='Read timed out')]), Call(func=Attribute(value=Name(id='httpx', ctx=Load()), attr='WriteTimeout', ctx=Load()), args=[Constant(value='Write timed out')])], ctx=Load()))"
+          ],
+          "docstring": "Verify network timeouts propagate and clean up internal AsyncClient."
+        },
+        {
+          "name": "test_a4_connection_error_propagation_and_cleanup",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify connection errors propagate and clean up internal AsyncClient."
+        },
+        {
+          "name": "test_a4_context_manager_lifecycle_under_network_failure",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify AsyncClient is closed when exception occurs inside context manager."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.wb_analytics_client",
+        "asyncio",
+        "httpx",
+        "pytest",
+        "unittest.mock"
+      ]
+    },
+    {
       "file": "tests/test_wb_archive_api.py",
       "layer": "tests",
       "hash": "6b2e4ecc8fc9",
@@ -11981,6 +13910,253 @@
       ]
     },
     {
+      "file": "tests/test_wb_item_returns_service.py",
+      "layer": "tests",
+      "hash": "ada7f58357b0",
+      "docstring": "Tier 1 & Tier 2 Tests for Returns Domain Service & Bifurcation Logic (wb_item_returns_service).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Isolated in-memory SQLite database session fixture."
+        },
+        {
+          "name": "_create_test_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_model_and_kiz_status_returned_invariants",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify Order and KizStatus support RETURNED status and return document fields."
+        },
+        {
+          "name": "test_kiz_signature_batch_returns_payload_invariants",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify KizSignatureBatch stores returns array with required LP_RETURN structure."
+        },
+        {
+          "name": "test_bifurcation_retired_kiz_creates_lp_return_batch",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When True API status is RETIRED, service creates KizSignatureBatch with returns array."
+        },
+        {
+          "name": "test_bifurcation_introduced_kiz_marks_returned_without_batch",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When True API status is INTRODUCED, service updates Order.kiz_status=RETURNED without batch."
+        },
+        {
+          "name": "test_match_return_by_order_id_fallback",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When srid does not match, return record matches by orderId."
+        },
+        {
+          "name": "test_sync_returns_empty_wb_list",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When WB API returns empty list, sync completes cleanly with 0 processed."
+        },
+        {
+          "name": "test_sync_returns_unmatched_item_handled_gracefully",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When return item has unknown srid/orderId, skips without error or DB corruption."
+        },
+        {
+          "name": "test_sync_returns_order_without_kiz_code",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "When order has no attached kiz_code, service handles safely."
+        },
+        {
+          "name": "test_sync_returns_idempotent_processing",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Running sync multiple times on same returns does not produce duplicate batches."
+        },
+        {
+          "name": "test_sync_returns_true_api_exception_handling",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "True API failure is caught and handled cleanly without unhandled crash."
+        },
+        {
+          "name": "test_sync_returns_inactive_seller_skipped",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Seller with is_active=False is skipped cleanly."
+        },
+        {
+          "name": "test_sync_returns_date_range_filtering",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify sync passes date_from and date_to parameters to client."
+        },
+        {
+          "name": "test_sync_returns_result_keys_contract",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify result dictionary keys: processed_count and batches_created."
+        },
+        {
+          "name": "test_item_returns_no_wb_token",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify seller without WB token returns empty list and handled gracefully."
+        },
+        {
+          "name": "test_item_returns_correlation_by_srid",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify return correlation via WbSalesReportRow.srid to extract clean_cis."
+        },
+        {
+          "name": "test_item_returns_correlation_by_nm_id",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify return correlation by nmId when srid and orderId are absent/unmatched."
+        },
+        {
+          "name": "test_item_returns_skips_foreign_owner",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify KIZ owned by third party (e.g. RVB 9714053621) is excluded from LP_RETURN batch."
+        },
+        {
+          "name": "test_item_returns_audit_log_and_transaction_safety",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify AuditLog is recorded in the session upon return processing."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.wb_item_returns_service",
+        "datetime",
+        "decimal",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
       "hash": "1c84db16e702",
@@ -12219,9 +14395,157 @@
       ]
     },
     {
+      "file": "tests/test_wb_warehouse_sales_challenger.py",
+      "layer": "tests",
+      "hash": "06327c0e575f",
+      "docstring": "Empirical Challenger Test Suite for WB Warehouse Sales & Storno Returns (M2 Iteration 2).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": "Isolated in-memory SQLite database session fixture."
+        },
+        {
+          "name": "_create_test_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id",
+            "cz_inn"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_adversarial_negative_price_in_excise_row_triggers_return_without_fin_report",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify negative price in excise row identifies return even with NO finance report."
+        },
+        {
+          "name": "test_adversarial_negative_price_introduced_kiz_skips_and_cancels_order",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify negative price with INTRODUCED status cancels in-flight order and skips batch."
+        },
+        {
+          "name": "test_adversarial_negative_price_introduced_preserves_delivered_status",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify negative price INTRODUCED return does not downgrade DELIVERED order status."
+        },
+        {
+          "name": "test_adversarial_storno_with_empty_and_whitespace_cises",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify storno rows with None, empty string, or whitespace CIS are safely skipped."
+        },
+        {
+          "name": "test_adversarial_storno_with_malformed_cis_strings",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify storno with corrupted/unverified CIS safely skips LP_RETURN batch."
+        },
+        {
+          "name": "test_adversarial_double_processing_idempotency_triple_run",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify running 3 times consecutively with identical data creates exactly 1 batch."
+        },
+        {
+          "name": "test_adversarial_idempotency_across_multiple_pending_batches",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify deduplication detects items queued across multiple separate pending batches."
+        },
+        {
+          "name": "test_adversarial_foreign_inn_variations_skipped",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify all variations of foreign INN ownership are isolated."
+        },
+        {
+          "name": "test_adversarial_non_excise_rows_ignored",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify non-excise rows without valid excise_short are ignored without errors."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.wb_warehouse_sales_service",
+        "datetime",
+        "decimal",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "95c8910d1fe9",
+      "hash": "569e99cfe124",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

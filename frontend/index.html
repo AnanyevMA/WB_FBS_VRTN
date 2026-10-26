@@ -851,6 +851,28 @@
                     </div>
                 </div>
 
+                <!-- Item Returns Settings (WB Seller Analytics API) -->
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius:10px; padding:16px; margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                        <span style="font-weight:600; font-size:14px; color:#fbbf24;">🔄 Сверка возвратов товаров (WB Analytics Item Returns)</span>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <span style="font-size:13px; color:var(--text-muted);">Включено</span>
+                            <input type="checkbox" id="sellerItemReturnsEnabled" name="item_returns_enabled" checked
+                                style="width:16px; height:16px; accent-color:#f59e0b; cursor:pointer;">
+                        </label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr; gap:12px; margin-bottom:8px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:12px;">Интервал опроса возвратов (часов)</label>
+                            <input type="number" class="form-control" id="sellerItemReturnsIntervalHours" name="item_returns_interval_hours"
+                                min="1" max="168" value="6" style="font-size:14px;">
+                        </div>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height: 1.4;">
+                        Автоматический опрос API возвратов Wildberries (Seller Analytics), сверка статуса КИЗ в True API ГИС МТ: при статусе RETIRED формируется документ возврата в оборот (LP_RETURN), при статусе INTRODUCED отменяется списание и фиксируется статус «Возвращен».
+                    </div>
+                </div>
+
                 <!-- Live Test Connection Results Box -->
                 <div id="sellerTestResultBox" style="display:none; padding:12px 16px; border-radius:8px; border:1px solid rgba(124,58,237,0.3); background:rgba(15,23,42,0.8); font-size:13px; margin-bottom:14px;"></div>
             </form>

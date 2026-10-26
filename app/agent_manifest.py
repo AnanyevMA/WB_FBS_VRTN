@@ -26,6 +26,20 @@ class AgentPoLPMatrix(BaseModel):
     external_api_access: List[str] = Field(default_factory=list)
     crypto_key_access: str = "NONE"
 
+    @property
+    def allowed_read_tables(self) -> List[str]:
+        extra = getattr(self, "model_extra", None) or {}
+        if "allowed_read_tables" in extra and extra["allowed_read_tables"]:
+            return extra["allowed_read_tables"]
+        return [t for t, p in self.database_table_permissions.items() if "SELECT" in p]
+
+    @property
+    def allowed_write_tables(self) -> List[str]:
+        extra = getattr(self, "model_extra", None) or {}
+        if "allowed_write_tables" in extra and extra["allowed_write_tables"]:
+            return extra["allowed_write_tables"]
+        return [t for t, p in self.database_table_permissions.items() if any(w in p for w in ("INSERT", "UPDATE", "DELETE"))]
+
 
 class AgentConfig(BaseModel):
     model_config = {"extra": "allow"}

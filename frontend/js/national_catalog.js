@@ -69,6 +69,33 @@ function normalizeCountryToIso(val) {
     return clean;
 }
 
+const LEGPROM_CATEGORY_MAP = {
+    '6110': { id: 30694, name: 'Джемперы, свитеры, пуловеры' },
+    '6206': { id: 231282, name: 'Рубашки' },
+    '6106': { id: 238944, name: 'Блузки, блузы и блузоны' },
+    '6202': { id: 237414, name: 'Куртки, ветровки, штормовки' },
+    '6201': { id: 237414, name: 'Куртки, ветровки, штормовки' },
+    '6104': { id: 30683, name: 'Брюки, бриджи, шорты' },
+    '6204': { id: 30683, name: 'Брюки, бриджи, шорты' },
+    '6103': { id: 30683, name: 'Брюки, бриджи, шорты' },
+    '6203': { id: 30683, name: 'Брюки, бриджи, шорты' },
+    '6109': { id: 214943, name: 'Майки, трусы, комбинации, пижамы, халаты и аналогичные товары' },
+    '6505': { id: 30728, name: 'Головные уборы' },
+};
+
+function resolveLegpromCategory(catIdRaw, tnved, currentName) {
+    let catId = catIdRaw ? parseInt(catIdRaw, 10) : null;
+    const prefix = (tnved || '').trim().substring(0, 4);
+    const isInvalid = !catId || catId >= 500000 || catId === 20000003 || catId === 234392 || catId === 235663;
+    if (isInvalid) {
+        if (LEGPROM_CATEGORY_MAP[prefix]) {
+            return LEGPROM_CATEGORY_MAP[prefix];
+        }
+        return { id: 31326, name: 'Одежда второго и третьего слоя' };
+    }
+    return { id: catId, name: currentName || null };
+}
+
 /**
  * Переключение размера страницы (10 / 20 / 50)
  */
@@ -356,11 +383,11 @@ function openCreateCardModal() {
     document.getElementById('nk_custom_attrs_container').innerHTML = '';
     document.getElementById('nkCardModerationCheck').checked = true;
 
-    // Default category ID for Light Industry (Легпром: 20000003)
+    // Default category ID for Light Industry (Легпром: 31326)
     const catInput = document.getElementById('nk_card_category_id');
-    if (catInput) catInput.value = '20000003';
+    if (catInput) catInput.value = '31326';
     const catName = document.getElementById('nk_card_category_name');
-    if (catName) catName.value = 'Одежда и текстиль';
+    if (catName) catName.value = 'Одежда второго и третьего слоя';
 
     openModal('productCardModal');
 }
@@ -407,8 +434,9 @@ async function editProductCard(cardId) {
         document.getElementById('nk_card_brand').value = card.brand || '';
         document.getElementById('nk_card_gtin').value = card.gtin || '';
         document.getElementById('nk_card_tnved').value = card.tnved || '';
-        document.getElementById('nk_card_category_id').value = card.category_id || '20000003';
-        document.getElementById('nk_card_category_name').value = card.category_name || '';
+        const resolved = resolveLegpromCategory(card.category_id, card.tnved, card.category_name);
+        document.getElementById('nk_card_category_id').value = String(resolved.id);
+        document.getElementById('nk_card_category_name').value = resolved.name || card.category_name || '';
 
         // Extract known attributes
         const attrs = Array.isArray(card.attributes) ? card.attributes : [];
@@ -537,6 +565,8 @@ async function saveProductCard(sendToModeration = false) {
     const saveBtn = document.getElementById('btnSaveNkCard');
     if (saveBtn) saveBtn.classList.add('loading');
 
+    const resolvedCat = resolveLegpromCategory(catIdRaw, tnved, catName);
+
     try {
         let res;
         if (currentEditingCardId) {
@@ -544,8 +574,8 @@ async function saveProductCard(sendToModeration = false) {
                 name,
                 brand: brand || null,
                 tnved: tnved || null,
-                category_id: catIdRaw ? parseInt(catIdRaw, 10) : null,
-                category_name: catName || null,
+                category_id: resolvedCat.id,
+                category_name: resolvedCat.name || catName || null,
                 moderation: !!isModeration,
                 attributes
             };
@@ -560,8 +590,8 @@ async function saveProductCard(sendToModeration = false) {
                 brand: brand || null,
                 gtin: gtin || null,
                 tnved: tnved || null,
-                category_id: catIdRaw ? parseInt(catIdRaw, 10) : 20000003,
-                category_name: catName || null,
+                category_id: resolvedCat.id,
+                category_name: resolvedCat.name || catName || null,
                 is_tech_gtin: !gtin,
                 is_set: false,
                 moderation: !!isModeration,
@@ -843,12 +873,6 @@ function populateMatrixFromDonor(card) {
     const donorTitle = document.getElementById('matrixDonorTitle');
     const donorMeta = document.getElementById('matrixDonorMeta');
 
-    if (banner && donorTitle) {
-        banner.style.display = 'flex';
-        donorTitle.textContent = `Основано на карточке: ${card.name || 'Без названия'}`;
-        donorMeta.textContent = `GTIN: ${card.gtin || 'нет'} | Категория: #${card.category_id || '-'} ${card.category_name || ''}`;
-    }
-
     // Extract attributes
     const attrs = Array.isArray(card.attributes) ? card.attributes : [];
     let donorArticle = card.article || '';
@@ -904,13 +928,14 @@ function populateMatrixFromDonor(card) {
     }
 
     // Определение валидной категории ГИС МТ (Легпром)
-    let finalCatId = card.category_id;
-    if (!finalCatId || finalCatId === 234392 || finalCatId === 235663 || finalCatId === 20000003) {
-        const tnvedPrefix = (donorTnved || card.tnved || '').substring(0, 4);
-        if (tnvedPrefix === '6202') finalCatId = 237414;
-        else if (tnvedPrefix === '6206') finalCatId = 231282;
-        else if (tnvedPrefix === '6104') finalCatId = 30683;
-        else finalCatId = 31326;
+    const resolvedCat = resolveLegpromCategory(card.category_id, donorTnved || card.tnved, card.category_name);
+    const finalCatId = resolvedCat.id;
+    const finalCatName = resolvedCat.name || card.category_name || '';
+
+    if (banner && donorTitle) {
+        banner.style.display = 'flex';
+        donorTitle.textContent = `Основано на карточке: ${card.name || 'Без названия'}`;
+        donorMeta.textContent = `GTIN: ${card.gtin || 'нет'} | Категория: #${finalCatId} ${finalCatName}`;
     }
 
     document.getElementById('matrix_base_name').value = cleanName || card.name || '';
@@ -1313,14 +1338,10 @@ async function submitMatrixBatch() {
     if (!tnved) return showToast('Ошибка', 'Укажите код ТН ВЭД (10 цифр, например 6202900001)', 'error');
     if (tnved.length !== 10) return showToast('Ошибка ТН ВЭД', 'Код ТН ВЭД должен содержать ровно 10 знаков (например, 6202900001)', 'error');
 
-    let categoryId = categoryIdRaw ? parseInt(categoryIdRaw) : 20000003;
-    if (categoryId === 20000003 || categoryId === 234392 || categoryId === 235663) {
-        const tnvedPrefix = tnved.substring(0, 4);
-        if (tnvedPrefix === '6202') categoryId = 237414;
-        else if (tnvedPrefix === '6206') categoryId = 231282;
-        else if (tnvedPrefix === '6104') categoryId = 30683;
-        else categoryId = 31326;
-    }
+    const resolvedCat = resolveLegpromCategory(categoryIdRaw, tnved);
+    const categoryId = resolvedCat.id;
+    const categoryName = resolvedCat.name || matrixDonorCard?.category_name || null;
+
     const checkedRows = matrixCombinations.filter(r => r.checked);
 
     if (checkedRows.length === 0) {
@@ -1417,7 +1438,7 @@ async function submitMatrixBatch() {
             brand: brand,
             tnved: tnved,
             category_id: categoryId,
-            category_name: matrixDonorCard?.category_name || null,
+            category_name: categoryName,
             is_tech_gtin: isTechGtin,
             is_set: false,
             gtin: isTechGtin ? null : row.gtin.trim(),
@@ -1460,3 +1481,38 @@ async function submitMatrixBatch() {
         }
     }
 }
+
+// Автоматическое определение категории НКТ при вводе ТН ВЭД
+document.addEventListener('DOMContentLoaded', () => {
+    const matrixTnvedEl = document.getElementById('matrix_tnved');
+    if (matrixTnvedEl) {
+        matrixTnvedEl.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (val.length >= 4) {
+                const resolved = resolveLegpromCategory(null, val);
+                const catInput = document.getElementById('matrix_category_id');
+                if (catInput && resolved.id) {
+                    catInput.value = String(resolved.id);
+                }
+            }
+        });
+    }
+
+    const cardTnvedEl = document.getElementById('nk_card_tnved');
+    if (cardTnvedEl) {
+        cardTnvedEl.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (val.length >= 4) {
+                const resolved = resolveLegpromCategory(null, val);
+                const catInput = document.getElementById('nk_card_category_id');
+                const catNameInput = document.getElementById('nk_card_category_name');
+                if (catInput && resolved.id) {
+                    catInput.value = String(resolved.id);
+                }
+                if (catNameInput && resolved.name) {
+                    catNameInput.value = resolved.name;
+                }
+            }
+        });
+    }
+});

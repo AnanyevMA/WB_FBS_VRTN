@@ -284,7 +284,67 @@ def normalize_country_to_iso(val: Optional[str]) -> Optional[str]:
     return val_clean
 
 
-def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional[str], Optional[str]]:
+CATEGORY_NAMES = {
+    30694: "Джемперы, свитеры, пуловеры",
+    214940: "Кардиганы и жилеты",
+    231282: "Рубашки",
+    238944: "Блузки, блузы и блузоны",
+    30683: "Брюки, бриджи, шорты",
+    30685: "Юбки и юбки-брюки",
+    30684: "Платья",
+    30696: "Костюмы и комплекты",
+    214934: "Пиджаки, жакеты, блейзеры",
+    237414: "Куртки, ветровки, штормовки",
+    238965: "Пальто, полупальто, накидки, плащи",
+    214943: "Майки, трусы, комбинации, пижамы, халаты и аналогичные товары",
+    30728: "Головные уборы",
+    31326: "Одежда второго и третьего слоя",
+}
+
+
+def resolve_legprom_category(
+    cat_id: Optional[int],
+    tnved: Optional[str] = None,
+    current_name: Optional[str] = None
+) -> tuple[int, str]:
+    """
+    Нормализует категорию товара Легпром для Честного Знака (True API / НКТ).
+    Если передан служебный узел классификатора (ОКПД2 >= 500000, 20000003, 234392, 235663)
+    или некорректная категория, вычисляет актуальную листовую категорию ГИС МТ по коду ТН ВЭД.
+    """
+    prefix = (tnved or "").strip()[:4]
+
+    # Справочник соответствия префиксов ТН ВЭД листовым категориям Честного Знака (Легпром)
+    tnved_map = {
+        "6110": (30694, "Джемперы, свитеры, пуловеры"),
+        "6206": (231282, "Рубашки"),
+        "6106": (238944, "Блузки, блузы и блузоны"),
+        "6202": (237414, "Куртки, ветровки, штормовки"),
+        "6201": (237414, "Куртки, ветровки, штормовки"),
+        "6104": (30683, "Брюки, бриджи, шорты"),
+        "6204": (30683, "Брюки, бриджи, шорты"),
+        "6103": (30683, "Брюки, бриджи, шорты"),
+        "6203": (30683, "Брюки, бриджи, шорты"),
+        "6109": (214943, "Майки, трусы, комбинации, пижамы, халаты и аналогичные товары"),
+        "6505": (30728, "Головные уборы"),
+    }
+
+    is_invalid_category = (
+        not cat_id
+        or cat_id >= 500000
+        or cat_id in (20000003, 234392, 235663)
+    )
+
+    if is_invalid_category:
+        if prefix in tnved_map:
+            return tnved_map[prefix]
+        return (31326, "Одежда второго и третьего слоя")
+
+    cat_name = current_name or CATEGORY_NAMES.get(cat_id, "Одежда")
+    return (cat_id, cat_name)
+
+
+def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional[str], Optional[str], int, str]:
     gtin_val = payload.gtin.strip() if payload.gtin else None
     if not payload.is_tech_gtin and not gtin_val:
         raise HTTPException(
@@ -309,19 +369,7 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
         )
 
     # Определение и нормализация категории товара для ГИС МТ (Легпром)
-    cat_id = payload.category_id
-    if cat_id in (234392, 235663, 20000003, None):
-        prefix = tnved_val[:4] if tnved_val else ""
-        if prefix == "6202":
-            cat_id = 237414  # Куртки, ветровки, штормовки
-        elif prefix == "6206":
-            cat_id = 231282  # Рубашки
-        elif prefix == "6104":
-            cat_id = 30683   # Брюки, бриджи, шорты
-        elif prefix.startswith("6") or prefix.startswith("4"):
-            cat_id = 31326   # Одежда второго и третьего слоя
-        else:
-            cat_id = cat_id or 237414
+    cat_id, cat_name = resolve_legprom_category(payload.category_id, tnved_val, payload.category_name)
 
     goods_item: dict = {
         "good_name": payload.name,
@@ -447,7 +495,7 @@ def _build_goods_item(payload: ProductCardCreateRequest) -> tuple[dict, Optional
         }
         goods_item["good_images"].append(img_dict)
 
-    return goods_item, gtin_val, tnved_val
+    return goods_item, gtin_val, tnved_val, cat_id, cat_name
 
 
 @router.post("/sellers/{seller_id}/national-catalog/products", response_model=ProductCardResponse)
@@ -462,7 +510,7 @@ async def create_product(
     seller = await _get_seller_or_404(seller_id, db)
     client = await _get_seller_nk_client(seller)
 
-    goods_item, gtin_val, tnved_val = _build_goods_item(payload)
+    goods_item, gtin_val, tnved_val, cat_id, cat_name = _build_goods_item(payload)
 
     # Отправка фида в Национальный каталог
     try:
@@ -478,8 +526,8 @@ async def create_product(
         name=payload.name,
         brand=payload.brand,
         tnved=tnved_val,
-        category_id=payload.category_id,
-        category_name=payload.category_name,
+        category_id=cat_id,
+        category_name=cat_name,
         is_tech_gtin=payload.is_tech_gtin,
         is_set=payload.is_set,
         status="moderation" if payload.moderation else "draft",
@@ -513,13 +561,15 @@ async def create_products_batch(
     goods_items = []
     normalized_gtins = []
     normalized_tnveds = []
+    normalized_cats = []
 
     for item in payload.items:
         item.moderation = payload.moderation
-        g_dict, gtin_norm, tnved_norm = _build_goods_item(item)
+        g_dict, gtin_norm, tnved_norm, cat_id, cat_name = _build_goods_item(item)
         goods_items.append(g_dict)
         normalized_gtins.append(gtin_norm)
         normalized_tnveds.append(tnved_norm)
+        normalized_cats.append((cat_id, cat_name))
 
     try:
         async with client:
@@ -529,15 +579,15 @@ async def create_products_batch(
         raise HTTPException(status_code=e.status_code or 400, detail=e.message)
 
     created_cards = []
-    for item, gtin_val, tnved_val in zip(payload.items, normalized_gtins, normalized_tnveds):
+    for item, gtin_val, tnved_val, (cat_id, cat_name) in zip(payload.items, normalized_gtins, normalized_tnveds, normalized_cats):
         card = ProductCard(
             seller_id=seller.id,
             gtin=gtin_val,
             name=item.name,
             brand=item.brand,
             tnved=tnved_val,
-            category_id=item.category_id,
-            category_name=item.category_name,
+            category_id=cat_id,
+            category_name=cat_name,
             is_tech_gtin=item.is_tech_gtin,
             is_set=item.is_set,
             status="moderation" if payload.moderation else "draft",
@@ -663,9 +713,19 @@ async def update_product(
     if payload.tnved:
         card.tnved = payload.tnved
     if payload.category_id is not None:
-        card.category_id = payload.category_id
-    if payload.category_name is not None:
+        norm_cat_id, norm_cat_name = resolve_legprom_category(
+            payload.category_id, card.tnved or payload.tnved, payload.category_name or card.category_name
+        )
+        card.category_id = norm_cat_id
+        card.category_name = norm_cat_name
+    elif payload.category_name is not None:
         card.category_name = payload.category_name
+    elif card.category_id and (card.category_id >= 500000 or card.category_id in (20000003, 234392, 235663)):
+        norm_cat_id, norm_cat_name = resolve_legprom_category(
+            card.category_id, card.tnved or payload.tnved, card.category_name
+        )
+        card.category_id = norm_cat_id
+        card.category_name = norm_cat_name
     if payload.attributes is not None:
         card.attributes = [a.model_dump() for a in payload.attributes]
     if payload.images is not None:
@@ -865,19 +925,23 @@ async def sync_products_from_nk(
         if gtin_val and len(gtin_val) == 13 and gtin_val.isdigit():
             gtin_val = f"0{gtin_val}"
 
-        # Извлечение категорий (выбираем листовую категорию ГИС МТ, исключая промежуточные узлы ТНВЭД/ОКПД2)
+        # Извлечение категорий (выбираем товарную категорию ГИС МТ, исключая служебные классификаторы ТНВЭД/ОКПД2 >= 500000)
         cat_id = None
         cat_name = None
         categories = p.get("categories", [])
         if categories and isinstance(categories, list):
-            chosen_cat = categories[-1]
-            for cat in reversed(categories):
-                if isinstance(cat, dict) and cat.get("cat_id") not in (234392, 235663):
-                    chosen_cat = cat
-                    break
-            if isinstance(chosen_cat, dict):
-                cat_id = chosen_cat.get("cat_id")
-                cat_name = chosen_cat.get("cat_name")
+            for cat in categories:
+                if isinstance(cat, dict):
+                    cid = cat.get("cat_id")
+                    if cid and cid < 500000 and cid not in (234392, 235663, 20000003):
+                        cat_id = cid
+                        cat_name = cat.get("cat_name")
+                        break
+            if not cat_id and categories:
+                first_cat = categories[0]
+                if isinstance(first_cat, dict):
+                    cat_id = first_cat.get("cat_id")
+                    cat_name = first_cat.get("cat_name")
 
         # Извлечение торговой марки
         brand_val = p.get("brand_name") or p.get("brand")
@@ -894,7 +958,10 @@ async def sync_products_from_nk(
         name_val = (p.get("good_name") or "Без названия")[:255]
         brand_str = str(brand_val)[:255] if brand_val else None
         tnved_str = str(tnved_val)[:20] if tnved_val else None
-        cat_name_str = str(cat_name)[:255] if cat_name else None
+
+        # Нормализуем категорию по ТН ВЭД (гарантирует отсутствие OKPD2 кодов 550xxx)
+        cat_id, cat_name_str = resolve_legprom_category(cat_id, tnved_str, cat_name)
+        cat_name_str = str(cat_name_str)[:255]
 
         card = existing_by_good_id.get(good_id)
         if not card and gtin_val:

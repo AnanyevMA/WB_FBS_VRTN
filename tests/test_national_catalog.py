@@ -741,4 +741,98 @@ async def test_create_product_normalizes_country_attr_2630():
             assert attr_2630["attr_value"] == "RU"
 
 
+def test_resolve_legprom_category_helper():
+    """Verify resolve_legprom_category helper maps TNVED and replaces invalid OKPD2 codes."""
+    from app.national_catalog.router import resolve_legprom_category
+
+    # 1. Толстовка: TNVED 6110 with invalid OKPD2 node 550436 -> 30694
+    cat_id, cat_name = resolve_legprom_category(550436, "6110309900")
+    assert cat_id == 30694
+    assert cat_name == "Джемперы, свитеры, пуловеры"
+
+    # 2. Рубашки: TNVED 6206 with None / 20000003
+    cat_id, cat_name = resolve_legprom_category(None, "6206300000")
+    assert cat_id == 231282
+    assert cat_name == "Рубашки"
+
+    # 3. Брюки: TNVED 6104 with 550374
+    cat_id, cat_name = resolve_legprom_category(550374, "6104630000")
+    assert cat_id == 30683
+    assert cat_name == "Брюки, бриджи, шорты"
+
+    # 4. Valid category is preserved
+    cat_id, cat_name = resolve_legprom_category(30694, "6110309900")
+    assert cat_id == 30694
+    assert cat_name == "Джемперы, свитеры, пуловеры"
+
+
+@pytest.mark.asyncio
+async def test_batch_create_products_normalizes_category_id_550436():
+    """Verify batch product creation normalizes category 550436 to 30694 in both feed and DB."""
+    await init_db()
+    seller_id = f"test-nk-batch-{uuid.uuid4().hex[:8]}"
+
+    async with AsyncSessionLocal() as session:
+        seller = Seller(
+            id=seller_id,
+            name="Магазин Серии",
+            wb_api_token_encrypted=encrypt("mock-wb"),
+            cz_token_encrypted=encrypt("mock-cz-token"),
+            cz_inn="190207495060",
+            is_active=True
+        )
+        session.add(seller)
+        await session.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        headers = await _get_auth_headers(client)
+
+        with patch.object(NKClient, "create_or_update_feed", new_callable=AsyncMock) as mock_feed:
+            mock_feed.return_value = 502425999
+
+            res = await client.post(
+                f"/api/v1/sellers/{seller_id}/national-catalog/products/batch",
+                json={
+                    "moderation": True,
+                    "items": [
+                        {
+                            "name": "Толстовка из флиса голубой S",
+                            "brand": "VRTN workshop",
+                            "tnved": "6110309900",
+                            "category_id": 550436,  # Old OKPD2 code from donor
+                            "category_name": "14.39.10.190 Изделия аналогичные трикотажные или вязаные",
+                            "is_tech_gtin": True,
+                            "attributes": [
+                                {"attr_id": 35, "attr_value": "S", "attr_value_type": "МЕЖДУНАРОДНЫЙ"},
+                                {"attr_id": 36, "attr_value": "голубой"},
+                                {"attr_id": 2483, "attr_value": "п / э 100%"},
+                                {"attr_id": 13914, "attr_value": "VRTN0311", "attr_value_type": "Артикул"},
+                                {"attr_id": 2630, "attr_value": "Россия"},
+                            ]
+                        }
+                    ]
+                },
+                headers=headers
+            )
+            assert res.status_code == 200, res.text
+            data = res.json()
+            assert data["success"] is True
+            assert data["feed_id"] == 502425999
+
+            # Verify True API received categories: [30694]
+            sent_goods = mock_feed.call_args[0][0]
+            assert sent_goods[0]["categories"] == [30694]
+
+            # Verify card in DB has normalized category_id == 30694
+            async with AsyncSessionLocal() as session:
+                card = (await session.execute(
+                    select(ProductCard).where(ProductCard.feed_id == 502425999)
+                )).scalars().first()
+                assert card is not None
+                assert card.category_id == 30694
+                assert card.category_name == "Джемперы, свитеры, пуловеры"
+
+
+
 

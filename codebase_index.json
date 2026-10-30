@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-26T22:25:21.500441+00:00",
+  "updated_at": "2026-10-30T15:00:19.085333+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 176,
+  "total_files": 179,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1749,7 +1749,7 @@
     {
       "file": "app/agents/wb_item_returns_agent.py",
       "layer": "agents",
-      "hash": "47ca79e572fe",
+      "hash": "96e100eb77b7",
       "docstring": "WB Item Returns Celery Agent — WB FBS Manager",
       "classes": [
         {
@@ -1800,6 +1800,27 @@
           ],
           "decorators": [],
           "docstring": ""
+        },
+        {
+          "name": "_as_utc",
+          "is_async": false,
+          "args": [
+            "moment"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_is_sync_due",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller",
+            "seller_id",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": "Check the per-seller interval and the cooldown after the latest failed attempt."
         },
         {
           "name": "check_and_sync_item_returns",
@@ -4320,7 +4341,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "a032a4021e07",
+      "hash": "89bec3134378",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -4359,7 +4380,7 @@
     {
       "file": "app/database.py",
       "layer": "core",
-      "hash": "6793c979c485",
+      "hash": "3cd2e5828588",
       "docstring": "Database setup — async SQLAlchemy engine + session factory",
       "classes": [
         {
@@ -4372,6 +4393,17 @@
         }
       ],
       "functions": [
+        {
+          "name": "build_engine_kwargs",
+          "is_async": false,
+          "args": [
+            "database_url",
+            "use_null_pool",
+            "echo"
+          ],
+          "decorators": [],
+          "docstring": "Engine options for the current process type."
+        },
         {
           "name": "get_db",
           "is_async": true,
@@ -4397,7 +4429,8 @@
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
-        "sqlalchemy.orm"
+        "sqlalchemy.orm",
+        "sqlalchemy.pool"
       ]
     },
     {
@@ -4908,7 +4941,7 @@
     {
       "file": "app/national_catalog/router.py",
       "layer": "core",
-      "hash": "6f3130b06b25",
+      "hash": "9cc2532d7610",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4983,6 +5016,17 @@
           ],
           "decorators": [],
           "docstring": "Преобразует текстовое название страны в 2-буквенный ISO 3166-1 alpha-2 код (для attr_id 2630)."
+        },
+        {
+          "name": "resolve_legprom_category",
+          "is_async": false,
+          "args": [
+            "cat_id",
+            "tnved",
+            "current_name"
+          ],
+          "decorators": [],
+          "docstring": "Нормализует категорию товара Легпром для Честного Знака (True API / НКТ)."
         },
         {
           "name": "_build_goods_item",
@@ -6709,7 +6753,7 @@
     {
       "file": "app/services/wb_analytics_client.py",
       "layer": "services",
-      "hash": "7177e5f57673",
+      "hash": "2ed2188e127c",
       "docstring": "Wildberries Analytics API Client.",
       "classes": [
         {
@@ -7181,7 +7225,7 @@
     {
       "file": "app/services/wb_item_returns_service.py",
       "layer": "services",
-      "hash": "caf2177af3f6",
+      "hash": "c1b5d2d60092",
       "docstring": "WB Item Returns Service - WB FBS Manager.",
       "classes": [],
       "functions": [
@@ -7715,6 +7759,32 @@
         "pathlib",
         "secrets",
         "sys"
+      ]
+    },
+    {
+      "file": "scripts/migrate_fix_categories.py",
+      "layer": "config",
+      "hash": "0145eec42629",
+      "docstring": "",
+      "classes": [],
+      "functions": [
+        {
+          "name": "main",
+          "is_async": true,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.national_catalog.models",
+        "app.national_catalog.router",
+        "asyncio",
+        "sqlalchemy"
       ]
     },
     {
@@ -10210,6 +10280,148 @@
       ]
     },
     {
+      "file": "tests/test_item_returns_no_content.py",
+      "layer": "tests",
+      "hash": "62ddb14156de",
+      "docstring": "Regression tests for the item returns sync.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db_session",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_create_seller",
+          "is_async": true,
+          "args": [
+            "session",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_add_error",
+          "is_async": false,
+          "args": [
+            "session",
+            "seller_id",
+            "age"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_item_returns_204_means_no_returns",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_excise_report_204_means_no_data",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_empty_200_is_still_an_error_and_names_the_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Only 204 promises an empty body. An empty 200 is a broken response."
+        },
+        {
+          "name": "test_204_from_wb_updates_last_sync_and_writes_no_error",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Full agent run: nothing to process, so the next run waits for the regular interval."
+        },
+        {
+          "name": "test_recent_failure_is_not_retried_during_cooldown",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_failure_is_retried_after_cooldown",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_cooldown_is_per_seller",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_failed_sync_leaves_no_unretrieved_future",
+          "is_async": true,
+          "args": [
+            "db_session"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "The shared future must not log \"Future exception was never retrieved\"."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents",
+        "app.agents.wb_item_returns_agent",
+        "app.database",
+        "app.models.audit",
+        "app.models.seller",
+        "app.services",
+        "app.services.encryption",
+        "app.services.wb_analytics_client",
+        "asyncio",
+        "datetime",
+        "httpx",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "unittest.mock"
+      ]
+    },
+    {
       "file": "tests/test_kb_agent.py",
       "layer": "tests",
       "hash": "06eae830732a",
@@ -11451,7 +11663,7 @@
     {
       "file": "tests/test_national_catalog.py",
       "layer": "tests",
-      "hash": "2f22bd9b40ab",
+      "hash": "04b8684a661f",
       "docstring": "Tests for National Catalog (НКТ) module:",
       "classes": [],
       "functions": [
@@ -11567,6 +11779,22 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Ensure country attr_id 2630 with value 'Россия' is sent to True API as 'RU'."
+        },
+        {
+          "name": "test_resolve_legprom_category_helper",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Verify resolve_legprom_category helper maps TNVED and replaces invalid OKPD2 codes."
+        },
+        {
+          "name": "test_batch_create_products_normalizes_category_id_550436",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Verify batch product creation normalizes category 550436 to 30694 in both feed and DB."
         }
       ],
       "endpoints": [],
@@ -14543,9 +14771,94 @@
       ]
     },
     {
+      "file": "tests/test_worker_db_pool.py",
+      "layer": "tests",
+      "hash": "2355bf9b450a",
+      "docstring": "Regression tests for the Celery worker database pool.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_null_pool_mode_drops_all_pool_options",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "NullPool rejects pool_size and pool_timeout, so they must not be passed."
+        },
+        {
+          "name": "test_default_mode_keeps_pool_for_api_and_bot",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_default_mode_sqlite_has_no_pool_sizing",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_engine_accepts_null_pool_kwargs_for_postgres",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_null_pool_survives_consecutive_event_loops",
+          "is_async": false,
+          "args": [
+            "tmp_path"
+          ],
+          "decorators": [],
+          "docstring": "Each asyncio.run() opens its own connection, as Celery tasks do."
+        },
+        {
+          "name": "test_setting_is_off_by_default",
+          "is_async": false,
+          "args": [
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_setting_reads_environment",
+          "is_async": false,
+          "args": [
+            "monkeypatch"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_prod_compose_enables_null_pool_for_worker_only",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "app.database",
+        "asyncio",
+        "pathlib",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "yaml"
+      ]
+    },
+    {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "569e99cfe124",
+      "hash": "1294b6926795",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

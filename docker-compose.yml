@@ -80,6 +80,8 @@ services:
     container_name: wbfbs_worker
     restart: unless-stopped
     env_file: .env
+    environment:
+      - DB_USE_NULL_POOL=true
     volumes:
       - ./app:/app/app
       - certs_data:/app/certs

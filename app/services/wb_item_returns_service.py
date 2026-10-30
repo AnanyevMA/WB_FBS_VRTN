@@ -288,6 +288,7 @@ async def sync_seller_returns(db: AsyncSession, seller_id: str, days: int = 14, 
     except Exception as e:
         if not fut.done():
             fut.set_exception(e)
+            fut.exception()  # Mark as retrieved: usually nobody else awaits this future
         raise
     finally:
         _seller_sync_in_progress.pop(seller_id, None)

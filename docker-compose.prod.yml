@@ -114,6 +114,7 @@ services:
     env_file: .env
     environment:
       - MALLOC_TRIM_THRESHOLD_=65536
+      - DB_USE_NULL_POOL=true
     volumes:
       - certs_data:/app/certs
       - logs_data:/app/logs

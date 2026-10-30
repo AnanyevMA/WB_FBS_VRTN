@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-26 22:25:21 UTC | **Файлов проиндексировано**: 176  
+> **Дата актуализации**: 2026-10-30 15:00:19 UTC | **Файлов проиндексировано**: 179  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -120,7 +120,7 @@
 | [`app/bot/keyboards.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot/keyboards.py) | — | `get_main_reply_keyboard`, `get_orders_list_keyboard`, `get_order_detail_keyboard` | Telegram Bot Keyboards — WB FBS Manager |
 | [`app/celery_app.py`](file:///D:/PyCharm_Projects/WB FBS/app/celery_app.py) | — | `send_worker_lost_telegram_alert`, `handle_celery_task_failure` | Celery Application Configuration — WB FBS Manager |
 | [`app/config.py`](file:///D:/PyCharm_Projects/WB FBS/app/config.py) | `Settings` | `get_settings` | Application Configuration — WB FBS Manager |
-| [`app/database.py`](file:///D:/PyCharm_Projects/WB FBS/app/database.py) | `Base` | `get_db`, `init_db` | Database setup — async SQLAlchemy engine + session factory |
+| [`app/database.py`](file:///D:/PyCharm_Projects/WB FBS/app/database.py) | `Base` | `build_engine_kwargs`, `get_db`, `init_db` | Database setup — async SQLAlchemy engine + session factory |
 | [`app/main.py`](file:///D:/PyCharm_Projects/WB FBS/app/main.py) | — | `GET /` → `root`<br>`GET /health` → `health_check` | Модуль кодовой базы |
 | [`app/national_catalog/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/__init__.py) | — | — | Национальный Каталог (НКТ) Честного Знака — модуль управления карточками товаров. |
 | [`app/national_catalog/client.py`](file:///D:/PyCharm_Projects/WB FBS/app/national_catalog/client.py) | `NKAPIError`, `NKClient` | — | Модуль кодовой базы |
@@ -160,6 +160,7 @@
 | [`tests/test_e2e_item_returns_lifecycle.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_e2e_item_returns_lifecycle.py) | — | `db_session`, `_create_seller`, `test_cross_returns_then_excise_report_correlation`, `test_cross_celery_periodic_and_manual_rest_sync_idempotence`, +еще 13 | Tier 3 & Tier 4 Tests: End-to-End Item Returns Lifecycle & Cross-Feature Integration. |
 | [`tests/test_item_returns_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_item_returns_adversarial.py) | — | `adv_db`, `_add_seller`, `test_adv_interval_boundary_fine_granularity`, `test_adv_disabled_seller_skipping`, +еще 2 | Adversarial Stress Test Suite for Item Returns Celery Agent (Milestone 3 Iteration 2). |
 | [`tests/test_item_returns_agent_celery.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_item_returns_agent_celery.py) | — | `db_session`, `_create_test_seller`, `test_celery_task_registration_and_queue_routing`, `test_celery_beat_schedule_configuration`, +еще 12 | Tier 1 & Tier 2 Tests for Celery Item Returns Agent & PoLP Security. |
+| [`tests/test_item_returns_no_content.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_item_returns_no_content.py) | — | `db_session`, `_create_seller`, `_add_error`, `test_item_returns_204_means_no_returns`, +еще 7 | Regression tests for the item returns sync. |
 | [`tests/test_kb_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kb_agent.py) | — | `test_kb_service_index_loading_and_structure`, `test_kb_two_tier_fast_search`, `test_kb_get_document_content`, `test_kb_integrity_validation`, +еще 3 | Unit & Integration Tests for Knowledge Base Service and KB Sync Agent. |
 | [`tests/test_kiz_adversarial_challenge_m1_2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_adversarial_challenge_m1_2.py) | — | `test_order_5647931541_dirty_variants`, `test_lp_return_document_ki_formatting_kiz_codes`, `test_lp_return_document_ki_formatting_items_parameter`, `test_database_normalization_batch_stress`, +еще 7 | Adversarial Challenge & Empirical Boundary Test Suite for Milestone M1. |
 | [`tests/test_kiz_adversarial_challenge_m2_2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_adversarial_challenge_m2_2.py) | — | `test_celery_withdraw_order_kiz_e2e_checked_not_ok_error_07`, `test_celery_withdraw_order_kiz_array_response_with_error_07`, `test_celery_withdraw_order_kiz_transient_error_triggers_retry`, `test_submit_signed_kiz_document_slow_response_timeout`, +еще 7 | Adversarial Challenge & Empirical Verification Suite for Milestone M2. |
@@ -171,7 +172,7 @@
 | [`tests/test_kiz_signing_endpoints.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_signing_endpoints.py) | — | `test_prepare_and_submit_kiz_document_endpoints` | Модуль кодовой базы |
 | [`tests/test_kiz_withdrawal_return.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_withdrawal_return.py) | — | `test_kiz_structure_validation`, `test_withdrawal_document_building_with_fias`, `test_golden_schema_withdrawal_and_return_with_receipts`, `test_return_document_building`, +еще 3 | Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS) |
 | [`tests/test_morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_morning_digest.py) | `TestSellerDigestDue`, `TestMorningDigestTelegramContent`, `TestManifestMorningDigestRegistered`, `TestCeleryBeatMorningDigest`, `TestMorningDigestFailureHandling` | `_stub_aiogram`, `_make_telegram_svc` | Tests: morning_digest agent — timezone-aware fire logic, Telegram message content, |
-| [`tests/test_national_catalog.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_national_catalog.py) | — | `cleanup_db_engine`, `_get_auth_headers`, `test_nk_client_feed_creation_and_status`, `test_nk_client_document_and_signing`, +еще 9 | Tests for National Catalog (НКТ) module: |
+| [`tests/test_national_catalog.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_national_catalog.py) | — | `cleanup_db_engine`, `_get_auth_headers`, `test_nk_client_feed_creation_and_status`, `test_nk_client_document_and_signing`, +еще 11 | Tests for National Catalog (НКТ) module: |
 | [`tests/test_order_poller_adversarial.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_order_poller_adversarial.py) | — | `setup_db`, `test_seller`, `test_resolve_order_metadata_string_and_invalid_chrt_nm_ids`, `test_resolve_order_metadata_empty_and_missing_payload`, +еще 8 | Модуль кодовой базы |
 | [`tests/test_order_poller_enrichment.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_order_poller_enrichment.py) | — | `setup_db`, `test_seller`, `test_resolve_order_metadata_from_local_db_cache_by_chrt_id`, `test_resolve_order_metadata_from_local_db_cache_by_article`, +еще 6 | Модуль кодовой базы |
 | [`tests/test_orders_sorting_and_archive.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_orders_sorting_and_archive.py) | — | `test_seller`, `test_orders_default_sorting_by_date_desc`, `test_orders_sorting_by_columns_asc_desc`, `test_order_archive_conditions_and_view_filtering` | Модуль кодовой базы |
@@ -198,6 +199,7 @@
 | [`tests/test_wb_order_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_order_status.py) | — | `test_wb_client_get_orders_status_endpoint`, `test_refresh_orders_syncs_wb_status_and_supplier_status`, `test_sync_all_orders_cz_status_not_found`, `test_sync_all_orders_cz_status_missing_inn`, +еще 7 | Модуль кодовой базы |
 | [`tests/test_wb_warehouse_sales.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales.py) | — | `test_wb_analytics_client_success`, `test_wb_analytics_client_unauthorized`, `test_warehouse_sales_no_token`, `test_warehouse_sales_already_retired`, +еще 5 | Unit and Integration Tests for WB Warehouse Sales & FBO KIZ Processing. |
 | [`tests/test_wb_warehouse_sales_challenger.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_warehouse_sales_challenger.py) | — | `db_session`, `_create_test_seller`, `test_adversarial_negative_price_in_excise_row_triggers_return_without_fin_report`, `test_adversarial_negative_price_introduced_kiz_skips_and_cancels_order`, +еще 7 | Empirical Challenger Test Suite for WB Warehouse Sales & Storno Returns (M2 Iteration 2). |
+| [`tests/test_worker_db_pool.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_worker_db_pool.py) | — | `test_null_pool_mode_drops_all_pool_options`, `test_default_mode_keeps_pool_for_api_and_bot`, `test_default_mode_sqlite_has_no_pool_sizing`, `test_engine_accepts_null_pool_kwargs_for_postgres`, +еще 4 | Regression tests for the Celery worker database pool. |
 
 ### 📄 Системные Конфигурации & Скрипты
 
@@ -211,6 +213,7 @@
 | [`scripts/diagnose_wb_api.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/diagnose_wb_api.py) | — | `test_wb` | Diagnostic script to test live Wildberries API methods and token status. |
 | [`scripts/do_heal.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/do_heal.py) | — | `main` | Модуль кодовой базы |
 | [`scripts/generate_secrets.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/generate_secrets.py) | — | `generate_fernet_key`, `generate_random_token`, `generate_password`, `main` | Generate Secure Keys and Passwords for WB FBS Manager |
+| [`scripts/migrate_fix_categories.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/migrate_fix_categories.py) | — | `main` | Модуль кодовой базы |
 | [`scripts/retry_order_cz.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/retry_order_cz.py) | — | `main` | Script to trigger retry-withdrawal for an order. |
 | [`scripts/set_admin_password.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/set_admin_password.py) | — | `sync_local_env_file`, `is_running_in_docker`, `try_docker_forward`, `set_admin_password_direct`, +еще 1 | Set or Reset Admin Password for WB FBS Manager |
 | [`scripts/sync_order_cz_status.py`](file:///D:/PyCharm_Projects/WB FBS/scripts/sync_order_cz_status.py) | — | `sync_order` | Script to synchronize order CZ withdrawal document status with True API v4. |

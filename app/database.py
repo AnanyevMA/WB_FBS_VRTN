@@ -3,18 +3,31 @@ Database setup — async SQLAlchemy engine + session factory
 """
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
+
+def build_engine_kwargs(database_url: str, use_null_pool: bool, echo: bool = False) -> dict:
+    """Engine options for the current process type."""
+    if use_null_pool:
+        # Celery tasks call asyncio.run() per invocation. A pooled asyncpg connection stays bound
+        # to the closed loop, so the next checkout fails with "Event loop is closed".
+        return {"echo": echo, "poolclass": NullPool}
+
+    kwargs = {"echo": echo, "pool_pre_ping": True}
+    if not database_url.startswith("sqlite"):
+        kwargs.update({
+            "pool_size": settings.db_pool_size,
+            "max_overflow": settings.db_max_overflow,
+            "pool_recycle": settings.db_pool_recycle,
+            "pool_timeout": settings.db_pool_timeout,
+        })
+    return kwargs
+
+
 # Async engine (supports both PostgreSQL and SQLite)
-engine_kwargs = {"echo": settings.debug, "pool_pre_ping": True}
-if not settings.database_url.startswith("sqlite"):
-    engine_kwargs.update({
-        "pool_size": settings.db_pool_size,
-        "max_overflow": settings.db_max_overflow,
-        "pool_recycle": settings.db_pool_recycle,
-        "pool_timeout": settings.db_pool_timeout,
-    })
+engine_kwargs = build_engine_kwargs(settings.database_url, settings.db_use_null_pool, settings.debug)
 
 try:
     engine = create_async_engine(settings.database_url, **engine_kwargs)

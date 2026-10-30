@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 import uuid
 
 from celery import Task
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.celery_app import celery_app
@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 # In-memory run tracker: seller_id -> datetime (UTC) of last sync
 _item_returns_last_runs: Dict[str, datetime] = {}
+
+# A failed sync is retried sooner than the regular interval, but not on every Beat tick
+ERROR_RETRY_COOLDOWN = timedelta(minutes=30)
 
 
 class AsyncTask(Task):
@@ -80,6 +83,25 @@ async def _sync_seller(session: AsyncSession, seller: Seller, days: int = 14) ->
     return res
 
 
+def _as_utc(moment: datetime) -> datetime:
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+async def _is_sync_due(session: AsyncSession, seller: Seller, seller_id: str, now_utc: datetime) -> bool:
+    """Check the per-seller interval and the cooldown after the latest failed attempt."""
+    interval_h = int(getattr(seller, "item_returns_interval_hours", 6) or 6)
+    last_run = getattr(seller, "last_item_returns_at", None) or _item_returns_last_runs.get(seller_id)
+    if last_run and (now_utc - _as_utc(last_run)) < timedelta(hours=interval_h):
+        return False
+
+    last_error = await session.scalar(
+        select(func.max(AuditLog.created_at)).where(
+            AuditLog.seller_id == seller_id, AuditLog.action == "ITEM_RETURNS_SYNC_ERROR",
+        )
+    )
+    return not (last_error and (now_utc - _as_utc(last_error)) < ERROR_RETRY_COOLDOWN)
+
+
 @celery_app.task(name="app.agents.wb_item_returns_agent.check_and_sync_item_returns", queue="cz_operations", base=AsyncTask)
 async def check_and_sync_item_returns(db: Optional[AsyncSession] = None) -> Dict[str, Any]:
     """Periodic Celery Beat task (every 300s). Reconciles returns for active sellers."""
@@ -96,12 +118,8 @@ async def check_and_sync_item_returns(db: Optional[AsyncSession] = None) -> Dict
             if not seller or not getattr(seller, "item_returns_enabled", True):
                 continue
 
-            interval_h = int(getattr(seller, "item_returns_interval_hours", 6) or 6)
-            last_run = getattr(seller, "last_item_returns_at", None) or _item_returns_last_runs.get(seller_id)
-            if last_run:
-                lr = last_run if last_run.tzinfo else last_run.replace(tzinfo=timezone.utc)
-                if (now_utc - lr) < timedelta(hours=interval_h):
-                    continue
+            if not await _is_sync_due(session, seller, seller_id, now_utc):
+                continue
 
             try:
                 res = await _sync_seller(session, seller, days=14)

@@ -87,6 +87,8 @@ class WBAnalyticsClient:
                 err_text = resp.text[:300]
                 logger.error(f"[WB Analytics] HTTP {resp.status_code}: {err_text}")
                 raise WBAnalyticsAPIError(f"API Error {resp.status_code}: {err_text}")
+            if resp.status_code == 204:
+                return []
 
             res_json = resp.json()
             return res_json.get("response", {}).get("data", [])
@@ -132,12 +134,15 @@ class WBAnalyticsClient:
                 err_text = resp.text[:300]
                 logger.error(f"[WB Analytics] HTTP {resp.status_code}: {err_text}")
                 raise WBAnalyticsAPIError(f"API Error {resp.status_code}: {err_text}")
+            if resp.status_code == 204:
+                # WB answers 204 No Content when the seller has no returns for the period
+                return []
 
             try:
                 res_json = resp.json()
             except Exception as e:
-                logger.error(f"[WB Analytics] Failed to parse JSON response: {e}")
-                raise WBAnalyticsAPIError(f"Failed to parse JSON response: {e}")
+                logger.error(f"[WB Analytics] Failed to parse JSON response (HTTP {resp.status_code}): {e}")
+                raise WBAnalyticsAPIError(f"Failed to parse JSON response (HTTP {resp.status_code}): {e}")
 
             if isinstance(res_json, dict):
                 if "response" in res_json and isinstance(res_json["response"], dict):

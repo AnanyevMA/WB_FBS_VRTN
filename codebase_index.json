@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-30T15:00:19.085333+00:00",
+  "updated_at": "2026-10-31T03:08:00.750306+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 179,
+  "total_files": 180,
   "files": [
     {
       "file": "alembic/env.py",
@@ -11815,6 +11815,65 @@
         "sqlalchemy",
         "unittest.mock",
         "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_nginx_docs_blocked.py",
+      "layer": "tests",
+      "hash": "e47c3287b57b",
+      "docstring": "API docs must be closed from the internet by nginx, while the application itself",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_blocked_location_pattern",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_nginx_blocks_docs_paths",
+          "is_async": false,
+          "args": [
+            "path"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('path', List(elts=[Constant(value='/docs'), Constant(value='/docs/oauth2-redirect'), Constant(value='/redoc'), Constant(value='/openapi.json')], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_nginx_keeps_other_paths_open",
+          "is_async": false,
+          "args": [
+            "path"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('path', List(elts=[Constant(value='/'), Constant(value='/health'), Constant(value='/static/index.html'), Constant(value='/api/v1/sellers'), Constant(value='/vacation/docs'), Constant(value='/docs.html'), Constant(value='/redocs'), Constant(value='/api/v1/docs')], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_application_still_serves_docs",
+          "is_async": false,
+          "args": [
+            "path"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('path', List(elts=[Constant(value='/docs'), Constant(value='/redoc'), Constant(value='/openapi.json')], ctx=Load()))"
+          ],
+          "docstring": "The block lives in nginx only, so the docs stay usable while working on the project."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.main",
+        "fastapi.testclient",
+        "pathlib",
+        "pytest",
+        "re"
       ]
     },
     {

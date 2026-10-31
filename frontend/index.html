@@ -319,15 +319,15 @@
                             <span style="font-size: 20px;">⚡</span>
                             <div>
                                 <div style="font-weight: 600; font-size: 13px;">Автоматическая синхронизация архива WB по API</div>
-                                <div style="font-size: 11px; color: var(--text-muted);">Загрузка сборочных заданий старше 3 дней (отмены, статусы, прикрепленные КИЗ) без загрузки Excel</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">Загрузка сборочных заданий, созданных более 3 месяцев назад (отмены, статусы, прикрепленные КИЗ). Более свежие заказы обновляются автоматически</div>
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <select id="archiveApiMonthsSelect" class="form-control" style="width: auto; padding: 6px 10px; font-size: 12px; height: 34px;">
-                                <option value="3" selected>За последние 3 месяца</option>
-                                <option value="1">За текущий месяц</option>
-                                <option value="2">За последние 2 месяца</option>
-                                <option value="6">За полгода (6 мес)</option>
+                                <option value="3" selected>3 месяца архива</option>
+                                <option value="1">1 месяц архива</option>
+                                <option value="2">2 месяца архива</option>
+                                <option value="6">6 месяцев архива</option>
                             </select>
                             <button id="archiveApiSyncBtn" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; height: 34px; display: flex; align-items: center; gap: 6px;" onclick="syncArchiveFromWbApi()">
                                 <span>🔄</span> Синхронизировать по API

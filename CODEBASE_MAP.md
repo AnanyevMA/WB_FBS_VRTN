@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-31 05:31:09 UTC | **Файлов проиндексировано**: 181  
+> **Дата актуализации**: 2026-10-31 05:46:26 UTC | **Файлов проиндексировано**: 189  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -15,6 +15,7 @@
 | [`app/models/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/__init__.py) | — | — | Модуль кодовой базы |
 | [`app/models/audit.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/audit.py) | `AuditLog` | — | Модуль кодовой базы |
 | [`app/models/kiz.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/kiz.py) | `KizOperationType`, `KizOperation`, `KizProductInfo`, `BatchStatus`, `KizSignatureBatch` | — | Модуль кодовой базы |
+| [`app/models/kiz_event.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/kiz_event.py) | `KizEvent` | — | KIZ Event Log — WB FBS Manager |
 | [`app/models/order.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/order.py) | `OrderStatus`, `KizStatus`, `Order` | — | Модуль кодовой базы |
 | [`app/models/seller.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/seller.py) | `Seller` | — | Модуль кодовой базы |
 | [`app/models/supply.py`](file:///D:/PyCharm_Projects/WB FBS/app/models/supply.py) | `SupplyStatus`, `Supply` | — | Модуль кодовой базы |
@@ -65,6 +66,9 @@
 | [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | `parse_cz_token_expiration` | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
 | [`app/services/encryption.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/encryption.py) | `EncryptionService` | `_get_fernet`, `encrypt`, `decrypt` | Encryption Service — шифрование чувствительных данных (токены API, credentials) |
 | [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
+| [`app/services/kiz_event_collectors.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_collectors.py) | `CollectResult` | `clean_cis_of`, `parse_event_datetime`, `_price`, `_text`, +еще 12 | KIZ Event Collectors — WB FBS Manager |
+| [`app/services/kiz_event_runner.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_runner.py) | — | `run_collector` | KIZ Event Runner — WB FBS Manager |
+| [`app/services/kiz_event_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_service.py) | — | `save_events`, `_save_chunk`, `_fill_empty_fields` | KIZ Event Service — WB FBS Manager |
 | [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `is_kiz_withdrawn`, `extract_cz_item_info`, `normalize_kiz_light_industry`, `parse_kiz_code`, +еще 4 | Модуль кодовой базы |
 | [`app/services/signature_batch_executor.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/signature_batch_executor.py) | — | `sync_batch_with_cz_data`, `build_batch_signing_payloads` | Signature Batch Executor Service. |
 | [`app/services/signature_batch_submitter.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/signature_batch_submitter.py) | — | `execute_signed_batch_submission` | Signature Batch Submitter Service. |
@@ -73,7 +77,7 @@
 | [`app/services/unified_kiz_batch_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/unified_kiz_batch_service.py) | — | `_normalize_dt`, `_is_return_row`, `_is_sale_row`, `create_unified_kiz_signature_batch` | Unified KIZ Batch Reconciliation Service. |
 | [`app/services/unified_kiz_payload_builder.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/unified_kiz_payload_builder.py) | — | `build_unified_withdrawals_payload`, `build_unified_returns_payload` | Unified KIZ Payload Builder — Helper for unified_kiz_batch_service. |
 | [`app/services/wb_analytics_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_analytics_client.py) | `WBAnalyticsAPIError`, `WBAnalyticsRateLimitError`, `WBAnalyticsUnauthorizedError`, `WBAnalyticsClient` | — | Wildberries Analytics API Client. |
-| [`app/services/wb_archive_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_archive_service.py) | — | `get_recent_months`, `parse_wb_iso_datetime`, `resolve_order_status`, `_upsert_archive_order`, +еще 1 | WB Archive API Service — синхронизация архивных сборочных заданий WB (>3 дней). |
+| [`app/services/wb_archive_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_archive_service.py) | — | `get_recent_months`, `get_archive_months`, `parse_wb_iso_datetime`, `resolve_order_status`, +еще 2 | WB Archive API Service — синхронизация архивных сборочных заданий WB (созданных более 3 месяцев назад). |
 | [`app/services/wb_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_client.py) | `WBAPIError`, `WBUnauthorizedError`, `WBRateLimitError`, `WBMetaValidationError`, `WBClient` | `parse_wb_token_expiration`, `get_wb_token_status`, `is_kiz_required` | Wildberries Marketplace API Client. |
 | [`app/services/wb_finance_batch_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_finance_batch_service.py) | — | `_is_return_row`, `_is_sale_row`, `create_finance_return_signature_batch` | WB Finance Return Batch Service — WB FBS Manager |
 | [`app/services/wb_finance_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_finance_client.py) | `WBFinanceAPIError`, `WBFinanceRateLimitError`, `WBFinanceUnauthorizedError`, `WBFinanceClient` | — | Wildberries Finance API Client. |
@@ -94,6 +98,7 @@
 | [`app/agents/cz_token_refresher.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_token_refresher.py) | — | ⚙️ `app.agents.cz_token_refresher.refresh_all_tokens`<br>⚙️ `app.agents.cz_token_refresher.sync_active_orders_cz_status` | Chestny Znak Token Refresher Agent — WB FBS Manager |
 | [`app/agents/cz_withdrawal.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/cz_withdrawal.py) | — | ⚙️ `app.agents.cz_withdrawal.withdraw_order_kiz`<br>⚙️ `app.agents.cz_withdrawal.process_seller_archive` | CZ Withdrawal Celery Agent — Вывод КИЗ из оборота |
 | [`app/agents/kb_sync_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/kb_sync_agent.py) | — | ⚙️ `app.agents.kb_sync_agent.sync_knowledge_base` | Knowledge Base & Codebase Synchronization Agent — WB FBS Manager |
+| [`app/agents/kiz_events_agent.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/kiz_events_agent.py) | — | ⚙️ `app.agents.kiz_events_agent.collect_kiz_events` | KIZ Events Celery Agent — WB FBS Manager |
 | [`app/agents/morning_digest.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/morning_digest.py) | — | ⚙️ `app.agents.morning_digest.send_morning_digest` | Morning Digest Agent — WB FBS Manager |
 | [`app/agents/notifier.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/notifier.py) | — | ⚙️ `app.agents.notifier.notify_new_order`<br>⚙️ `app.agents.notifier.notify_batch_orders`<br>⚙️ `app.agents.notifier.send_cz_status_notification`<br>⚙️ `app.agents.notifier.send_supply_notification`<br>⚙️ `app.agents.notifier.send_alert`<br>⚙️ `app.agents.notifier.send_wb_token_expired_alert`<br>⚙️ `app.agents.notifier.send_scheduled_orders_digest` | Notifier Agent — отправка уведомлений через Telegram |
 | [`app/agents/order_poller.py`](file:///D:/PyCharm_Projects/WB FBS/app/agents/order_poller.py) | — | ⚙️ `app.agents.order_poller.get_order_sticker`<br>⚙️ `app.agents.order_poller.poll_all_sellers` | Order Polling Agent — WB FBS Manager |
@@ -119,6 +124,7 @@
 | [`app/bot/helpers.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot/helpers.py) | — | `_get_active_seller` | Telegram Bot Helpers & Shared State — WB FBS Manager |
 | [`app/bot/keyboards.py`](file:///D:/PyCharm_Projects/WB FBS/app/bot/keyboards.py) | — | `get_main_reply_keyboard`, `get_orders_list_keyboard`, `get_order_detail_keyboard` | Telegram Bot Keyboards — WB FBS Manager |
 | [`app/celery_app.py`](file:///D:/PyCharm_Projects/WB FBS/app/celery_app.py) | — | `send_worker_lost_telegram_alert`, `handle_celery_task_failure` | Celery Application Configuration — WB FBS Manager |
+| [`app/celery_schedule.py`](file:///D:/PyCharm_Projects/WB FBS/app/celery_schedule.py) | — | — | Celery Beat Schedule — WB FBS Manager |
 | [`app/config.py`](file:///D:/PyCharm_Projects/WB FBS/app/config.py) | `Settings` | `get_settings` | Application Configuration — WB FBS Manager |
 | [`app/database.py`](file:///D:/PyCharm_Projects/WB FBS/app/database.py) | `Base` | `build_engine_kwargs`, `get_db`, `init_db` | Database setup — async SQLAlchemy engine + session factory |
 | [`app/main.py`](file:///D:/PyCharm_Projects/WB FBS/app/main.py) | — | `GET /` → `root`<br>`GET /health` → `health_check` | Модуль кодовой базы |
@@ -167,6 +173,7 @@
 | [`tests/test_kiz_adversarial_challenge_m2_2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_adversarial_challenge_m2_2.py) | — | `test_celery_withdraw_order_kiz_e2e_checked_not_ok_error_07`, `test_celery_withdraw_order_kiz_array_response_with_error_07`, `test_celery_withdraw_order_kiz_transient_error_triggers_retry`, `test_withdraw_order_kiz_grace_period_404_then_checked_not_ok_error_07`, +еще 3 | Adversarial Challenge & Empirical Verification Suite for Milestone M2. |
 | [`tests/test_kiz_attach_safety.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_attach_safety.py) | — | `_order`, `_db`, `_kiz_info`, `_attach`, +еще 6 | Regression tests for attaching a KIZ from the order card. |
 | [`tests/test_kiz_dashboard_retry_r3.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_dashboard_retry_r3.py) | — | `mock_celery_apply`, `test_order_model_cz_columns`, `test_order_serialization_in_list_and_get_orders`, `test_retry_withdrawal_endpoint_cleans_cis_and_resets_status`, +еще 4 | Модуль кодовой базы |
+| [`tests/test_kiz_events.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_events.py) | — | `db`, `_seller`, `_finance_row`, `_order`, +еще 38 | Tests for the KIZ event log and its background collectors. |
 | [`tests/test_kiz_heuristics_r2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_heuristics_r2.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_is_kiz_required_sgtin_in_required_meta_precedence`, +еще 10 | Unit and integration tests for Milestone 2 (R2): |
 | [`tests/test_kiz_normalization_m1.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_normalization_m1.py) | — | `test_normalize_kiz_light_industry_clean_31`, `test_normalize_kiz_light_industry_spaces_tail`, `test_normalize_kiz_light_industry_space_key_no_space_sig`, `test_normalize_kiz_light_industry_gs_delimiters`, +еще 22 | Milestone M1 Test Suite: Guaranteed KIZ Normalization & Ingestion Integrity. |
 | [`tests/test_kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_service.py) | — | `test_parse_kiz_code_standard`, `test_parse_kiz_code_with_parentheses`, `test_parse_kiz_code_with_crypto_tail`, `test_parse_kiz_code_with_double_single_quotes_from_wb`, +еще 11 | Модуль кодовой базы |

@@ -154,3 +154,37 @@ class WBAnalyticsClient:
         finally:
             if should_close and not client.is_closed:
                 await client.aclose()
+
+    @retry(**RETRY_POLICY)
+    async def _get_item_returns_page(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """One page of the item returns report: {"count": N, "report": [...]}."""
+        client = self._client or httpx.AsyncClient(timeout=self.timeout)
+        should_close = self._client is None
+        url = f"{self.BASE_URL}/api/analytics/v1/item-returns"
+        try:
+            resp = await client.get(url, headers=self.headers, params=params)
+            if resp.status_code == 429:
+                raise WBAnalyticsRateLimitError("Rate limit exceeded (429) on item-returns")
+            if resp.status_code == 401:
+                raise WBAnalyticsUnauthorizedError("WB token invalid or expired (401)")
+            if resp.status_code >= 400:
+                raise WBAnalyticsAPIError(f"API Error {resp.status_code}: {resp.text[:300]}")
+            if resp.status_code == 204:
+                return []
+            try:
+                return resp.json().get("report") or []
+            except (ValueError, AttributeError) as e:
+                raise WBAnalyticsAPIError(f"Failed to parse JSON response (HTTP {resp.status_code}): {e}")
+        finally:
+            if should_close and not client.is_closed:
+                await client.aclose()
+
+    async def get_item_returns_report(self, date_from: str, date_to: str, status: str, page_size: int = 1000) -> List[Dict[str, Any]]:
+        """All rows of the item returns report for one status: active or archive."""
+        rows: List[Dict[str, Any]] = []
+        while True:
+            params = {"dateFrom": date_from, "dateTo": date_to, "status": status, "limit": page_size, "offset": len(rows)}
+            page = await self._get_item_returns_page(params)
+            rows.extend(page)
+            if len(page) < page_size:
+                return rows

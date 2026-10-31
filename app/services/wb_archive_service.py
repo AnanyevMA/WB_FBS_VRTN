@@ -1,9 +1,9 @@
 """
-WB Archive API Service — синхронизация архивных сборочных заданий WB (>3 дней).
+WB Archive API Service — синхронизация архивных сборочных заданий WB (созданных более 3 месяцев назад).
 Получает данные напрямую из GET /api/marketplace/v3/fbs/orders/archive:
 - Выявляет отмененные заказы (canceled_by_client, declined_by_client, canceled, defect).
 - Фиксирует прикрепленные КИЗ (metaDetails.sgtin) в Order и KizProductInfo.
-- Поддерживает скользящее окно опроса (по умолчанию за последние 3 месяца).
+- По умолчанию опрашивает 3 месяца, начиная с месяца трехмесячной давности.
 """
 import logging
 import uuid
@@ -31,6 +31,7 @@ CANCELLED_WB_STATUSES = {
     "defect",
 }
 DELIVERED_WB_STATUSES = {"sold", "delivered"}
+ARCHIVE_AGE_MONTHS = 3
 
 
 def get_recent_months(
@@ -56,6 +57,19 @@ def get_recent_months(
             cur_year -= 1
 
     return result
+
+
+def get_archive_months(
+    months_count: int = 3,
+    base_date: Optional[datetime] = None,
+) -> List[Tuple[int, int]]:
+    """
+    Месяцы, доступные методу архива WB: он отдает задания, созданные более 3 месяцев назад.
+    Начинает с месяца, отстоящего на 3 от текущего, и идет в прошлое.
+    """
+    if base_date is None:
+        base_date = datetime.now(timezone.utc)
+    return get_recent_months(months_count=max(1, months_count) + ARCHIVE_AGE_MONTHS, base_date=base_date)[ARCHIVE_AGE_MONTHS:]
 
 
 def parse_wb_iso_datetime(val: Any) -> datetime:
@@ -220,7 +234,7 @@ async def sync_seller_archive_orders_recent_months(
 
     wb_token = decrypt(seller.wb_api_token_encrypted)
     if not target_months:
-        target_months = get_recent_months(months_count=months_count)
+        target_months = get_archive_months(months_count=months_count)
     now_dt = datetime.now(timezone.utc)
 
     total_fetched = 0
@@ -300,6 +314,7 @@ async def sync_seller_archive_orders_recent_months(
                     kiz_linked_count += 1
 
     summary = {
+        "status": "ok" if total_fetched else "no_data",
         "seller_id": str(seller.id),
         "seller_name": seller.name,
         "months_processed": months_processed,

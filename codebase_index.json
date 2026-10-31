@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-31T05:31:09.918652+00:00",
+  "updated_at": "2026-10-31T05:46:26.003372+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 181,
+  "total_files": 189,
   "files": [
     {
       "file": "alembic/env.py",
@@ -70,6 +70,37 @@
       "layer": "migrations",
       "hash": "c2b4cb804774",
       "docstring": "add_auto_kiz_queue_interval_hours",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/1b2c3d4e5f60_add_kiz_events_table.py",
+      "layer": "migrations",
+      "hash": "e023b3449e50",
+      "docstring": "add_kiz_events_table",
       "classes": [],
       "functions": [
         {
@@ -1119,6 +1150,56 @@
         "sqlalchemy.orm",
         "typing",
         "uuid"
+      ]
+    },
+    {
+      "file": "app/agents/kiz_events_agent.py",
+      "layer": "agents",
+      "hash": "6d4ff4b26b86",
+      "docstring": "KIZ Events Celery Agent — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_collect",
+          "is_async": true,
+          "args": [
+            "sources"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "collect_kiz_events",
+          "is_async": false,
+          "args": [
+            "sources"
+          ],
+          "decorators": [
+            "celery_app.task()"
+          ],
+          "docstring": "Collects the given sources for all active sellers, or all sources when none are given."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [
+        {
+          "name": "app.agents.kiz_events_agent.collect_kiz_events",
+          "function": "collect_kiz_events",
+          "docstring": "Collects the given sources for all active sellers, or all sources when none are given."
+        }
+      ],
+      "db_tables": [],
+      "imports": [
+        "app.celery_app",
+        "app.database",
+        "app.models.kiz_event",
+        "app.models.seller",
+        "app.services.kiz_event_collectors",
+        "app.services.kiz_event_runner",
+        "asyncio",
+        "logging",
+        "sqlalchemy",
+        "typing"
       ]
     },
     {
@@ -2357,7 +2438,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "999e819b097a",
+      "hash": "e1e00ca7c2a1",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2452,6 +2533,7 @@
         "app.services.archive_service",
         "app.services.cz_client",
         "app.services.encryption",
+        "app.services.kiz_event_collectors",
         "app.services.kiz_service",
         "app.services.wb_archive_service",
         "datetime",
@@ -3002,7 +3084,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "799474879e4a",
+      "hash": "829e5d4ea4c4",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4020,7 +4102,7 @@
     {
       "file": "app/bot/handlers/documents.py",
       "layer": "core",
-      "hash": "4f3d59570218",
+      "hash": "82f4bd0d14df",
       "docstring": "Telegram Bot Document Handlers — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4055,6 +4137,7 @@
         "app.models.order",
         "app.models.seller",
         "app.services.archive_service",
+        "app.services.kiz_event_collectors",
         "datetime",
         "io",
         "json",
@@ -4182,7 +4265,7 @@
     {
       "file": "app/celery_app.py",
       "layer": "core",
-      "hash": "3cc3f17a2564",
+      "hash": "a67c6f24fd30",
       "docstring": "Celery Application Configuration — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4221,6 +4304,7 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "app.celery_schedule",
         "app.config",
         "app.models.audit",
         "app.models.seller",
@@ -4228,7 +4312,6 @@
         "app.services.telegram_service",
         "celery",
         "celery.exceptions",
-        "celery.schedules",
         "celery.signals",
         "datetime",
         "html",
@@ -4242,6 +4325,20 @@
         "typing",
         "urllib.request",
         "uuid"
+      ]
+    },
+    {
+      "file": "app/celery_schedule.py",
+      "layer": "core",
+      "hash": "003b0e171e86",
+      "docstring": "Celery Beat Schedule — WB FBS Manager",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "celery.schedules"
       ]
     },
     {
@@ -4423,7 +4520,7 @@
     {
       "file": "app/models/__init__.py",
       "layer": "models",
-      "hash": "32d8caf62796",
+      "hash": "f3592a2d2d8b",
       "docstring": "",
       "classes": [],
       "functions": [],
@@ -4433,6 +4530,7 @@
       "imports": [
         "app.models.audit",
         "app.models.kiz",
+        "app.models.kiz_event",
         "app.models.order",
         "app.models.seller",
         "app.models.supply",
@@ -4533,6 +4631,38 @@
         "enum",
         "sqlalchemy",
         "sqlalchemy.dialects.postgresql",
+        "sqlalchemy.orm",
+        "sqlalchemy.sql",
+        "typing",
+        "uuid"
+      ]
+    },
+    {
+      "file": "app/models/kiz_event.py",
+      "layer": "models",
+      "hash": "c86d13d1e670",
+      "docstring": "KIZ Event Log — WB FBS Manager",
+      "classes": [
+        {
+          "name": "KizEvent",
+          "bases": [
+            "Base"
+          ],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [
+        "kiz_events"
+      ],
+      "imports": [
+        "app.database",
+        "datetime",
+        "decimal",
+        "sqlalchemy",
         "sqlalchemy.orm",
         "sqlalchemy.sql",
         "typing",
@@ -6156,6 +6286,291 @@
       ]
     },
     {
+      "file": "app/services/kiz_event_collectors.py",
+      "layer": "services",
+      "hash": "a5d4cde570d6",
+      "docstring": "KIZ Event Collectors — WB FBS Manager",
+      "classes": [
+        {
+          "name": "CollectResult",
+          "bases": [],
+          "docstring": "",
+          "methods": [
+            "skip"
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "clean_cis_of",
+          "is_async": false,
+          "args": [
+            "raw_kiz"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "parse_event_datetime",
+          "is_async": false,
+          "args": [
+            "value"
+          ],
+          "decorators": [],
+          "docstring": "Accepts datetime, date and ISO strings with or without a timezone. WB dates without one count as UTC."
+        },
+        {
+          "name": "_price",
+          "is_async": false,
+          "args": [
+            "value"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_text",
+          "is_async": false,
+          "args": [
+            "value",
+            "limit"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "finance_row_to_draft",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [],
+          "docstring": "Only real sales and returns: logistics, delivery and compensations do not change the state of a KIZ."
+        },
+        {
+          "name": "collect_finance",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "excise_row_to_draft",
+          "is_async": false,
+          "args": [
+            "row",
+            "now"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "collect_excise",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "item_return_to_draft",
+          "is_async": false,
+          "args": [
+            "row",
+            "srid_to_cis",
+            "order_to_kiz"
+          ],
+          "decorators": [],
+          "docstring": "The KIZ comes from the row, its srid or its order. An article alone never identifies a KIZ."
+        },
+        {
+          "name": "_item_return_lookups",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller",
+            "rows"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "collect_item_returns",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "order_to_drafts",
+          "is_async": false,
+          "args": [
+            "order",
+            "now"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "collect_orders",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "refresh_delivered_order_statuses",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": "A cancellation after delivery is otherwise invisible: the poller only follows orders in progress."
+        },
+        {
+          "name": "archive_analysis_to_drafts",
+          "is_async": false,
+          "args": [
+            "analysis",
+            "now"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "record_archive_file_events",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "analysis"
+          ],
+          "decorators": [],
+          "docstring": "Saves events from an uploaded archive. A journal failure must not break the upload itself."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.kiz_event",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.encryption",
+        "app.services.kiz_event_service",
+        "app.services.kiz_service",
+        "app.services.wb_analytics_client",
+        "app.services.wb_archive_service",
+        "app.services.wb_client",
+        "app.services.wb_warehouse_sales_service",
+        "dataclasses",
+        "datetime",
+        "decimal",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/kiz_event_runner.py",
+      "layer": "services",
+      "hash": "52111d86d5f3",
+      "docstring": "KIZ Event Runner — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "run_collector",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller",
+            "source"
+          ],
+          "decorators": [],
+          "docstring": "Runs one collector and records the outcome. Zero rows is reported as no_data, not as success."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.audit",
+        "app.models.kiz_event",
+        "app.models.seller",
+        "app.services.kiz_event_collectors",
+        "app.services.kiz_event_service",
+        "logging",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/kiz_event_service.py",
+      "layer": "services",
+      "hash": "8500d5b909db",
+      "docstring": "KIZ Event Service — WB FBS Manager",
+      "classes": [],
+      "functions": [
+        {
+          "name": "save_events",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "drafts"
+          ],
+          "decorators": [],
+          "docstring": "Adds new events and fills empty fields of known ones. The caller commits."
+        },
+        {
+          "name": "_save_chunk",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "source",
+            "chunk"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_fill_empty_fields",
+          "is_async": false,
+          "args": [
+            "row",
+            "draft"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.kiz_event",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
       "file": "app/services/kiz_service.py",
       "layer": "services",
       "hash": "3d05f295d4fc",
@@ -6659,7 +7074,7 @@
     {
       "file": "app/services/wb_analytics_client.py",
       "layer": "services",
-      "hash": "2ed2188e127c",
+      "hash": "99b8663ef473",
       "docstring": "Wildberries Analytics API Client.",
       "classes": [
         {
@@ -6695,7 +7110,9 @@
             "__aenter__",
             "__aexit__",
             "get_excise_report",
-            "get_item_returns"
+            "get_item_returns",
+            "_get_item_returns_page",
+            "get_item_returns_report"
           ]
         }
       ],
@@ -6715,8 +7132,8 @@
     {
       "file": "app/services/wb_archive_service.py",
       "layer": "services",
-      "hash": "b551d0e92ded",
-      "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (>3 дней).",
+      "hash": "8894c7e64883",
+      "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (созданных более 3 месяцев назад).",
       "classes": [],
       "functions": [
         {
@@ -6728,6 +7145,16 @@
           ],
           "decorators": [],
           "docstring": "Возвращает список кортежей (year, month) за последние months_count месяцев в убывающем порядке."
+        },
+        {
+          "name": "get_archive_months",
+          "is_async": false,
+          "args": [
+            "months_count",
+            "base_date"
+          ],
+          "decorators": [],
+          "docstring": "Месяцы, доступные методу архива WB: он отдает задания, созданные более 3 месяцев назад."
         },
         {
           "name": "parse_wb_iso_datetime",
@@ -10915,6 +11342,442 @@
       ]
     },
     {
+      "file": "tests/test_kiz_events.py",
+      "layer": "tests",
+      "hash": "4866779d278e",
+      "docstring": "Tests for the KIZ event log and its background collectors.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_seller",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_finance_row",
+          "is_async": false,
+          "args": [
+            "rrd_id",
+            "cis",
+            "oper",
+            "doc",
+            "sale_dt",
+            "srid"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_order",
+          "is_async": false,
+          "args": [
+            "order_id",
+            "status",
+            "kiz_status",
+            "wb_status",
+            "kiz_code",
+            "doc"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_events",
+          "is_async": true,
+          "args": [
+            "db",
+            "source"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_draft",
+          "is_async": false,
+          "args": [
+            "external_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_repeated_save_adds_nothing",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_duplicates_within_one_save_become_one_event",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_later_poll_fills_receipt_but_never_rewrites_the_fact",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_same_external_id_in_another_source_is_a_separate_event",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_finance_keeps_only_sales_and_returns",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_finance_uses_report_date_when_sale_date_is_missing",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_excise_row",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_excise_sale_keeps_receipt_details",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_excise_unknown_operation_type_is_not_recorded",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_return_row",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_item_return_prefers_kiz_of_the_row",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_item_return_falls_back_to_order_then_srid",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_item_return_is_never_matched_by_article",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_only_delivered_returns_are_recorded",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_report_client_reads_report_field_page_by_page",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_report_client_treats_204_as_no_rows",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sold_order_is_a_sale",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_in_progress_is_not_an_event",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_cancelled_order_without_withdrawal_is_only_a_return",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_cancelled_withdrawn_order_returns_after_its_own_sale",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "This pair used to be sorted the other way, so the fake sale won over the return."
+        },
+        {
+          "name": "test_later_real_sale_outranks_a_cancelled_order",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_orders_collector_skips_orders_without_kiz",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_wb_client_with",
+          "is_async": false,
+          "args": [
+            "statuses"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_status_refresh_sees_cancellation_after_delivery",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_status_refresh_does_not_touch_withdrawn_order",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_analysis",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_archive_upload_records_events_once",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_journal_failure_does_not_break_archive_upload",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_audit",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_runner_saves_events_and_records_result",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_runner_reports_zero_rows_as_no_data",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_runner_records_source_failure_and_saves_nothing",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_frequent_orders_run_leaves_no_audit_noise_when_nothing_changed",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_collectors_create_no_batches_and_keep_order_status",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "On this stage the log only gathers data: the old reconciliation keeps deciding."
+        },
+        {
+          "name": "test_archive_months_start_three_months_back",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "WB only keeps orders created more than 3 months ago in the archive."
+        },
+        {
+          "name": "test_sync_does_not_restore_kiz_of_cancelled_orders",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.orders",
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.kiz_event",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services",
+        "app.services.encryption",
+        "app.services.kiz_event_runner",
+        "app.services.kiz_event_service",
+        "app.services.wb_analytics_client",
+        "app.services.wb_archive_service",
+        "datetime",
+        "decimal",
+        "httpx",
+        "pytest",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "sqlalchemy.pool",
+        "types",
+        "unittest.mock"
+      ]
+    },
+    {
       "file": "tests/test_kiz_heuristics_r2.py",
       "layer": "tests",
       "hash": "a0f59f740f8d",
@@ -14949,7 +15812,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "0ae28993d0e8",
+      "hash": "5b0fe8e2ab52",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

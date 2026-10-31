@@ -51,6 +51,9 @@ async def preview_wb_archive(
 
     analysis = await analyze_archive_data(seller=seller, archive_data=parsed_sheets, db=db)
 
+    from app.services.kiz_event_collectors import record_archive_file_events
+    await record_archive_file_events(db, seller_id, analysis)
+
     # Log audit
     audit = AuditLog(
         seller_id=seller_id,

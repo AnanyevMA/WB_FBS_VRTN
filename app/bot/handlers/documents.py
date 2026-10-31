@@ -121,6 +121,9 @@ async def handle_document(message: Message):
 
             analysis = await analyze_archive_data(seller=target_seller, archive_data=parsed_sheets, db=db)
 
+            from app.services.kiz_event_collectors import record_archive_file_events
+            await record_archive_file_events(db, target_seller.id, analysis)
+
             withdrawals = analysis.get("withdrawals", [])
             returns = analysis.get("returns", [])
             summary = analysis.get("summary", {})

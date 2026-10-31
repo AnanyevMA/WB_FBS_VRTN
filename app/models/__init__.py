@@ -6,6 +6,7 @@ from app.models.audit import AuditLog
 from app.models.user import User, UserRole
 from app.national_catalog.models import ProductCard
 from app.models.wb_finance import WbSalesReportRow
+from app.models.kiz_event import KizEvent
 
 __all__ = [
     "Seller", "Order", "OrderStatus", "KizStatus",

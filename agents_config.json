@@ -874,6 +874,62 @@
       "dependencies": [
         "cz_token_refresher"
       ]
+    },
+    {
+      "id": "kiz_events_agent",
+      "name": "KIZ Events Agent",
+      "role": "Periodically polls WB sources and records KIZ sale and return events in kiz_events. Makes no decisions and creates no batches.",
+      "celery_task": "app.agents.kiz_events_agent.collect_kiz_events",
+      "queue": "cz_operations",
+      "schedule": "orders every 1800s, WB reports every 6h, finance and order statuses daily",
+      "timeout_seconds": 300,
+      "max_retries": 0,
+      "concurrency_limit": 1,
+      "arbitration_priority": 70,
+      "enabled": true,
+      "polp_matrix": {
+        "allowed_read_paths": [
+          "app/agents/kiz_events_agent.py",
+          "app/services/kiz_event_collectors.py",
+          "app/services/kiz_event_runner.py",
+          "app/services/kiz_event_service.py",
+          "app/services/wb_analytics_client.py",
+          "app/services/wb_client.py"
+        ],
+        "allowed_write_paths": [
+          "logs/kiz_events.log"
+        ],
+        "allowed_delete_paths": [],
+        "forbidden_paths": [
+          ".env*",
+          "frontend/*"
+        ],
+        "allowed_read_tables": [
+          "sellers",
+          "orders",
+          "wb_sales_report_rows",
+          "kiz_events",
+          "audit_logs"
+        ],
+        "allowed_write_tables": [
+          "orders",
+          "kiz_events",
+          "audit_logs"
+        ],
+        "database_table_permissions": {
+          "sellers": "SELECT",
+          "orders": "SELECT_UPDATE",
+          "wb_sales_report_rows": "SELECT",
+          "kiz_events": "SELECT_INSERT_UPDATE",
+          "audit_logs": "INSERT"
+        },
+        "external_api_access": [
+          "WB_ANALYTICS_API",
+          "WB_MARKETPLACE_API"
+        ],
+        "crypto_key_access": "READ_TOKEN"
+      },
+      "dependencies": []
     }
   ],
   "arbitration_rules": {

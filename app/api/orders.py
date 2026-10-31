@@ -738,7 +738,9 @@ async def sync_all_orders_cz_status(seller_id: str, db: AsyncSession = Depends(g
                 orders_without_kiz = (await db.execute(
                     select(Order).where(
                         Order.seller_id == seller_id,
-                        Order.kiz_code.is_(None)
+                        Order.kiz_code.is_(None),
+                        # A cancelled order keeps no KIZ: restoring it rewrote kiz_attached_at on every sync
+                        Order.status != OrderStatus.CANCELLED,
                     )
                 )).scalars().all()
                 if orders_without_kiz:
@@ -1119,6 +1121,8 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
             )
 
             attached_sgtin = meta_by_id.get(oid)
+            if existing and existing.status == OrderStatus.CANCELLED and not existing.kiz_code:
+                attached_sgtin = None
             final_kiz_code = attached_sgtin or (existing.kiz_code if existing else None)
 
             if final_kiz_code:

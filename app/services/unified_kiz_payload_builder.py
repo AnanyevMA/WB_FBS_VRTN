@@ -6,6 +6,16 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 from app.models.order import Order, KizStatus, OrderStatus
 from app.services.kiz_service import is_kiz_withdrawn, CZ_STATUS_DESCRIPTIONS
+from app.services.unified_kiz_history import normalize_event_dt
+from app.services.unified_kiz_resale import is_order_withdrawn
+
+
+def pick_sale_excise_event(ev: Dict[str, Any], events: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Строка excise-report именно этой продажи: у КИЗ могут быть чеки прошлых продаж."""
+    excise = [e for e in events if e.get("source") == "wb_excise_report"]
+    if ev.get("srid"):
+        excise = [e for e in excise if e.get("srid") == ev["srid"]]
+    return max(excise, key=lambda e: normalize_event_dt(e["date"])) if excise else None
 
 
 def build_unified_withdrawals_payload(
@@ -16,39 +26,40 @@ def build_unified_withdrawals_payload(
     seller_inn: str,
     now_utc: datetime,
     withdrawn_cises: Optional[Set[str]] = None,
-) -> Tuple[List[Dict[str, Any]], int, int, int, int]:
+    confirmed_resales: Optional[Set[str]] = None,
+    review_resales: Optional[Set[str]] = None,
+) -> Tuple[List[Dict[str, Any]], int, int, int, int, int]:
     """
     Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца,
     многоуровневым исключением уже выбывших заказов/операций и обогащением
     реквизитами фискальных чеков из онлайн-отчета WB excise-report.
+    Подтвержденная повторная продажа не связана со старым заказом и прошлыми операциями.
+    Продажа без номера чека не попадает в пакет и учитывается как ожидающая чек.
     """
     withdrawals_payload = []
     sales_needing_count = 0
     sales_already_withdrawn_count = 0
     sales_wb_owned_count = 0
     sales_foreign_count = 0
+    sales_waiting_receipt_count = 0
+    confirmed_resales = confirmed_resales or set()
+    review_resales = review_resales or set()
 
     for cis, ev in sales_candidates.items():
         cz_item = cz_info_map.get(cis, {})
         cz_status = cz_item.get("status")
         cz_withdrawn, _ = is_kiz_withdrawn(status=cz_status, status_ex=cz_item.get("statusEx"), raw_payload=cz_item) if cz_status else (False, "")
 
-        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
+        is_resale = cis in confirmed_resales
+        fbs_order = None if is_resale else (ev.get("order") or fbs_order_lookup.get(cis))
 
         # 1. Приоритетный фильтр по состоянию заказа FBS:
-        is_order_withdrawn = False
-        if fbs_order:
-            if fbs_order.kiz_status == KizStatus.WITHDRAWN:
-                is_order_withdrawn = True
-            elif fbs_order.cz_withdrawal_doc_id and fbs_order.cz_doc_status in ("IN_PROGRESS", "CHECKED_OK", "SUCCESS"):
-                is_order_withdrawn = True
-            elif fbs_order.cz_doc_status == "CHECKED_OK":
-                is_order_withdrawn = True
+        order_withdrawn = is_order_withdrawn(fbs_order)
 
         # 2. Приоритетный фильтр по операциям выбытия ГИС МТ в БД:
-        is_op_withdrawn = bool(withdrawn_cises and cis in withdrawn_cises)
+        is_op_withdrawn = bool(withdrawn_cises and cis in withdrawn_cises and not is_resale)
 
-        withdrawn = cz_withdrawn or is_order_withdrawn or is_op_withdrawn
+        withdrawn = cz_withdrawn or order_withdrawn or is_op_withdrawn
 
         owner_inn = (cz_item.get("ownerInn") or "").strip()
         owner_name = cz_item.get("ownerName") or ""
@@ -58,18 +69,33 @@ def build_unified_withdrawals_payload(
         is_wb = (owner_inn == "9714053621")
         is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
 
+        # Обогащение реквизитами фискального чека из excise-report
+        excise_ev = pick_sale_excise_event(ev, history_by_cis.get(cis, []))
+        receipt_missing = (excise_ev is None and is_resale) or bool(excise_ev and not excise_ev.get("receipt_number"))
+        needs_review = cis in review_resales
+
         if withdrawn:
             needs_withdrawal, selected = False, False
-            if is_order_withdrawn:
+            if order_withdrawn:
                 action_rec = "✅ Уже выбыл из оборота (заказ FBS списан/в обработке)"
             elif is_op_withdrawn:
                 action_rec = "✅ Уже выбыл из оборота (операция выбытия ГИС МТ)"
             else:
                 action_rec = "✅ Уже выбыл из оборота"
             sales_already_withdrawn_count += 1
+        elif is_seller and receipt_missing:
+            sales_waiting_receipt_count += 1
+            continue
+        elif is_seller and needs_review:
+            needs_withdrawal, selected = True, False
+            action_rec = "⚠️ Продажа уже выводилась, затем код вернули в оборот, а возврата WB не видно. Проверьте перед выводом."
+            sales_needing_count += 1
         elif is_seller:
             needs_withdrawal, selected = True, True
-            action_rec = "✅ Баланс продавца (ИП). Готов к выводу из оборота!"
+            action_rec = (
+                "🔁 Повторная продажа на балансе ИП. Готов к выводу из оборота!" if is_resale
+                else "✅ Баланс продавца (ИП). Готов к выводу из оборота!"
+            )
             sales_needing_count += 1
         elif is_wb:
             needs_withdrawal, selected = False, False
@@ -84,11 +110,11 @@ def build_unified_withdrawals_payload(
             action_rec = f"⛔ Баланс стороннего владельца ({owner_name or owner_inn}). Вывод продавцом невозможен."
             sales_foreign_count += 1
 
-        price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
-
-        # Обогащение реквизитами фискального чека из excise-report
-        all_cis_events = history_by_cis.get(cis, [])
-        excise_ev = next((e for e in all_cis_events if e.get("source") == "wb_excise_report"), None)
+        price_val = (
+            (excise_ev and excise_ev.get("price"))
+            or ev.get("price")
+            or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
+        )
 
         receipt_num = str(
             (excise_ev and excise_ev.get("receipt_number"))
@@ -131,6 +157,7 @@ def build_unified_withdrawals_payload(
                 "is_wb_owned": is_wb,
                 "is_already_withdrawn": withdrawn,
                 "needs_withdrawal": needs_withdrawal,
+                "needs_review": needs_review,
                 "action_recommended": action_rec,
                 "selected": selected,
             })
@@ -141,6 +168,7 @@ def build_unified_withdrawals_payload(
         sales_already_withdrawn_count,
         sales_wb_owned_count,
         sales_foreign_count,
+        sales_waiting_receipt_count,
     )
 
 

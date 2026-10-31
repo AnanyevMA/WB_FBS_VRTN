@@ -530,6 +530,14 @@ function renderActiveBatch(batch) {
                 </div>
             </div>
 
+            ${summary.sales_waiting_receipt || summary.sales_needing_review || summary.resale_check_failed ? `
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 13px; color: var(--text-main);">
+                    ${summary.sales_waiting_receipt ? `<div>🧾 Ждут чек WB: <b>${summary.sales_waiting_receipt}</b>. Эти продажи появятся в пакете, когда WB передаст номер чека.</div>` : ''}
+                    ${summary.sales_needing_review ? `<div>⚠️ Нужно проверить перед выводом: <b>${summary.sales_needing_review}</b>. Такие позиции не отмечены.</div>` : ''}
+                    ${summary.resale_check_failed ? `<div>⚠️ Честный Знак не ответил, повторные продажи не проверены. Пересоберите пакет позже.</div>` : ''}
+                </div>
+            ` : ''}
+
             <!-- Signing Controls Block -->
             <div style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.25); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
                 <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
@@ -1161,9 +1169,12 @@ async function triggerUnifiedBatch(days = 90) {
             const s = res.summary || {};
             showToast(
                 'Сверка завершена',
-                `Единый пакет готов! Выбытие: ${s.sales_needing_withdrawal || 0}, возврат: ${s.returns_needing_cz_return || 0} (перемаркировка РВБ: ${s.wb_owned_remarking_count || 0})`,
+                `Единый пакет готов! Выбытие: ${s.sales_needing_withdrawal || 0}, возврат: ${s.returns_needing_cz_return || 0} (перемаркировка РВБ: ${s.wb_owned_remarking_count || 0})${s.sales_waiting_receipt ? `, ждут чек WB: ${s.sales_waiting_receipt}` : ''}`,
                 'success'
             );
+            if (s.resale_check_failed) {
+                showToast('Внимание', 'Честный Знак не ответил, повторные продажи не проверены. Пересоберите пакет позже.', 'warning');
+            }
             await loadSignatureBatches();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {

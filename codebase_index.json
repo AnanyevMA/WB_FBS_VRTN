@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-31T05:46:26.003372+00:00",
+  "updated_at": "2026-10-31T11:11:30.917791+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 189,
+  "total_files": 192,
   "files": [
     {
       "file": "alembic/env.py",
@@ -6957,19 +6957,10 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "c83737b56426",
+      "hash": "948a3bb32400",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
-        {
-          "name": "_normalize_dt",
-          "is_async": false,
-          "args": [
-            "dt"
-          ],
-          "decorators": [],
-          "docstring": ""
-        },
         {
           "name": "_is_return_row",
           "is_async": false,
@@ -7012,7 +7003,9 @@
         "app.models.seller",
         "app.models.wb_finance",
         "app.services.kiz_service",
+        "app.services.unified_kiz_history",
         "app.services.unified_kiz_payload_builder",
+        "app.services.unified_kiz_resale",
         "app.services.wb_archive_service",
         "app.services.wb_finance_service",
         "app.services.wb_warehouse_sales_service",
@@ -7025,12 +7018,81 @@
       ]
     },
     {
+      "file": "app/services/unified_kiz_history.py",
+      "layer": "services",
+      "hash": "76b780cea82b",
+      "docstring": "Unified KIZ History — Helpers for unified_kiz_batch_service.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "normalize_event_dt",
+          "is_async": false,
+          "args": [
+            "dt"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_pending_item_event",
+          "is_async": false,
+          "args": [
+            "item",
+            "event_type",
+            "created_at",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "add_pending_batch_events",
+          "is_async": false,
+          "args": [
+            "history_by_cis",
+            "pending_batches",
+            "now_utc"
+          ],
+          "decorators": [],
+          "docstring": "Добавляет в историю КИЗ позиции из пакетов, ожидающих подписи."
+        },
+        {
+          "name": "merge_cz_records",
+          "is_async": false,
+          "args": [
+            "k_info_map",
+            "cz_info_map"
+          ],
+          "decorators": [],
+          "docstring": "Переносит записи kiz_product_info в словарь сведений True API."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.kiz_service",
+        "datetime",
+        "typing"
+      ]
+    },
+    {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "32f32cc6d091",
+      "hash": "5e182de67e82",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
+        {
+          "name": "pick_sale_excise_event",
+          "is_async": false,
+          "args": [
+            "ev",
+            "events"
+          ],
+          "decorators": [],
+          "docstring": "Строка excise-report именно этой продажи: у КИЗ могут быть чеки прошлых продаж."
+        },
         {
           "name": "build_unified_withdrawals_payload",
           "is_async": false,
@@ -7041,7 +7103,9 @@
             "history_by_cis",
             "seller_inn",
             "now_utc",
-            "withdrawn_cises"
+            "withdrawn_cises",
+            "confirmed_resales",
+            "review_resales"
           ],
           "decorators": [],
           "docstring": "Формирует payload выбытия (WITHDRAWALS) со строгой проверкой владельца,"
@@ -7067,7 +7131,116 @@
       "imports": [
         "app.models.order",
         "app.services.kiz_service",
+        "app.services.unified_kiz_history",
+        "app.services.unified_kiz_resale",
         "datetime",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/unified_kiz_resale.py",
+      "layer": "services",
+      "hash": "d0cbdfa8d32f",
+      "docstring": "Unified KIZ Resale — Repeat sales of a KIZ for unified_kiz_batch_service.",
+      "classes": [
+        {
+          "name": "KizOperationState",
+          "bases": [],
+          "docstring": "",
+          "methods": []
+        },
+        {
+          "name": "ResaleCheck",
+          "bases": [],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "load_kiz_operation_state",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": "Собирает КИЗ с уже отправленными или выполненными операциями маркировки."
+        },
+        {
+          "name": "is_order_withdrawn",
+          "is_async": false,
+          "args": [
+            "order"
+          ],
+          "decorators": [],
+          "docstring": "Заказ FBS показывает, что КИЗ списан или документ вывода в обработке."
+        },
+        {
+          "name": "latest_unreturned_wb_sale",
+          "is_async": false,
+          "args": [
+            "events"
+          ],
+          "decorators": [],
+          "docstring": "Последняя продажа из отчетов WB, если после нее и по ее srid возврата нет."
+        },
+        {
+          "name": "_find_resale_candidates",
+          "is_async": false,
+          "args": [
+            "sales_candidates",
+            "history_by_cis",
+            "cz_info_map",
+            "fbs_order_lookup",
+            "ops",
+            "seller_inn"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_is_live_in_circulation",
+          "is_async": false,
+          "args": [
+            "rec",
+            "checked_from",
+            "seller_inn"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "confirm_resales",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "verify",
+            "sales_candidates",
+            "history_by_cis",
+            "cz_info_map",
+            "fbs_order_lookup",
+            "ops"
+          ],
+          "decorators": [],
+          "docstring": "Подтверждает повторные продажи живым запросом в True API и подставляет продажу WB в кандидаты."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.kiz_service",
+        "app.services.unified_kiz_history",
+        "dataclasses",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
         "typing"
       ]
     },
@@ -13963,6 +14136,189 @@
       ]
     },
     {
+      "file": "tests/test_unified_kiz_resale.py",
+      "layer": "tests",
+      "hash": "aecc21c7565f",
+      "docstring": "Tests for repeat sales in the unified KIZ reconciliation.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_days_ago",
+          "is_async": false,
+          "args": [
+            "days"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_excise_row",
+          "is_async": false,
+          "args": [
+            "days",
+            "srid",
+            "receipt",
+            "price"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_record",
+          "is_async": false,
+          "args": [
+            "status",
+            "checked_at"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_seller",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_withdrawal_op",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "days",
+            "status"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_run",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "excise_rows",
+            "live",
+            "live_error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_resale_after_old_withdrawal_uses_receipt_of_last_sale",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_resale_with_returned_order_does_not_link_old_order",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_resale_without_receipt_waits_and_does_not_reuse_old_receipt",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_new_sale_without_previous_withdrawal_waits_for_receipt",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_returned_sale_in_pending_auto_batch_is_not_withdrawn",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "The auto queue proposes sold orders that were returned: their item must not count as a new sale."
+        },
+        {
+          "name": "test_sale_covered_by_withdrawal_requires_review",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Sold, withdrawn, then returned to circulation without a WB return: propose it unchecked."
+        },
+        {
+          "name": "test_resale_needs_fresh_introduced_status",
+          "is_async": true,
+          "args": [
+            "live"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('live', List(elts=[Call(func=Name(id='_record', ctx=Load()), keywords=[keyword(arg='status', value=Constant(value='RETIRED')), keyword(arg='checked_at', value=Call(func=Name(id='datetime', ctx=Load()), args=[Constant(value=2100), Constant(value=1), Constant(value=1)], keywords=[keyword(arg='tzinfo', value=Attribute(value=Name(id='timezone', ctx=Load()), attr='utc', ctx=Load()))]))]), Call(func=Name(id='_record', ctx=Load()), keywords=[keyword(arg='status', value=Constant(value='INTRODUCED')), keyword(arg='checked_at', value=Call(func=Name(id='datetime', ctx=Load()), args=[Constant(value=2020), Constant(value=1), Constant(value=1)], keywords=[keyword(arg='tzinfo', value=Attribute(value=Name(id='timezone', ctx=Load()), attr='utc', ctx=Load()))]))])], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_true_api_failure_keeps_code_out_and_reports_it",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_in_progress_withdrawal_is_not_sent_again",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.models.wb_finance",
+        "app.services.unified_kiz_batch_service",
+        "datetime",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_warehouse_sales_returns_correlation.py",
       "layer": "tests",
       "hash": "2f8ea58b4fda",
@@ -15812,7 +16168,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "5b0fe8e2ab52",
+      "hash": "e9c1ccbe9efe",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

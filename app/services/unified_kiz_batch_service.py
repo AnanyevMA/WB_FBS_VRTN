@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
-from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo, KizOperation, KizOperationType
+from app.models.kiz import KizSignatureBatch, BatchStatus, KizProductInfo
 from app.models.wb_finance import WbSalesReportRow
 from app.models.audit import AuditLog
 from app.services.kiz_service import (
@@ -35,18 +35,10 @@ from app.services.unified_kiz_payload_builder import (
     build_unified_withdrawals_payload,
     build_unified_returns_payload,
 )
+from app.services.unified_kiz_history import add_pending_batch_events, merge_cz_records, normalize_event_dt
+from app.services.unified_kiz_resale import confirm_resales, load_kiz_operation_state
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_dt(dt: Any) -> datetime:
-    if isinstance(dt, datetime):
-        return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
-    if hasattr(dt, "year") and hasattr(dt, "month") and hasattr(dt, "day"):
-        from datetime import date
-        if isinstance(dt, date):
-            return datetime.combine(dt, datetime.min.time(), tzinfo=timezone.utc)
-    return datetime.now(timezone.utc)
 
 
 def _is_return_row(row: WbSalesReportRow) -> bool:
@@ -211,60 +203,7 @@ async def create_unified_kiz_signature_batch(
     ).order_by(KizSignatureBatch.created_at.desc())
     res_pending = await db.execute(stmt_pending)
     pending_batches = res_pending.scalars().all()
-
-    for pb in pending_batches:
-        p_payload = pb.data_payload or {}
-        for r_item in p_payload.get("returns", []):
-            if not r_item.get("needs_cz_return", True) or not r_item.get("selected", True):
-                continue
-            raw_k = r_item.get("kiz_code")
-            if not raw_k:
-                continue
-            parsed_k = parse_kiz_code(raw_k)
-            c_cis = parsed_k.get("clean_cis") or raw_k
-            r_dt_str = str(r_item.get("receipt_date") or "").strip()
-            try:
-                ev_date = datetime.strptime(r_dt_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            except Exception:
-                ev_date = pb.created_at or now_utc
-            history_by_cis.setdefault(c_cis, []).append({
-                "source": "archive_upload",
-                "type": "RETURN",
-                "date": ev_date,
-                "order_id": r_item.get("order_id"),
-                "price": float(r_item.get("price") or 0.0),
-                "article": str(r_item.get("article") or ""),
-                "name": r_item.get("name") or "",
-                "raw_kiz": raw_k,
-                "receipt_number": r_item.get("receipt_number"),
-                "receipt_date": r_item.get("receipt_date"),
-            })
-        for w_item in p_payload.get("withdrawals", []):
-            if not w_item.get("needs_withdrawal", True) or not w_item.get("selected", True):
-                continue
-            raw_k = w_item.get("kiz_code")
-            if not raw_k:
-                continue
-            parsed_k = parse_kiz_code(raw_k)
-            c_cis = parsed_k.get("clean_cis") or raw_k
-            w_dt_str = str(w_item.get("receipt_date") or "").strip()
-            try:
-                ev_date = datetime.strptime(w_dt_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            except Exception:
-                ev_date = pb.created_at or now_utc
-            history_by_cis.setdefault(c_cis, []).append({
-                "source": "archive_upload",
-                "type": "SALE",
-                "date": ev_date,
-                "order_id": w_item.get("order_id"),
-                "price": float(w_item.get("price") or 0.0),
-                "article": str(w_item.get("article") or ""),
-                "name": w_item.get("name") or "",
-                "raw_kiz": raw_k,
-                "receipt_number": w_item.get("receipt_number"),
-                "fn_number": w_item.get("fn_number"),
-                "receipt_date": w_item.get("receipt_date"),
-            })
+    add_pending_batch_events(history_by_cis, pending_batches, now_utc)
 
     # 4. Анализ терминального состояния каждого КИЗ
     sales_candidates: Dict[str, Dict[str, Any]] = {}
@@ -272,7 +211,7 @@ async def create_unified_kiz_signature_batch(
     resold_after_return_count = 0
 
     for cis, events in history_by_cis.items():
-        sorted_ev = sorted(events, key=lambda x: _normalize_dt(x["date"]))
+        sorted_ev = sorted(events, key=lambda x: normalize_event_dt(x["date"]))
         last_ev = sorted_ev[-1]
         had_return = any(e["type"] == "RETURN" for e in sorted_ev)
 
@@ -305,42 +244,25 @@ async def create_unified_kiz_signature_batch(
                 kiz_codes=all_cises,
                 force_refresh=False,
             )
-            for cis_key, rec in k_info_map.items():
-                if not rec:
-                    continue
-                info = dict(rec.raw_cz_payload or {})
-                if rec.cz_status:
-                    info["status"] = rec.cz_status
-                if rec.cz_owner_inn:
-                    info["ownerInn"] = rec.cz_owner_inn
-                if rec.cz_owner_name:
-                    info["ownerName"] = rec.cz_owner_name
-                if rec.cz_producer_inn:
-                    info["producerInn"] = rec.cz_producer_inn
-                if rec.cz_status_ex:
-                    info["statusEx"] = rec.cz_status_ex
-
-                cz_info_map[cis_key] = info
-                if rec.clean_cis:
-                    cz_info_map[rec.clean_cis] = info
-                if rec.kiz_code:
-                    cz_info_map[rec.kiz_code] = info
+            merge_cz_records(k_info_map, cz_info_map)
         except Exception as e:
             logger.error(f"Failed to batch verify True API for unified reconciliation: {e}")
 
     # 5.5. Сбор КИЗов с уже отправленными или выполненными операциями маркировки
-    stmt_ops = select(KizOperation.kiz_code, KizOperation.operation).where(
-        KizOperation.seller_id == seller.id,
-        KizOperation.operation.in_([KizOperationType.WITHDRAWAL, KizOperationType.RETURN]),
-        KizOperation.status.in_(["SUCCESS", "IN_PROGRESS"]),
-        (KizOperation.cz_doc_status.is_(None) | (KizOperation.cz_doc_status != "CHECKED_NOT_OK")),
+    kiz_ops = await load_kiz_operation_state(db, seller.id)
+    withdrawn_cises, returned_cises = kiz_ops.withdrawn_cises, kiz_ops.returned_cises
+
+    # 5.6. Повторные продажи: прошлый вывод не закрывает продажу после возврата в оборот
+    resales = await confirm_resales(
+        seller=seller,
+        db=db,
+        verify=batch_verify_and_sync_cises,
+        sales_candidates=sales_candidates,
+        history_by_cis=history_by_cis,
+        cz_info_map=cz_info_map,
+        fbs_order_lookup=fbs_order_lookup,
+        ops=kiz_ops,
     )
-    res_ops = await db.execute(stmt_ops)
-    withdrawn_cises, returned_cises = set(), set()
-    for k_code, op_type in res_ops.all():
-        if k_code:
-            c = parse_kiz_code(k_code).get("clean_cis") or k_code
-            (withdrawn_cises if op_type == KizOperationType.WITHDRAWAL else returned_cises).add(c)
 
     # 6. Формирование выбытий (WITHDRAWALS)
     (
@@ -349,6 +271,7 @@ async def create_unified_kiz_signature_batch(
         sales_already_withdrawn_count,
         sales_wb_owned_count,
         sales_foreign_count,
+        sales_waiting_receipt_count,
     ) = build_unified_withdrawals_payload(
         sales_candidates=sales_candidates,
         cz_info_map=cz_info_map,
@@ -357,6 +280,8 @@ async def create_unified_kiz_signature_batch(
         seller_inn=seller_inn,
         now_utc=now_utc,
         withdrawn_cises=withdrawn_cises,
+        confirmed_resales=resales.confirmed,
+        review_resales=resales.needs_review,
     )
 
     # 7. Формирование возвратов (RETURNS)
@@ -385,6 +310,10 @@ async def create_unified_kiz_signature_batch(
         "sales_already_withdrawn": sales_already_withdrawn_count,
         "sales_wb_owned_count": sales_wb_owned_count,
         "sales_foreign_count": sales_foreign_count,
+        "sales_waiting_receipt": sales_waiting_receipt_count,
+        "sales_resold_confirmed": len(resales.confirmed),
+        "sales_needing_review": sum(1 for w in withdrawals_payload if w.get("needs_review")),
+        "resale_check_failed": resales.failed,
         "return_candidates_count": len(return_candidates),
         "resold_after_return_count": resold_after_return_count,
         "returns_needing_cz_return": seller_owned_direct_count,

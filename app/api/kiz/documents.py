@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.database import get_db
 from app.models.seller import Seller
@@ -29,40 +28,26 @@ async def withdraw_kiz(
     seller = await db.get(Seller, seller_id)
     if not seller:
         raise HTTPException(status_code=404, detail="Продавец не найден")
-        
+
+    # An empty list used to withdraw every attached order and mark it DELIVERED
+    if not order_ids:
+        raise HTTPException(status_code=400, detail="Укажите заказы для вывода из оборота (order_ids)")
+
     from app.agents.cz_withdrawal import withdraw_order_kiz
     updated_orders = []
-    if order_ids:
-        for oid in order_ids:
-            order = await db.get(Order, oid)
-            if order and str(order.seller_id) == str(seller_id) and order.kiz_code:
-                order.status = OrderStatus.DELIVERED
-                price_kop = int((order.price or 0) * 100) if not price_kopecks else price_kopecks
-                withdraw_order_kiz.delay(
-                    seller_id=seller_id,
-                    order_id=oid,
-                    kiz_code=order.kiz_code,
-                    price_kopecks=price_kop,
-                )
-                updated_orders.append(oid)
-    else:
-        # Withdraw all attached orders
-        res = await db.execute(
-            select(Order).where(Order.seller_id == seller_id, Order.kiz_status == KizStatus.ATTACHED)
-        )
-        orders = res.scalars().all()
-        for o in orders:
-            if o.kiz_code:
-                o.status = OrderStatus.DELIVERED
-                price_kop = int((o.price or 0) * 100) if not price_kopecks else price_kopecks
-                withdraw_order_kiz.delay(
-                    seller_id=seller_id,
-                    order_id=o.id,
-                    kiz_code=o.kiz_code,
-                    price_kopecks=price_kop,
-                )
-                updated_orders.append(o.id)
-            
+    for oid in order_ids:
+        order = await db.get(Order, oid)
+        if order and str(order.seller_id) == str(seller_id) and order.kiz_code:
+            order.status = OrderStatus.DELIVERED
+            price_kop = int((order.price or 0) * 100) if not price_kopecks else price_kopecks
+            withdraw_order_kiz.delay(
+                seller_id=seller_id,
+                order_id=oid,
+                kiz_code=order.kiz_code,
+                price_kopecks=price_kop,
+            )
+            updated_orders.append(oid)
+
     audit = AuditLog(
         seller_id=seller_id,
         agent="cz_withdrawal_agent",

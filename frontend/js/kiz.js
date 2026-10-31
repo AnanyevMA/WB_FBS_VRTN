@@ -3,8 +3,6 @@
  * Сканирование DataMatrix, привязка кодов к заказам и ручные операции.
  */
 
-let currentSigningPayload = null;
-
 async function processKizScan(code) {
     const kizCode = code.trim();
     if(!kizCode) return;
@@ -87,15 +85,7 @@ async function processKizScan(code) {
 }
 
 async function triggerCzAction(type) {
-    if(!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
-    try {
-        const endpoint = type === 'withdraw' ? `/sellers/${currentSellerId}/kiz/withdraw` : `/sellers/${currentSellerId}/kiz/return`;
-        const res = await apiFetch(endpoint, { method: 'POST', body: JSON.stringify({}) });
-        showToast('Честный Знак', res.message, 'success');
-        await loadDashboard();
-    } catch (e) {
-        showToast('Ошибка', e.message, 'error');
-    }
+    return openBatchKizSigningModal(type === 'withdraw' ? 'WITHDRAWAL' : 'RETURN');
 }
 
 async function openKizSigningModal(orderIds, action = 'WITHDRAWAL') {
@@ -164,19 +154,42 @@ async function openKizSigningModal(orderIds, action = 'WITHDRAWAL') {
     }
 }
 
+const WB_CANCELLED_STATUSES = ['canceled', 'canceled_by_client', 'declined_by_client', 'defect'];
+
+// Sold, but the KIZ has not been withdrawn yet and no withdrawal document exists
+function isWithdrawalCandidate(o) {
+    return Boolean(o.kiz_code)
+        && !o.cz_withdrawal_doc_id
+        && ['ATTACHED', 'VALIDATED'].includes(o.kiz_status)
+        && (o.wb_status === 'sold' || o.status === 'DELIVERED');
+}
+
+// Cancelled after the KIZ was withdrawn. Sold orders never qualify: their goods are with the buyer
+function isReturnCandidate(o) {
+    return Boolean(o.kiz_code)
+        && o.kiz_status === 'WITHDRAWN'
+        && o.status !== 'DELIVERED'
+        && o.wb_status !== 'sold'
+        && (o.status === 'CANCELLED' || WB_CANCELLED_STATUSES.includes(o.wb_status));
+}
+
+async function fetchAllSellerOrders() {
+    const pageSize = 500;
+    const orders = [];
+    for (let page = 1; ; page++) {
+        const data = await apiFetch(`/sellers/${currentSellerId}/orders?view=all&page=${page}&page_size=${pageSize}`);
+        const items = data.items || [];
+        orders.push(...items);
+        if (items.length < pageSize) return orders;
+    }
+}
+
 async function openBatchKizSigningModal(action = 'WITHDRAWAL') {
     if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
 
     try {
-        const data = await apiFetch(`/sellers/${currentSellerId}/orders`);
-        const orders = data.items || [];
-        let eligible = [];
-
-        if (action === 'WITHDRAWAL') {
-            eligible = orders.filter(o => o.kiz_code && o.kiz_status === 'ATTACHED');
-        } else {
-            eligible = orders.filter(o => o.kiz_code && (o.status === 'CANCELLED' || o.kiz_status === 'WITHDRAWN'));
-        }
+        const orders = await fetchAllSellerOrders();
+        const eligible = orders.filter(action === 'WITHDRAWAL' ? isWithdrawalCandidate : isReturnCandidate);
 
         if (eligible.length === 0) {
             const msg = action === 'WITHDRAWAL' ? 'Нет заказов с прикрепленным КИЗ, готовых к выводу из оборота' : 'Нет отмененных заказов для возврата КИЗ в оборот';

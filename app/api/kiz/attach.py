@@ -37,12 +37,14 @@ async def attach_kiz(
     normalized_kiz = normalize_kiz_light_industry(raw_kiz_code) or raw_kiz_code
     kiz_code = normalized_kiz
         
-    # If order_id not specified or 0, auto-find active order needing KIZ
-    target_order = None
-    if order_id and order_id > 0:
-        target_order = await db.get(Order, order_id)
-    
-    if not target_order:
+    # The scanner sends order_id in the body, the /orders/{order_id}/kiz route in the path
+    requested_order_id = order_id or req.order_id
+    if requested_order_id and requested_order_id > 0:
+        target_order = await db.get(Order, requested_order_id)
+        if not target_order or str(target_order.seller_id) != str(seller_id):
+            raise HTTPException(status_code=404, detail=f"Заказ #{requested_order_id} не найден у этого продавца")
+    else:
+        # Only orders waiting for a KIZ: never overwrite the code of an arbitrary order
         res = await db.execute(
             select(Order)
             .where(
@@ -53,18 +55,15 @@ async def attach_kiz(
             .order_by(Order.created_at.asc())
         )
         target_order = res.scalars().first()
+        if not target_order:
+            raise HTTPException(status_code=404, detail="Нет заказов, ожидающих КИЗ. Укажите номер заказа")
 
-    if not target_order:
-        # If still no order, look for any order by seller
-        res = await db.execute(
-            select(Order)
-            .where(Order.seller_id == seller_id)
-            .order_by(Order.created_at.desc())
+    is_withdrawn = target_order.kiz_status == KizStatus.WITHDRAWN or target_order.cz_withdrawal_doc_id
+    if is_withdrawn and target_order.kiz_code and target_order.kiz_code != normalized_kiz:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Заказ #{target_order.id} уже выведен из оборота с другим КИЗ, замена запрещена",
         )
-        target_order = res.scalars().first()
-
-    if not target_order:
-        raise HTTPException(status_code=404, detail="Не найден подходящий заказ для привязки КИЗ")
 
     # Update order with guaranteed normalized KIZ
     target_order.kiz_code = normalized_kiz

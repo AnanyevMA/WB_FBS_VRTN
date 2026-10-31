@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-31T03:08:00.750306+00:00",
+  "updated_at": "2026-10-31T05:05:02.761687+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 180,
+  "total_files": 182,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2464,7 +2464,7 @@
     {
       "file": "app/api/kiz/attach.py",
       "layer": "api",
-      "hash": "dc99441f54f6",
+      "hash": "dffd2bf07019",
       "docstring": "FastAPI KIZ Attach, Lookup & Validation Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2670,7 +2670,7 @@
     {
       "file": "app/api/kiz/documents.py",
       "layer": "api",
-      "hash": "daa0912aabd3",
+      "hash": "0c43a1736e69",
       "docstring": "FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2790,7 +2790,6 @@
         "datetime",
         "fastapi",
         "logging",
-        "sqlalchemy",
         "sqlalchemy.ext.asyncio",
         "typing"
       ]
@@ -5551,7 +5550,7 @@
     {
       "file": "app/schemas/order.py",
       "layer": "schemas",
-      "hash": "34922d6d0833",
+      "hash": "8f9036c2123b",
       "docstring": "",
       "classes": [
         {
@@ -10009,6 +10008,99 @@
       ]
     },
     {
+      "file": "tests/test_frontend_scripts.py",
+      "layer": "tests",
+      "hash": "9c5d3a43ec46",
+      "docstring": "Frontend scripts share one global scope, so a repeated top-level let/const stops the whole",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_loaded_scripts",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_scripts_do_not_redeclare_top_level_names",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_signing_state_is_declared_before_kiz_script",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_run_candidate_filter",
+          "is_async": false,
+          "args": [
+            "function_name",
+            "orders"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_candidates_are_sold_and_not_withdrawn",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_return_candidates_exclude_sold_orders",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_db_returning",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdraw_with_empty_list_is_rejected_and_touches_nothing",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdraw_processes_only_listed_orders",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz.documents",
+        "fastapi",
+        "json",
+        "pathlib",
+        "pytest",
+        "re",
+        "shutil",
+        "subprocess",
+        "unittest.mock"
+      ]
+    },
+    {
       "file": "tests/test_item_returns_adversarial.py",
       "layer": "tests",
       "hash": "6d9f450747fe",
@@ -10741,6 +10833,144 @@
         "sqlalchemy.orm",
         "unittest.mock",
         "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_kiz_attach_safety.py",
+      "layer": "tests",
+      "hash": "2333228d6f64",
+      "docstring": "Regression tests for attaching a scanned KIZ.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_order",
+          "is_async": false,
+          "args": [
+            "order_id",
+            "seller_id",
+            "kiz_status",
+            "kiz_code",
+            "doc",
+            "status"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_db",
+          "is_async": false,
+          "args": [
+            "order",
+            "pending"
+          ],
+          "decorators": [],
+          "docstring": "db.get returns the seller, then the requested order; execute finds pending orders."
+        },
+        {
+          "name": "_kiz_info",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_attach",
+          "is_async": true,
+          "args": [
+            "db",
+            "req",
+            "order_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_id_from_body_is_used",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_id_from_path_is_used",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_without_order_id_takes_only_pending_order",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_no_pending_order_does_not_touch_any_order",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_of_another_seller_is_rejected",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_unknown_order_id_does_not_fall_back_to_another_order",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawn_order_keeps_its_code",
+          "is_async": true,
+          "args": [
+            "kiz_status",
+            "doc"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('kiz_status,doc', List(elts=[Tuple(elts=[Attribute(value=Name(id='KizStatus', ctx=Load()), attr='WITHDRAWN', ctx=Load()), Constant(value=None)], ctx=Load()), Tuple(elts=[Attribute(value=Name(id='KizStatus', ctx=Load()), attr='VALIDATED', ctx=Load()), Constant(value='doc-1')], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_rescanning_same_code_on_withdrawn_order_is_allowed",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.api.kiz.attach",
+        "app.models.order",
+        "app.schemas.order",
+        "fastapi",
+        "pytest",
+        "unittest.mock"
       ]
     },
     {

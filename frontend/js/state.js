@@ -13,7 +13,6 @@ let authToken = localStorage.getItem('wbfbs_auth_token') || '';
 let currentUser = JSON.parse(localStorage.getItem('wbfbs_current_user') || 'null');
 
 // CryptoPro signing & plugin state
-let currentSigningPayload = null;
 let cryptoProCerts = [];
 let isCryptoProAvailable = false;
 

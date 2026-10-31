@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-31T05:19:04.167226+00:00",
+  "updated_at": "2026-10-31T05:31:09.918652+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 182,
+  "total_files": 181,
   "files": [
     {
       "file": "alembic/env.py",
@@ -2336,7 +2336,7 @@
     {
       "file": "app/api/kiz/__init__.py",
       "layer": "api",
-      "hash": "b69c835bf2e6",
+      "hash": "53905aa254f8",
       "docstring": "FastAPI KIZ Router Package — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -2663,63 +2663,10 @@
     {
       "file": "app/api/kiz/documents.py",
       "layer": "api",
-      "hash": "0c43a1736e69",
-      "docstring": "FastAPI KIZ Document Preparation, Signing & Submission Endpoints — WB FBS Manager",
+      "hash": "69f445eb1e6c",
+      "docstring": "FastAPI CZ Document Status Endpoint — WB FBS Manager",
       "classes": [],
       "functions": [
-        {
-          "name": "withdraw_kiz",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "order_ids",
-            "price_kopecks",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/kiz/withdraw')"
-          ],
-          "docstring": ""
-        },
-        {
-          "name": "return_kiz",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "order_ids",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/kiz/return')"
-          ],
-          "docstring": ""
-        },
-        {
-          "name": "prepare_kiz_document",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "payload",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/kiz/prepare-document')"
-          ],
-          "docstring": "Формирует канонический JSON-документ (LK_RECEIPT или LP_RETURN) для подписания"
-        },
-        {
-          "name": "submit_signed_kiz_document",
-          "is_async": true,
-          "args": [
-            "seller_id",
-            "payload",
-            "db"
-          ],
-          "decorators": [
-            "router.post('/kiz/submit-signed-document')"
-          ],
-          "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
-        },
         {
           "name": "get_cz_document_status",
           "is_async": true,
@@ -2736,30 +2683,6 @@
       ],
       "endpoints": [
         {
-          "method": "POST",
-          "path": "/kiz/withdraw",
-          "handler": "withdraw_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "POST",
-          "path": "/kiz/return",
-          "handler": "return_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "POST",
-          "path": "/kiz/prepare-document",
-          "handler": "prepare_kiz_document",
-          "docstring": "Формирует канонический JSON-документ (LK_RECEIPT или LP_RETURN) для подписания"
-        },
-        {
-          "method": "POST",
-          "path": "/kiz/submit-signed-document",
-          "handler": "submit_signed_kiz_document",
-          "docstring": "Принимает подписанный в браузере документ с открепленной подписью УКЭП"
-        },
-        {
           "method": "GET",
           "path": "/kiz/documents/{doc_id}/status",
           "handler": "get_cz_document_status",
@@ -2769,22 +2692,13 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
-        "app.agents.cz_return",
-        "app.agents.cz_withdrawal",
-        "app.agents.notifier",
         "app.database",
-        "app.models.audit",
-        "app.models.kiz",
-        "app.models.order",
         "app.models.seller",
         "app.services.cz_client",
         "app.services.encryption",
-        "app.services.kiz_service",
-        "datetime",
         "fastapi",
         "logging",
-        "sqlalchemy.ext.asyncio",
-        "typing"
+        "sqlalchemy.ext.asyncio"
       ]
     },
     {
@@ -9197,7 +9111,7 @@
     {
       "file": "tests/test_challenger_r3_m2_1_adversarial.py",
       "layer": "tests",
-      "hash": "f06de1840fe9",
+      "hash": "4f1a746b888b",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -9337,15 +9251,6 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify withdraw_order_kiz propagates exact GIS MT rejection reason to DB, Audit, and Telegram without retry."
-        },
-        {
-          "name": "test_e2e_web_signing_rejection_reason_preserved_in_audit_and_response",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": "Verify submit-signed-document endpoint preserves exact GIS MT rejection reason in audit and response."
         }
       ],
       "endpoints": [],
@@ -9668,7 +9573,7 @@
     {
       "file": "tests/test_cz_true_api_v4_polling.py",
       "layer": "tests",
-      "hash": "3cd38ca6cf45",
+      "hash": "129166714d4f",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -9741,15 +9646,6 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify Celery task handles CZDocumentError: ERROR, CHECKED_NOT_OK, FAILED, immediate alert, no retry."
-        },
-        {
-          "name": "test_web_signing_submit_signed_document_rejection",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": "Verify submit_signed_kiz_document handles GIS MT rejection correctly."
         },
         {
           "name": "test_get_cz_document_status_endpoint_v4_info",
@@ -10003,26 +9899,19 @@
     {
       "file": "tests/test_frontend_scripts.py",
       "layer": "tests",
-      "hash": "ded2672828d4",
+      "hash": "c5b534c8eb9d",
       "docstring": "Frontend scripts share one global scope, so a repeated top-level let/const stops the whole",
       "classes": [],
       "functions": [
         {
+          "name": "_html",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
           "name": "_loaded_scripts",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "test_scripts_do_not_redeclare_top_level_names",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "test_signing_state_is_declared_before_kiz_script",
           "is_async": false,
           "args": [],
           "decorators": [],
@@ -10039,6 +9928,20 @@
           "docstring": ""
         },
         {
+          "name": "test_scripts_do_not_redeclare_top_level_names",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_every_loaded_script_exists_and_is_versioned",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
           "name": "test_scanner_page_is_removed",
           "is_async": false,
           "args": [],
@@ -10046,82 +9949,48 @@
           "docstring": ""
         },
         {
+          "name": "test_manual_order_signing_is_removed",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_kiz_paths",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_manual_signing_routes_are_removed",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_signature_queue_keeps_its_signing_tools",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Signing now lives only in the queue, which needs the certificate select and archive upload."
+        },
+        {
           "name": "test_archive_upload_lives_on_the_signature_queue_page",
           "is_async": false,
           "args": [],
           "decorators": [],
           "docstring": "openArchiveFileInput() needs this input: it used to live only on the removed page."
-        },
-        {
-          "name": "test_every_inline_handler_of_removed_code_is_gone",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "_run_candidate_filter",
-          "is_async": false,
-          "args": [
-            "function_name",
-            "orders"
-          ],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "test_withdrawal_candidates_are_sold_and_not_withdrawn",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "test_return_candidates_exclude_sold_orders",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "_db_returning",
-          "is_async": false,
-          "args": [],
-          "decorators": [],
-          "docstring": ""
-        },
-        {
-          "name": "test_withdraw_with_empty_list_is_rejected_and_touches_nothing",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": ""
-        },
-        {
-          "name": "test_withdraw_processes_only_listed_orders",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": ""
         }
       ],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
-        "app.api.kiz.documents",
-        "fastapi",
-        "json",
+        "app.api.kiz",
         "pathlib",
-        "pytest",
-        "re",
-        "shutil",
-        "subprocess",
-        "unittest.mock"
+        "re"
       ]
     },
     {
@@ -10729,7 +10598,7 @@
     {
       "file": "tests/test_kiz_adversarial_challenge_m2_2.py",
       "layer": "tests",
-      "hash": "b1a7053e7c4c",
+      "hash": "12d1b5549ee6",
       "docstring": "Adversarial Challenge & Empirical Verification Suite for Milestone M2.",
       "classes": [],
       "functions": [
@@ -10759,42 +10628,6 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Stress-test the retry logic:"
-        },
-        {
-          "name": "test_submit_signed_kiz_document_slow_response_timeout",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": "Empirically test submit_signed_kiz_document when True API is slow and wait_for_document times out."
-        },
-        {
-          "name": "test_submit_signed_kiz_document_batch_rejection_multi_order",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": "Verify multi-order batch rejection via submit_signed_kiz_document:"
-        },
-        {
-          "name": "test_submit_signed_kiz_document_return_action_rejection",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": "Verify submit_signed_kiz_document handles RETURN action rejection properly."
-        },
-        {
-          "name": "test_submit_signed_kiz_document_invalid_inputs",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": "Verify input validation: missing base64 doc/sig gives 400, missing seller gives 404."
         },
         {
           "name": "test_withdraw_order_kiz_grace_period_404_then_checked_not_ok_error_07",
@@ -11668,40 +11501,6 @@
         "app.models.seller",
         "app.services.auth_service",
         "app.services.cz_client",
-        "app.services.encryption",
-        "datetime",
-        "httpx",
-        "pytest",
-        "unittest.mock",
-        "uuid"
-      ]
-    },
-    {
-      "file": "tests/test_kiz_signing_endpoints.py",
-      "layer": "tests",
-      "hash": "d4e82dcd6837",
-      "docstring": "",
-      "classes": [],
-      "functions": [
-        {
-          "name": "test_prepare_and_submit_kiz_document_endpoints",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": ""
-        }
-      ],
-      "endpoints": [],
-      "celery_tasks": [],
-      "db_tables": [],
-      "imports": [
-        "app.database",
-        "app.main",
-        "app.models.order",
-        "app.models.seller",
-        "app.services.auth_service",
         "app.services.encryption",
         "datetime",
         "httpx",
@@ -15150,7 +14949,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "6ce502d855c3",
+      "hash": "0ae28993d0e8",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],
@@ -15180,8 +14979,6 @@
         "barcodeModalTitle",
         "deleteSellerModalBtn",
         "firstLoginModal",
-        "kizSigningModal",
-        "kizSigningModalTitle",
         "loginModal",
         "modalAttachOrderId",
         "modalAttachOrderInfo",

@@ -160,12 +160,6 @@
                         <p class="page-subtitle">Управление заказами, сборка и привязка маркировки КИЗ.</p>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" onclick="openBatchKizSigningModal('WITHDRAWAL')" title="Пакетный вывод из оборота выкупленных заказов через ЭЦП" style="border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; display: flex; align-items: center; gap: 6px;">
-                            <span>✍️</span> Вывести в ЧЗ (ЭЦП)
-                        </button>
-                        <button class="btn btn-secondary" onclick="openBatchKizSigningModal('RETURN')" title="Пакетный возврат в оборот отмененных заказов через ЭЦП" style="border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; display: flex; align-items: center; gap: 6px;">
-                            <span>🔄</span> Возврат в ЧЗ (ЭЦП)
-                        </button>
                         <button class="btn btn-secondary" id="syncCzOrdersBtn" onclick="syncAllOrdersCzStatus()" title="Обновить реальный статус всех КИЗ продавца через Честный Знак (True API)" style="border-color: rgba(99, 102, 241, 0.4); color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
                             <span class="btn-text">🏷️ Актуализировать ЧЗ</span>
                             <div class="loader"></div>
@@ -899,70 +893,6 @@
     </div>
 </div>
 
-<!-- KIZ CryptoPro Signing Modal -->
-<div class="modal-overlay" id="kizSigningModal">
-    <div class="modal-content" style="max-width: 650px;">
-        <div class="modal-header">
-            <h3 id="kizSigningModalTitle">✍️ Подписание документа в Честный Знак</h3>
-            <button class="icon-btn" onclick="closeModal('kizSigningModal')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div id="kizSigningHeaderBanner" style="padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #c7d2fe;">
-                <div style="font-weight: 600;" id="kizSigningActionName">Вывод из оборота (Дистанционная продажа LK_RECEIPT)</div>
-                <div style="font-size: 12px; margin-top: 4px; opacity: 0.9;" id="kizSigningActionDesc">Документ формируется на сервере VPS и подписывается вашей локальной УКЭП через плагин КриптоПро.</div>
-                <div id="kizSigningFiasInfo" style="font-size: 11px; margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.2);"></div>
-            </div>
-
-            <!-- Orders to process -->
-            <div style="margin-bottom: 16px;">
-                <label class="form-label" style="display:flex; justify-content:space-between;">
-                    <span>Выбранные заказы (<span id="kizSigningOrdersCount">0</span>):</span>
-                    <span id="kizSigningTotalPrice" style="font-weight:600; color:var(--primary-hover);">0 ₽</span>
-                </label>
-                <div id="kizSigningOrdersList" style="max-height: 140px; overflow-y: auto; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; font-size: 13px;">
-                    <!-- Items inserted dynamically -->
-                </div>
-            </div>
-
-            <!-- CryptoPro Certificate Selector -->
-            <div class="form-group" style="margin-bottom: 16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <label class="form-label" style="margin-bottom:0;">Сертификат электронной подписи (УКЭП) *</label>
-                    <span id="kizSigningPluginBadge" style="font-size:11px; padding:2px 8px; border-radius:12px; font-weight:600; background:rgba(234, 179, 8, 0.15); color:#facc15; border:1px solid rgba(234, 179, 8, 0.3);">Поиск плагина...</span>
-                </div>
-                <select class="form-control" id="kizSigningCertSelect" onchange="onCertSelected()">
-                    <option value="">-- Загрузка сертификатов из хранилища КриптоПро... --</option>
-                </select>
-                <div id="kizSigningCertDetails" style="font-size:12px; color:var(--text-muted); margin-top:6px; line-height:1.4;"></div>
-            </div>
-
-            <!-- Prepared Document Preview (Collapsible) -->
-            <details style="margin-bottom: 16px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px;">
-                <summary style="font-size: 12px; color: var(--text-muted); cursor: pointer; font-weight: 500;">📄 Просмотр структуры JSON-документа ГИС МТ</summary>
-                <pre id="kizSigningJsonPreview" style="margin-top: 8px; font-size: 11px; font-family: monospace; color: #a5f3fc; white-space: pre-wrap; max-height: 150px; overflow-y: auto; background: rgba(15, 23, 42, 0.9); padding: 8px; border-radius: 4px;">Формирование...</pre>
-            </details>
-
-            <!-- Progress / Status logs -->
-            <div id="kizSigningLogs" style="display: none; padding: 10px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; margin-top: 10px;">
-                <div style="font-weight: 600; margin-bottom: 4px;" id="kizSigningStatusTitle">Статус операции:</div>
-                <div id="kizSigningStatusText" style="color: var(--text-muted);">Инициализация...</div>
-            </div>
-        </div>
-        <div class="modal-footer" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-            <div>
-                <button class="btn btn-secondary" id="kizSigningServerFallbackBtn" onclick="submitKizViaServerFallback()" style="font-size:12px; opacity:0.85;" title="Использовать фоновый агент на сервере, если сертификат установлен на VPS">⚙️ Серверная отправка</button>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button class="btn btn-secondary" onclick="closeModal('kizSigningModal')">Отмена</button>
-                <button class="btn btn-primary" id="kizSigningSubmitBtn" onclick="executeKizClientSigning()" style="background: linear-gradient(135deg, #10b981, #059669); border:none; display:flex; align-items:center; gap:6px;">
-                    <span class="btn-text">✍️ Подписать ЭЦП и отправить</span>
-                    <div class="loader" style="display:none;"></div>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Authentication & Login Modal -->
 <div class="modal-overlay" id="loginModal" style="z-index: 9999; backdrop-filter: blur(16px); background: rgba(15, 23, 42, 0.92);">
     <div class="modal-content" style="max-width: 440px; border: 1px solid rgba(124, 58, 237, 0.4); box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 30px rgba(124, 58, 237, 0.25);">
@@ -1631,15 +1561,14 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- JavaScript Modules -->
-<script src="js/state.js?v=1.1.0"></script>
+<script src="js/state.js?v=1.1.1"></script>
 <script src="js/api.js?v=1.1.0"></script>
 <script src="js/ui.js?v=1.1.0"></script>
 <script src="js/auth.js?v=1.1.0"></script>
 <script src="js/dashboard.js?v=1.1.0"></script>
-<script src="js/orders.js?v=1.1.0"></script>
+<script src="js/orders.js?v=1.1.1"></script>
 <script src="js/cadesplugin_api.js?v=1.1.0"></script>
-<script src="js/cryptopro.js?v=1.1.0"></script>
-<script src="js/kiz.js?v=1.1.2"></script>
+<script src="js/cryptopro.js?v=1.1.1"></script>
 <script src="js/signature_queue.js?v=1.3.3"></script>
 <script src="js/supplies.js?v=1.1.0"></script>
 <script src="js/sellers.js?v=1.2.0"></script>

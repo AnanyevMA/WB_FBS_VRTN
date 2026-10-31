@@ -153,8 +153,6 @@ async function loadOrders(silent = false) {
                         ${o.status === 'NEW' ? `<button class="icon-btn" title="Перевести на сборку" onclick="markOrderAssembling('${o.id}')">📦</button>` : ''}
                         <button class="icon-btn" title="Привязать КИЗ" onclick="openAttachKizModal('${o.id}', '${o.name || o.article}')">🏷️</button>
                         ${o.kiz_code && isCzRejected ? `<button class="icon-btn" title="Повторить вывод в ЧЗ" style="color:var(--primary);" onclick="retryCzWithdrawal('${o.id}')">🔄</button>` : ''}
-                        ${o.kiz_code && !isWithdrawnOrRetired && !isCzRejected ? `<button class="icon-btn" style="color:#10b981;" title="Вывести КИЗ из оборота в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'WITHDRAWAL')">✍️</button>` : ''}
-                        ${o.kiz_code && (isWithdrawnOrRetired || o.status === 'CANCELLED') ? `<button class="icon-btn" style="color:#f59e0b;" title="Вернуть КИЗ в оборот в ЧЗ через ЭЦП" onclick="openKizSigningModal(['${o.id}'], 'RETURN')">🔄</button>` : ''}
                         ${o.status !== 'CANCELLED' ? `<button class="icon-btn" title="Отменить заказ" style="color:var(--status-cancelled)" onclick="cancelOrder('${o.id}')">❌</button>` : ''}
                     </div>
                 </td>
@@ -286,8 +284,6 @@ async function viewOrderDetail(orderId) {
 
         document.getElementById('orderDetailFooter').innerHTML = `
             ${order.kiz_code && isCzRejected ? `<button class="btn btn-warning" style="background:#0284c7; border:none; display:flex; align-items:center; gap:6px; color:#fff;" onclick="closeModal('orderDetailModal'); retryCzWithdrawal('${order.id}');"><span>🔄</span> Повторить вывод в ЧЗ</button>` : ''}
-            ${order.kiz_code && !isWithdrawnOrRetired && !isCzRejected ? `<button class="btn btn-success" style="background:#10b981; border:none; display:flex; align-items:center; gap:6px;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'WITHDRAWAL');"><span>✍️</span> Вывести КИЗ (ЭЦП)</button>` : ''}
-            ${order.kiz_code && (isWithdrawnOrRetired || order.status === 'CANCELLED') ? `<button class="btn btn-warning" style="background:#f59e0b; border:none; display:flex; align-items:center; gap:6px; color:#000;" onclick="closeModal('orderDetailModal'); openKizSigningModal(['${order.id}'], 'RETURN');"><span>🔄</span> Вернуть КИЗ (ЭЦП)</button>` : ''}
             ${order.status === 'NEW' ? `<button class="btn btn-success" onclick="markOrderAssembling('${order.id}'); closeModal('orderDetailModal');">На сборку</button>` : ''}
             <button class="btn btn-primary" onclick="window.print()">Печать этикетки</button>
             <button class="btn btn-secondary" onclick="closeModal('orderDetailModal')">Закрыть</button>

@@ -91,7 +91,7 @@ WB FBS Manager
 #### 🌐 1. FastAPI Роутеры (`app/api/`):
 * **Эталон декомпозиции в проекте**: подсистема маркировки Честного Знака [`app/api/kiz/`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/). Вместо единого 1500-строчного файла она разбита на 5 специализированных подмодулей:
   * [`attach.py`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/attach.py) — привязка, отвязка, валидация КИЗ (~140 строк).
-  * [`documents.py`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/documents.py) — подготовка и отправка документов вывода/возврата (~180 строк).
+  * [`documents.py`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/documents.py) — статус документа в ГИС МТ (~50 строк). Вывод и возврат подписываются только через «Очередь ЭЦП».
   * [`signature_batches.py`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/signature_batches.py) — пакетная очередь на подпись УКЭП (~220 строк).
   * [`archive.py`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/archive.py) — парсинг и сверка выгрузок архива WB (~190 строк).
   * [`auto_queue.py`](file:///d:/PyCharm_Projects/WB%20FBS/app/api/kiz/auto_queue.py) — управление автоочередью маркировки (~130 строк).
@@ -122,9 +122,9 @@ WB FBS Manager
   * `state.js` — глобальные переменные состояния, кэш, словари и константы (`STATUS_MAP`, `STATUS_MAP_NK`).
   * `api.js` — унифицированный HTTP-клиент (`apiFetch`, обработка JWT, 401 redirect, toast-ошибки).
   * `ui.js` — базовые UI-компоненты (тосты, модальные окна, переключение табов и светлой/темной темы).
-  * `<domain>.js` (`orders.js`, `supplies.js`, `kiz.js`, `sellers.js`, `national_catalog.js`, `signature_queue.js`, `dashboard.js`, `audit.js`) — изолированная логика конкретных страниц.
+  * `<domain>.js` (`orders.js`, `supplies.js`, `sellers.js`, `national_catalog.js`, `signature_queue.js`, `dashboard.js`, `audit.js`) — изолированная логика конкретных страниц.
 * **Правило**: Запрещено помещать логику новой страницы или функционала в `app.js` или `ui.js`. Новый домен оформляется в свой собственный `<domain>.js` файл и подключается в `index.html`.
-* **Кэш браузера**: nginx кэширует `/static/` на 7 дней. При любой правке `.js` меняйте версию этого файла в `index.html` (`js/kiz.js?v=1.1.1`), иначе пользователи получат старую копию. Каталог `frontend/` смонтирован в nginx, поэтому для правок только фронтенда достаточно `git pull` на VPS, без пересоздания контейнеров.
+* **Кэш браузера**: nginx кэширует `/static/` на 7 дней. При любой правке `.js` меняйте версию этого файла в `index.html` (`js/orders.js?v=1.1.1`), иначе пользователи получат старую копию. Каталог `frontend/` смонтирован в nginx, поэтому для правок только фронтенда достаточно `git pull` на VPS, без пересоздания контейнеров.
 
 ---
 

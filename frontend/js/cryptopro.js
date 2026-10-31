@@ -10,7 +10,7 @@
  * Update visual plugin badges across the app
  */
 function updatePluginBadges(status, text) {
-    const badges = ['sellerCertPluginBadge', 'kizSigningPluginBadge', 'batchSigningPluginBadge'];
+    const badges = ['sellerCertPluginBadge', 'batchSigningPluginBadge'];
     badges.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -176,7 +176,7 @@ async function loadCryptoProCerts() {
  * Populate UI select elements with available certificates
  */
 async function populateCertificatesDropdown(customTargetId = null, userTriggered = false) {
-    const select = customTargetId ? document.getElementById(customTargetId) : document.getElementById('kizSigningCertSelect');
+    const select = customTargetId ? document.getElementById(customTargetId) : null;
     const sellerCertSelect = document.getElementById('seller_cert_select');
     const batchCertSelect = document.getElementById('batchCertSelect');
 
@@ -252,7 +252,6 @@ async function populateCertificatesDropdown(customTargetId = null, userTriggered
 
         if (select) {
             applySmartSelection(select);
-            if (typeof onCertSelected === 'function' && select.id === 'kizSigningCertSelect') onCertSelected();
             if (typeof onBatchCertChanged === 'function' && select.id === 'batchCertSelect') onBatchCertChanged();
         }
 
@@ -289,22 +288,6 @@ async function populateCertificatesDropdown(customTargetId = null, userTriggered
     }
 }
 
-function onCertSelected() {
-    const select = document.getElementById('kizSigningCertSelect');
-    if (!select) return;
-    const thumb = select.value;
-    const detailsEl = document.getElementById('kizSigningCertDetails');
-    if (!thumb) {
-        if (detailsEl) detailsEl.innerHTML = '';
-        return;
-    }
-    const cert = cryptoProCerts.find(c => c.thumbprint && c.thumbprint.toLowerCase() === thumb.toLowerCase());
-    if (cert && detailsEl) {
-        const expLabel = cert.isExpired ? '<span style="color:#ef4444; font-weight:700;">(ИСТЁК)</span>' : '<span style="color:#10b981;">(действителен)</span>';
-        detailsEl.innerHTML = `<strong>Владелец:</strong> ${cert.subject}<br><strong>Действителен до:</strong> ${new Date(cert.validTo).toLocaleString('ru-RU')} ${expLabel}<br><span style="font-family:monospace; font-size:11px;">Отпечаток (SHA-1): ${cert.thumbprint}</span>`;
-    }
-}
-
 /**
  * Sign base64 data using CryptoPro (detached signature)
  */
@@ -313,7 +296,7 @@ async function signDataWithCryptoPro(base64Data, thumbprint) {
 
     // If no thumbprint passed, pick from UI or first available
     if (!targetThumb) {
-        const uiCertSelect = document.getElementById('kizSigningCertSelect') || document.getElementById('seller_cert_select') || document.getElementById('batchCertSelect');
+        const uiCertSelect = document.getElementById('seller_cert_select') || document.getElementById('batchCertSelect');
         targetThumb = uiCertSelect ? uiCertSelect.value : null;
     }
 
@@ -601,7 +584,6 @@ window.initCryptoProPlugin = initCryptoProPlugin;
 window.checkPluginLoaded = checkPluginLoaded;
 window.loadCryptoProCerts = loadCryptoProCerts;
 window.populateCertificatesDropdown = populateCertificatesDropdown;
-window.onCertSelected = onCertSelected;
 window.signDataWithCryptoPro = signDataWithCryptoPro;
 window.signBase64WithCades = signDataWithCryptoPro;
 window.silentCheckAndRefreshCzToken = silentCheckAndRefreshCzToken;

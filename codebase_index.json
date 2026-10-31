@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-31T05:05:02.761687+00:00",
+  "updated_at": "2026-10-31T05:19:04.167226+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 182,
   "files": [
@@ -2464,7 +2464,7 @@
     {
       "file": "app/api/kiz/attach.py",
       "layer": "api",
-      "hash": "dffd2bf07019",
+      "hash": "10d35eba1ffa",
       "docstring": "FastAPI KIZ Attach, Lookup & Validation Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2478,8 +2478,7 @@
             "db"
           ],
           "decorators": [
-            "router.post('/orders/{order_id}/kiz')",
-            "router.post('/kiz/attach')"
+            "router.post('/orders/{order_id}/kiz')"
           ],
           "docstring": ""
         },
@@ -2539,12 +2538,6 @@
         {
           "method": "POST",
           "path": "/orders/{order_id}/kiz",
-          "handler": "attach_kiz",
-          "docstring": ""
-        },
-        {
-          "method": "POST",
-          "path": "/kiz/attach",
           "handler": "attach_kiz",
           "docstring": ""
         },
@@ -5550,7 +5543,7 @@
     {
       "file": "app/schemas/order.py",
       "layer": "schemas",
-      "hash": "8f9036c2123b",
+      "hash": "34922d6d0833",
       "docstring": "",
       "classes": [
         {
@@ -6461,7 +6454,7 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "627bc19a1f30",
+      "hash": "1f9fefb625dd",
       "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
       "classes": [
         {
@@ -10010,7 +10003,7 @@
     {
       "file": "tests/test_frontend_scripts.py",
       "layer": "tests",
-      "hash": "9c5d3a43ec46",
+      "hash": "ded2672828d4",
       "docstring": "Frontend scripts share one global scope, so a repeated top-level let/const stops the whole",
       "classes": [],
       "functions": [
@@ -10030,6 +10023,37 @@
         },
         {
           "name": "test_signing_state_is_declared_before_kiz_script",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_page",
+          "is_async": false,
+          "args": [
+            "html",
+            "route"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_scanner_page_is_removed",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_archive_upload_lives_on_the_signature_queue_page",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "openArchiveFileInput() needs this input: it used to live only on the removed page."
+        },
+        {
+          "name": "test_every_inline_handler_of_removed_code_is_gone",
           "is_async": false,
           "args": [],
           "decorators": [],
@@ -10838,8 +10862,8 @@
     {
       "file": "tests/test_kiz_attach_safety.py",
       "layer": "tests",
-      "hash": "2333228d6f64",
-      "docstring": "Regression tests for attaching a scanned KIZ.",
+      "hash": "c151376a6c37",
+      "docstring": "Regression tests for attaching a KIZ from the order card.",
       "classes": [],
       "functions": [
         {
@@ -10860,11 +10884,10 @@
           "name": "_db",
           "is_async": false,
           "args": [
-            "order",
-            "pending"
+            "order"
           ],
           "decorators": [],
-          "docstring": "db.get returns the seller, then the requested order; execute finds pending orders."
+          "docstring": "db.get returns the seller, then the requested order."
         },
         {
           "name": "_kiz_info",
@@ -10878,41 +10901,21 @@
           "is_async": true,
           "args": [
             "db",
-            "req",
-            "order_id"
+            "order_id",
+            "code"
           ],
           "decorators": [],
           "docstring": ""
         },
         {
-          "name": "test_order_id_from_body_is_used",
-          "is_async": true,
+          "name": "test_scanner_route_is_removed",
+          "is_async": false,
           "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
+          "decorators": [],
           "docstring": ""
         },
         {
-          "name": "test_order_id_from_path_is_used",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": ""
-        },
-        {
-          "name": "test_without_order_id_takes_only_pending_order",
-          "is_async": true,
-          "args": [],
-          "decorators": [
-            "pytest.mark.asyncio"
-          ],
-          "docstring": ""
-        },
-        {
-          "name": "test_no_pending_order_does_not_touch_any_order",
+          "name": "test_kiz_goes_to_the_requested_order",
           "is_async": true,
           "args": [],
           "decorators": [
@@ -10930,7 +10933,7 @@
           "docstring": ""
         },
         {
-          "name": "test_unknown_order_id_does_not_fall_back_to_another_order",
+          "name": "test_unknown_order_is_rejected",
           "is_async": true,
           "args": [],
           "decorators": [
@@ -15147,7 +15150,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "1294b6926795",
+      "hash": "6ce502d855c3",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],
@@ -15157,7 +15160,6 @@
       "routes": [
         "/",
         "/audit",
-        "/kiz",
         "/orders",
         "/products",
         "/sellers",

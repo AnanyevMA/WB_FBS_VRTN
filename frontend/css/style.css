@@ -677,55 +677,6 @@ tbody tr:hover {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Scanner Specific */
-.scanner-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 36px 24px;
-}
-
-.scanner-input-wrapper {
-    position: relative;
-    width: 100%;
-    max-width: 650px;
-    margin-bottom: 28px;
-}
-
-.scanner-input {
-    width: 100%;
-    background: rgba(15, 23, 42, 0.8);
-    border: 2px solid var(--primary);
-    border-radius: 16px;
-    padding: 20px 24px;
-    padding-left: 56px;
-    font-size: 20px;
-    color: var(--text-main);
-    box-shadow: 0 0 25px rgba(124, 58, 237, 0.25);
-    transition: var(--transition);
-    font-family: monospace;
-}
-
-.scanner-input:focus {
-    outline: none;
-    box-shadow: 0 0 35px rgba(124, 58, 237, 0.45);
-    background: rgba(15, 23, 42, 0.95);
-}
-
-.scanner-icon {
-    position: absolute;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 24px;
-    color: var(--primary);
-}
-
-.scan-history {
-    width: 100%;
-    max-width: 850px;
-}
-
 /* Filter bar */
 .filter-bar {
     display: flex;

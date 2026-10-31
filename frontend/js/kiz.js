@@ -1,92 +1,7 @@
 /**
- * WB FBS Manager — KIZ (DataMatrix) Scanner & Direct Operations
- * Сканирование DataMatrix, привязка кодов к заказам и ручные операции.
+ * WB FBS Manager — KIZ Signing Operations
+ * Окно подписи документов вывода и возврата КИЗ по выбранным заказам.
  */
-
-async function processKizScan(code) {
-    const kizCode = code.trim();
-    if(!kizCode) return;
-    
-    if(!currentSellerId) {
-        return showToast('Ошибка', 'Сначала выберите продавца', 'error');
-    }
-
-    const specifiedOrderId = document.getElementById('kizOrderSearch').value.trim();
-    const orderIdNum = specifiedOrderId ? parseInt(specifiedOrderId) : null;
-    const scanHistory = document.getElementById('scan-history-body');
-
-    const timeStr = new Date().toLocaleTimeString('ru-RU');
-    
-    try {
-        const res = await apiFetch(`/sellers/${currentSellerId}/kiz/attach`, {
-            method: 'POST',
-            body: JSON.stringify({
-                kiz_code: kizCode,
-                order_id: orderIdNum
-            })
-        });
-
-        // Append to history table
-        const tr = document.createElement('tr');
-        const prod = res.product_info || {};
-        const isBlocked = prod.blocked_by_ogv || (prod.ogvs && prod.ogvs.length > 0);
-        const statusHtml = isBlocked
-            ? `<span style="color: var(--status-cancelled); display: flex; align-items: center; gap: 6px; font-weight:500;">
-                 ⛔ ОГВ Блокировка: ${prod.validation_message || 'Заблокирован госорганами'}
-               </span>`
-            : (prod.is_valid === false
-                ? `<span style="color: #f59e0b; display: flex; align-items: center; gap: 6px; font-weight:500;">
-                     ⚠️ ${prod.validation_message || res.message}
-                   </span>`
-                : `<span style="color: var(--status-delivered); display: flex; align-items: center; gap: 6px; font-weight:500;">
-                     ✅ ${res.message} ${prod.cz_status ? `(${prod.cz_status})` : ''}
-                   </span>`);
-
-        tr.innerHTML = `
-            <td style="color: var(--text-muted); font-size:13px;">${timeStr}</td>
-            <td style="font-family: monospace; font-size: 14px;">${kizCode}</td>
-            <td style="font-weight:600;">#${res.order_id}</td>
-            <td>${statusHtml}</td>
-        `;
-
-        if (scanHistory) {
-            if (scanHistory.rows.length === 1 && scanHistory.rows[0].cells.length === 1) {
-                scanHistory.innerHTML = '';
-            }
-            scanHistory.prepend(tr);
-        }
-
-        if (isBlocked) {
-            showToast('Внимание!', `Код заблокирован ОГВ: ${prod.validation_message}`, 'warning');
-        } else {
-            showToast('КИЗ отсканирован', res.message, 'success');
-        }
-
-    } catch (e) {
-        if (scanHistory) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="color: var(--text-muted); font-size:13px;">${timeStr}</td>
-                <td style="font-family: monospace; font-size: 14px;">${kizCode}</td>
-                <td>${orderIdNum ? '#' + orderIdNum : '-'}</td>
-                <td>
-                    <span style="color: var(--status-cancelled); display: flex; align-items: center; gap: 6px; font-weight:500;">
-                        ❌ ${e.message}
-                    </span>
-                </td>
-            `;
-            if (scanHistory.rows.length === 1 && scanHistory.rows[0].cells.length === 1) {
-                scanHistory.innerHTML = '';
-            }
-            scanHistory.prepend(tr);
-        }
-        showToast('Ошибка маркировки', e.message, 'error');
-    }
-}
-
-async function triggerCzAction(type) {
-    return openBatchKizSigningModal(type === 'withdraw' ? 'WITHDRAWAL' : 'RETURN');
-}
 
 async function openKizSigningModal(orderIds, action = 'WITHDRAWAL') {
     if (!currentSellerId) return showToast('Ошибка', 'Выберите продавца', 'error');
@@ -283,8 +198,6 @@ async function submitKizViaServerFallback() {
 }
 
 // Global window bindings
-window.processKizScan = processKizScan;
-window.triggerCzAction = triggerCzAction;
 window.openKizSigningModal = openKizSigningModal;
 window.openBatchKizSigningModal = openBatchKizSigningModal;
 window.executeKizClientSigning = executeKizClientSigning;

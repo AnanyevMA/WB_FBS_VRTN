@@ -42,6 +42,35 @@ def test_signing_state_is_declared_before_kiz_script():
     assert "currentSigningPayload" in TOP_LEVEL_DECLARATION.findall((FRONTEND / "js/state.js").read_text(encoding="utf-8"))
 
 
+def _page(html: str, route: str) -> str:
+    start = html.index(f'id="page-{route}"')
+    end = html.find('id="page-', start + 1)
+    return html[start:end if end > 0 else len(html)]
+
+
+def test_scanner_page_is_removed():
+    html = (FRONTEND / "index.html").read_text(encoding="utf-8")
+    assert 'page-/kiz' not in html and 'data-route="/kiz"' not in html
+    assert "kizScannerInput" not in html
+
+
+def test_archive_upload_lives_on_the_signature_queue_page():
+    """openArchiveFileInput() needs this input: it used to live only on the removed page."""
+    html = (FRONTEND / "index.html").read_text(encoding="utf-8")
+    queue = _page(html, "/signature-queue")
+    assert html.count('id="archiveFileInput"') == 1
+    for element in ('id="archiveFileInput"', 'id="archiveDropZone"', 'id="archiveApiSyncBtn"'):
+        assert element in queue, element
+
+
+def test_every_inline_handler_of_removed_code_is_gone():
+    html = (FRONTEND / "index.html").read_text(encoding="utf-8")
+    for name in ("processKizScan", "triggerCzAction"):
+        assert name not in html
+        for path in _loaded_scripts():
+            assert name not in path.read_text(encoding="utf-8"), path.name
+
+
 def _run_candidate_filter(function_name: str, orders: list[dict]) -> list[int]:
     node = shutil.which("node")
     if not node:

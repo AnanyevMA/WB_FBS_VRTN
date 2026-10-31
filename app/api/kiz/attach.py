@@ -2,14 +2,14 @@
 FastAPI KIZ Attach, Lookup & Validation Endpoints — WB FBS Manager
 """
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
 from app.models.seller import Seller
-from app.models.order import Order, KizStatus, OrderStatus
+from app.models.order import Order, KizStatus
 from app.models.kiz import KizOperation, KizOperationType
 from app.models.audit import AuditLog
 from app.schemas.order import KIZAttachRequest
@@ -18,10 +18,9 @@ router = APIRouter()
 
 
 @router.post("/orders/{order_id}/kiz")
-@router.post("/kiz/attach")
 async def attach_kiz(
     seller_id: str,
-    order_id: Optional[int] = None,
+    order_id: int,
     req: KIZAttachRequest = Body(...),
     db: AsyncSession = Depends(get_db)
 ):
@@ -37,26 +36,9 @@ async def attach_kiz(
     normalized_kiz = normalize_kiz_light_industry(raw_kiz_code) or raw_kiz_code
     kiz_code = normalized_kiz
         
-    # The scanner sends order_id in the body, the /orders/{order_id}/kiz route in the path
-    requested_order_id = order_id or req.order_id
-    if requested_order_id and requested_order_id > 0:
-        target_order = await db.get(Order, requested_order_id)
-        if not target_order or str(target_order.seller_id) != str(seller_id):
-            raise HTTPException(status_code=404, detail=f"Заказ #{requested_order_id} не найден у этого продавца")
-    else:
-        # Only orders waiting for a KIZ: never overwrite the code of an arbitrary order
-        res = await db.execute(
-            select(Order)
-            .where(
-                Order.seller_id == seller_id,
-                Order.kiz_status == KizStatus.PENDING,
-                Order.status.in_([OrderStatus.NEW, OrderStatus.ASSEMBLING])
-            )
-            .order_by(Order.created_at.asc())
-        )
-        target_order = res.scalars().first()
-        if not target_order:
-            raise HTTPException(status_code=404, detail="Нет заказов, ожидающих КИЗ. Укажите номер заказа")
+    target_order = await db.get(Order, order_id)
+    if not target_order or str(target_order.seller_id) != str(seller_id):
+        raise HTTPException(status_code=404, detail=f"Заказ #{order_id} не найден у этого продавца")
 
     is_withdrawn = target_order.kiz_status == KizStatus.WITHDRAWN or target_order.cz_withdrawal_doc_id
     if is_withdrawn and target_order.kiz_code and target_order.kiz_code != normalized_kiz:

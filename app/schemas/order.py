@@ -28,7 +28,6 @@ class OrderListItem(OrderBase):
 
 class KIZAttachRequest(BaseModel):
     kiz_code: str
-    order_id: Optional[int] = None
 
 class KIZValidationResponse(BaseModel):
     valid: bool

@@ -3,20 +3,22 @@
  */
 
 function navigateTo(route) {
+    const pageEl = document.getElementById(`page-${route}`);
+    // Old bookmarks and links to removed pages, such as #/kiz, open the dashboard
+    if (!pageEl && route !== '/') {
+        return navigateTo('/');
+    }
+
     document.querySelectorAll('.nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.route === route);
     });
 
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-    const pageEl = document.getElementById(`page-${route}`);
     if (pageEl) {
         pageEl.classList.add('active');
     }
 
-    if (route === '/kiz') {
-        const kizInput = document.getElementById('kizScannerInput');
-        if (kizInput) setTimeout(() => kizInput.focus(), 100);
-    } else if (route === '/') {
+    if (route === '/') {
         loadDashboard();
     } else if (route === '/orders') {
         loadOrders();
@@ -114,27 +116,6 @@ async function initApp() {
     const syncOrdersBtn = document.getElementById('syncOrdersBtn');
     if (syncOrdersBtn && !syncOrdersBtn.getAttribute('onclick')) {
         syncOrdersBtn.addEventListener('click', () => syncOrdersFromWB());
-    }
-
-    // KIZ scanner inputs
-    const scannerInput = document.getElementById('kizScannerInput');
-    if (scannerInput) {
-        scannerInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                processKizScan(scannerInput.value);
-                scannerInput.value = '';
-            }
-        });
-    }
-
-    const kizManualBtn = document.getElementById('kizManualSubmitBtn');
-    if (kizManualBtn && scannerInput) {
-        kizManualBtn.addEventListener('click', () => {
-            if (scannerInput.value) {
-                processKizScan(scannerInput.value);
-                scannerInput.value = '';
-            }
-        });
     }
 
     // Window history navigation (back / forward)

@@ -506,7 +506,7 @@ class TelegramService:
                     [
                         InlineKeyboardButton(
                             text="✍️ Перейти к подписанию",
-                            url=f"{base_url}/#kiz-queue",
+                            url=f"{base_url}/#/signature-queue",
                         ),
                     ],
                 ]

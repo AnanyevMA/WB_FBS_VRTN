@@ -1141,7 +1141,6 @@ async function triggerUnifiedBatch(days = 90) {
     const btns = [
         document.getElementById('triggerUnifiedBatchBtnEmpty'),
         document.getElementById('triggerUnifiedBatchBtnHeader'),
-        document.getElementById('triggerUnifiedBatchBtnKiz'),
     ].filter(Boolean);
 
     const origTexts = btns.map(b => b.innerHTML);

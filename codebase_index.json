@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-01T03:31:27.137401+00:00",
+  "updated_at": "2026-11-01T03:50:43.058940+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 197,
+  "total_files": 198,
   "files": [
     {
       "file": "alembic/env.py",
@@ -826,7 +826,7 @@
     {
       "file": "app/agents/cz_return.py",
       "layer": "agents",
-      "hash": "c1fd478dd6a2",
+      "hash": "c9576f4e35a4",
       "docstring": "CZ Return Agent — Возврат КИЗ в оборот при возврате товара",
       "classes": [],
       "functions": [
@@ -890,6 +890,7 @@
         "app.models.kiz",
         "app.models.order",
         "app.models.seller",
+        "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
         "asyncio",
@@ -2469,7 +2470,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "e1e00ca7c2a1",
+      "hash": "c2e34710f607",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2562,6 +2563,7 @@
         "app.models.order",
         "app.models.seller",
         "app.services.archive_service",
+        "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
         "app.services.kiz_event_collectors",
@@ -2893,7 +2895,7 @@
     {
       "file": "app/api/kiz/signature_batches.py",
       "layer": "api",
-      "hash": "942b2672f8ee",
+      "hash": "1b6e6bb1c6b3",
       "docstring": "FastAPI KIZ Signature Batches Queue Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3041,6 +3043,7 @@
         "app.database",
         "app.models.kiz",
         "app.models.seller",
+        "app.services.crypto_service",
         "app.services.signature_batch_executor",
         "app.services.unified_kiz_batch_service",
         "fastapi",
@@ -6061,7 +6064,7 @@
     {
       "file": "app/services/crypto_service.py",
       "layer": "services",
-      "hash": "b33bc541f196",
+      "hash": "3a14ccce07a8",
       "docstring": "КриптоПро Digital Signature Service",
       "classes": [
         {
@@ -6107,6 +6110,15 @@
           "args": [],
           "decorators": [],
           "docstring": "Check if КриптоПро is installed and accessible."
+        },
+        {
+          "name": "can_sign_on_server",
+          "is_async": false,
+          "args": [
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": "Server signing needs both the seller setting and КриптоПро on the server."
         }
       ],
       "endpoints": [],
@@ -12813,7 +12825,7 @@
     {
       "file": "tests/test_kiz_withdrawal_return.py",
       "layer": "tests",
-      "hash": "fa3462f688f3",
+      "hash": "23ea2c3a0ec0",
       "docstring": "Test suite for KIZ Withdrawal (LP_SHIP_GOODS) and Return (LP_RETURN_GOODS)",
       "classes": [],
       "functions": [
@@ -13981,6 +13993,110 @@
         "app.agents.security_audit_agent",
         "app.database",
         "pytest"
+      ]
+    },
+    {
+      "file": "tests/test_server_signing_disabled.py",
+      "layer": "tests",
+      "hash": "995d4f505b48",
+      "docstring": "Tests for disabled server signing.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_no_mock_settings",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_create_cancelled_order",
+          "is_async": false,
+          "args": [
+            "auto_sign"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_can_sign_on_server_needs_setting_and_cryptopro",
+          "is_async": false,
+          "args": [
+            "flag",
+            "csp",
+            "expected"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('flag,csp,expected', List(elts=[Tuple(elts=[Constant(value=False), Constant(value=False), Constant(value=False)], ctx=Load()), Tuple(elts=[Constant(value=False), Constant(value=True), Constant(value=False)], ctx=Load()), Tuple(elts=[Constant(value=True), Constant(value=False), Constant(value=False)], ctx=Load()), Tuple(elts=[Constant(value=True), Constant(value=True), Constant(value=True)], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_background_return_does_not_sign_and_keeps_order_for_batch",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_background_return_signs_when_server_signing_is_enabled",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_batch_is_not_completed_by_server_mode_when_disabled",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_archive_server_mode_is_rejected_when_disabled",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.cz_return",
+        "app.api.kiz.archive",
+        "app.api.kiz.signature_batches",
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auto_kiz_queue_service",
+        "app.services.crypto_service",
+        "app.services.encryption",
+        "datetime",
+        "fastapi",
+        "pytest",
+        "random",
+        "sqlalchemy.orm",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {
@@ -16675,7 +16791,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "7445b7479450",
+      "hash": "f94ca226d685",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

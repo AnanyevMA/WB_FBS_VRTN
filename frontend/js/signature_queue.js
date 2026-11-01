@@ -6,6 +6,12 @@ let currentArchiveData = null;
 let currentSignatureBatches = [];
 let activeBatchDetails = null;
 
+function isServerSigningEnabled() {
+    const seller = (typeof currentSellersList !== 'undefined' && currentSellersList || [])
+        .find(s => String(s.id) === String(currentSellerId));
+    return Boolean(seller && seller.auto_kiz_auto_sign_server);
+}
+
 function openArchiveFileInput(event) {
     if (event) {
         event.stopPropagation();
@@ -80,6 +86,14 @@ async function uploadAndPreviewArchive(file) {
 }
 
 function renderArchivePreview(data) {
+    const archiveSignMode = document.getElementById('archiveSignModeSelect');
+    const serverOption = archiveSignMode && archiveSignMode.querySelector('option[value="server"]');
+    if (serverOption) {
+        serverOption.hidden = !isServerSigningEnabled();
+        serverOption.disabled = serverOption.hidden;
+        archiveSignMode.value = serverOption.hidden ? 'client_cades' : archiveSignMode.value;
+    }
+
     const summary = data.summary || {};
     document.getElementById('archiveModalSubtitle').textContent = `Файл: ${data.filename || 'archive.xlsx'}`;
 
@@ -557,7 +571,7 @@ function renderActiveBatch(batch) {
                         <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Режим подписания:</label>
                         <select id="batchSignModeSelect" class="form-control" style="width: 100%;">
                             <option value="client_cades">Браузерная ЭЦП (CADES)</option>
-                            <option value="server">Серверная подпись</option>
+                            ${isServerSigningEnabled() ? '<option value="server">Серверная подпись</option>' : ''}
                         </select>
                     </div>
                     <div style="align-self: flex-end;">

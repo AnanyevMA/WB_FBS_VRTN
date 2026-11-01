@@ -71,6 +71,17 @@ def return_order_kiz(
         db.add(kiz_op)
         db.flush()
 
+        # Guard: without server signing the order keeps its status and the return goes through a signature batch
+        from app.services.crypto_service import can_sign_on_server
+        if not can_sign_on_server(seller):
+            msg = "Серверная подпись недоступна. Возврат КИЗ в оборот подписывается в браузере через очередь ЭЦП."
+            logger.info(f"[CZ Return] Skipped background return for order {order_id}: {msg}")
+            kiz_op.status = "AWAITING_SIGNATURE"
+            kiz_op.error_message = msg
+            _log_audit(db, seller_id, "cz_return", "AWAITING_SIGNATURE", "order", str(order_id))
+            db.commit()
+            return
+
         cz_token = decrypt(seller.cz_token_encrypted)
         cz_inn = seller.cz_inn
 

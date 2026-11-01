@@ -179,3 +179,10 @@ def is_cryptopro_available() -> bool:
     """Check if КриптоПро is installed and accessible."""
     return _find_cryptopro_bin() is not None
 
+
+def can_sign_on_server(seller) -> bool:
+    """Server signing needs both the seller setting and КриптоПро on the server."""
+    if settings.mock_cz:
+        return True
+    return bool(seller.auto_kiz_auto_sign_server) and is_cryptopro_available()
+

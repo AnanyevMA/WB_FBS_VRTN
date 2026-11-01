@@ -197,6 +197,7 @@ def test_celery_withdrawal_and_return_agent_tasks():
         seller = Seller(
             id=seller_id,
             name="Test Seller KIZ",
+            auto_kiz_auto_sign_server=True,
             wb_api_token_encrypted=encrypt("wb-mock-token"),
             cz_inn=TEST_INN,
             cz_token_encrypted=encrypt("cz-mock-token"),
@@ -281,6 +282,7 @@ async def test_full_lifecycle_return_then_withdrawal_distance_sale():
         seller = Seller(
             id=seller_id,
             name="ИП Иванов (Маркетплейс FBS)",
+            auto_kiz_auto_sign_server=True,
             wb_api_token_encrypted=encrypt("wb-real-token-mock"),
             cz_inn=TEST_INN,
             cz_token_encrypted=encrypt("cz-session-jwt-mock"),

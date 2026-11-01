@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-11-01 03:31:27 UTC | **Файлов проиндексировано**: 197  
+> **Дата актуализации**: 2026-11-01 03:50:43 UTC | **Файлов проиндексировано**: 198  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -62,7 +62,7 @@
 | [`app/services/auth_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/auth_service.py) | — | `hash_password`, `verify_password`, `create_access_token`, `decode_access_token`, +еще 5 | Authentication Service — Password hashing, JWT token handling, and user authentication |
 | [`app/services/auto_kiz_queue_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/auto_kiz_queue_service.py) | — | `sync_delivered_orders_with_wb`, `collect_auto_kiz_candidates`, `verify_candidates_against_cz`, `process_auto_kiz_queue_for_seller` | Auto KIZ Queue Service — WB FBS Manager |
 | [`app/services/codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/codebase_indexer.py) | `CodebaseIndexer` | — | Codebase Semantic & Symbol Indexer — WB FBS Manager |
-| [`app/services/crypto_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/crypto_service.py) | `CryptoSignatureError` | `_find_cryptopro_bin`, `sign_document`, `_mock_signature`, `is_cryptopro_available` | КриптоПро Digital Signature Service |
+| [`app/services/crypto_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/crypto_service.py) | `CryptoSignatureError` | `_find_cryptopro_bin`, `sign_document`, `_mock_signature`, `is_cryptopro_available`, +еще 1 | КриптоПро Digital Signature Service |
 | [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | `parse_cz_token_expiration` | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
 | [`app/services/encryption.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/encryption.py) | `EncryptionService` | `_get_fernet`, `encrypt`, `decrypt` | Encryption Service — шифрование чувствительных данных (токены API, credentials) |
 | [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
@@ -195,6 +195,7 @@
 | [`tests/test_returns_challenges.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_returns_challenges.py) | — | `shared_db_factory`, `db_session`, `_create_seller`, `test_challenge_b1_rvb_third_party_inn_poisoning_prevented`, +еще 11 | Empirical Adversarial Challenge Test Suite for Milestone 1: |
 | [`tests/test_scheduled_orders_digest.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_scheduled_orders_digest.py) | — | `setup_db_and_digest`, `test_is_scheduled_slot_due_helper`, `test_send_scheduled_orders_digest_dispatches_and_stamps_orders`, `test_send_scheduled_orders_digest_idempotency`, +еще 2 | Tests for Scheduled Orders Digest Task (app.agents.notifier.send_scheduled_orders_digest) |
 | [`tests/test_security_agent.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_security_agent.py) | — | `test_security_audit_agent_execution`, `test_security_audit_celery_task` | Tests for Security Audit Agent & Posture Inspection |
+| [`tests/test_server_signing_disabled.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_server_signing_disabled.py) | — | `setup_test_db`, `_no_mock_settings`, `_create_cancelled_order`, `test_can_sign_on_server_needs_setting_and_cryptopro`, +еще 4 | Tests for disabled server signing. |
 | [`tests/test_telegram_adversarial_stress.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_adversarial_stress.py) | `TelegramHTMLValidator` | `_stub_aiogram`, `_verify_telegram_html_validity`, `test_send_new_order_adversarial_html_xss_injection`, `test_all_methods_adversarial_html_escaping`, +еще 4 | Empirical Adversarial Stress Test Suite for TelegramService. |
 | [`tests/test_telegram_chat_filters.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_chat_filters.py) | — | `test_is_group_chat`, `test_is_private_chat`, `test_filter_private_chats`, `test_get_personal_manager_chats` | Unit tests for Telegram chat filtering and manager chat routing |
 | [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 8 | Модуль кодовой базы |

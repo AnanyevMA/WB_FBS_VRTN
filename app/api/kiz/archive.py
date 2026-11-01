@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.seller import Seller
 from app.models.order import Order, OrderStatus, KizStatus
 from app.models.audit import AuditLog
+from app.services.crypto_service import can_sign_on_server
 from app.services.kiz_service import (
     batch_verify_and_sync_cises,
     is_kiz_withdrawn,
@@ -144,6 +145,8 @@ async def process_wb_archive(
     withdrawals_to_process = payload.get("withdrawals", [])
     returns_to_process = payload.get("returns", [])
     sign_mode = payload.get("sign_mode", "server")  # 'server' or 'client_cades'
+    if sign_mode == "server" and not can_sign_on_server(seller):
+        raise HTTPException(status_code=400, detail="Серверная подпись отключена. Выберите подпись в браузере.")
 
     now = datetime.now(timezone.utc)
     queued_withdrawals = 0

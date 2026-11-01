@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.models.seller import Seller
 from app.models.kiz import KizSignatureBatch, BatchStatus
+from app.services.crypto_service import can_sign_on_server
 from app.services.signature_batch_executor import (
     sync_batch_with_cz_data,
     build_batch_signing_payloads,
@@ -156,6 +157,9 @@ async def submit_signed_batch(
     batch = await db.get(KizSignatureBatch, batch_id)
     if not batch or str(batch.seller_id) != str(seller_id):
         raise HTTPException(status_code=404, detail="Пакет не найден")
+
+    if payload.get("sign_mode") == "server" and not can_sign_on_server(seller):
+        raise HTTPException(status_code=400, detail="Серверная подпись отключена. Подпишите пакет в браузере.")
 
     return await execute_signed_batch_submission(seller=seller, batch=batch, payload=payload, db=db)
 

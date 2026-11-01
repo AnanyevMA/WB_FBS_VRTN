@@ -47,6 +47,8 @@ class Order(Base):
     
     chrt_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     nm_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    # rid сборочного задания совпадает с srid в отчетах продаж WB
+    rid: Mapped[Optional[str]] = mapped_column(String(255), index=True)
     article: Mapped[Optional[str]] = mapped_column(String(255))
     brand: Mapped[Optional[str]] = mapped_column(String(255))
     subject: Mapped[Optional[str]] = mapped_column(String(255))

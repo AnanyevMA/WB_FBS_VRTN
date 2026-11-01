@@ -159,6 +159,8 @@ async def _upsert_archive_order(
             kiz_linked = True
         if article and not ord_obj.article:
             ord_obj.article = article
+        if raw_order.get("rid") and not ord_obj.rid:
+            ord_obj.rid = str(raw_order["rid"])
         if price_rub and not ord_obj.price:
             ord_obj.price = price_rub
         ord_obj.updated_at = now_dt
@@ -174,6 +176,7 @@ async def _upsert_archive_order(
             wb_created_at=wb_created,
             chrt_id=chrt_id,
             nm_id=nm_id,
+            rid=str(raw_order["rid"]) if raw_order.get("rid") else None,
             article=article,
             name=name,
             price=price_rub,

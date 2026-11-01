@@ -566,6 +566,7 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
             wb_created_at=wb_created_dt,
             chrt_id=meta.get("chrt_id"),
             nm_id=meta.get("nm_id"),
+            rid=str(order_raw["rid"]) if order_raw.get("rid") else None,
             article=meta.get("article") or None,
             brand=meta.get("brand"),
             subject=meta.get("subject"),

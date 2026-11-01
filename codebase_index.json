@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-01T03:14:10.403473+00:00",
+  "updated_at": "2026-11-01T03:31:27.137401+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 192,
+  "total_files": 197,
   "files": [
     {
       "file": "alembic/env.py",
@@ -101,6 +101,37 @@
       "layer": "migrations",
       "hash": "e023b3449e50",
       "docstring": "add_kiz_events_table",
+      "classes": [],
+      "functions": [
+        {
+          "name": "upgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "downgrade",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "alembic",
+        "sqlalchemy",
+        "typing"
+      ]
+    },
+    {
+      "file": "alembic/versions/2c3d4e5f6071_add_orders_rid.py",
+      "layer": "migrations",
+      "hash": "0552ecb66dda",
+      "docstring": "add_orders_rid",
       "classes": [],
       "functions": [
         {
@@ -1467,7 +1498,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "2c9ae52aaa5e",
+      "hash": "84f8cf5a17bb",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3084,7 +3115,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "829e5d4ea4c4",
+      "hash": "14413333373a",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -4672,7 +4703,7 @@
     {
       "file": "app/models/order.py",
       "layer": "models",
-      "hash": "383f2755120e",
+      "hash": "8e7982d7885f",
       "docstring": "",
       "classes": [
         {
@@ -5917,7 +5948,7 @@
     {
       "file": "app/services/auto_kiz_queue_service.py",
       "layer": "services",
-      "hash": "31cfe18ddd0e",
+      "hash": "37b73836fb1a",
       "docstring": "Auto KIZ Queue Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -5979,6 +6010,7 @@
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.telegram_service",
+        "app.services.unified_kiz_resale",
         "app.services.wb_client",
         "datetime",
         "logging",
@@ -6957,7 +6989,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "c4716dada696",
+      "hash": "a3885cc1799d",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -7006,6 +7038,8 @@
         "app.services.unified_kiz_history",
         "app.services.unified_kiz_payload_builder",
         "app.services.unified_kiz_resale",
+        "app.services.unified_kiz_returns",
+        "app.services.unified_kiz_sales_report",
         "app.services.wb_archive_service",
         "app.services.wb_finance_service",
         "app.services.wb_warehouse_sales_service",
@@ -7020,7 +7054,7 @@
     {
       "file": "app/services/unified_kiz_history.py",
       "layer": "services",
-      "hash": "76b780cea82b",
+      "hash": "e590e792ad35",
       "docstring": "Unified KIZ History — Helpers for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -7079,7 +7113,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "12423ce1f248",
+      "hash": "11e81409092a",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -7119,7 +7153,10 @@
             "fbs_order_lookup",
             "seller_inn",
             "now_utc",
-            "returned_cises"
+            "returned_cises",
+            "history_by_cis",
+            "confirmed_returns",
+            "review_returns"
           ],
           "decorators": [],
           "docstring": "Формирует payload возвратов (RETURNS) со строгой проверкой владельца"
@@ -7140,7 +7177,7 @@
     {
       "file": "app/services/unified_kiz_resale.py",
       "layer": "services",
-      "hash": "d0cbdfa8d32f",
+      "hash": "880dd0c9d101",
       "docstring": "Unified KIZ Resale — Repeat sales of a KIZ for unified_kiz_batch_service.",
       "classes": [
         {
@@ -7184,6 +7221,18 @@
           ],
           "decorators": [],
           "docstring": "Последняя продажа из отчетов WB, если после нее и по ее srid возврата нет."
+        },
+        {
+          "name": "has_wb_sale_after",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "cis",
+            "since"
+          ],
+          "decorators": [],
+          "docstring": "Журнал событий показывает продажу WB без возврата, случившуюся позже указанной даты."
         },
         {
           "name": "_find_resale_candidates",
@@ -7232,10 +7281,192 @@
       "db_tables": [],
       "imports": [
         "app.models.kiz",
+        "app.models.kiz_event",
         "app.models.order",
         "app.models.seller",
         "app.services.kiz_service",
         "app.services.unified_kiz_history",
+        "dataclasses",
+        "datetime",
+        "logging",
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/unified_kiz_returns.py",
+      "layer": "services",
+      "hash": "37047afc09d3",
+      "docstring": "Unified KIZ Returns — Confirmation of WB returns for unified_kiz_batch_service.",
+      "classes": [
+        {
+          "name": "ReturnCheck",
+          "bases": [],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "_find_return_candidates",
+          "is_async": false,
+          "args": [
+            "return_candidates",
+            "cz_info_map",
+            "seller_inn"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_is_live_retired",
+          "is_async": false,
+          "args": [
+            "rec",
+            "checked_from",
+            "seller_inn"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "confirm_returns",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "verify",
+            "return_candidates",
+            "cz_info_map",
+            "ops"
+          ],
+          "decorators": [],
+          "docstring": "Подтверждает возвраты WB живым запросом в True API."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.seller",
+        "app.services.unified_kiz_history",
+        "app.services.unified_kiz_resale",
+        "dataclasses",
+        "datetime",
+        "logging",
+        "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/unified_kiz_sales_report.py",
+      "layer": "services",
+      "hash": "e1e28c5b5d1d",
+      "docstring": "Unified KIZ Sales Report — WB sales report events for unified_kiz_batch_service.",
+      "classes": [
+        {
+          "name": "SalesReportResult",
+          "bases": [],
+          "docstring": "",
+          "methods": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "fetch_wb_sales_rows",
+          "is_async": true,
+          "args": [
+            "seller",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "fetch_wb_order_rids",
+          "is_async": true,
+          "args": [
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_backfill_order_rids",
+          "is_async": true,
+          "args": [
+            "seller",
+            "orders"
+          ],
+          "decorators": [],
+          "docstring": "Заполняет rid заказов, созданных до появления колонки."
+        },
+        {
+          "name": "_load_event_srids",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "srids"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_order_cis",
+          "is_async": false,
+          "args": [
+            "order"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_unlinked_returns",
+          "is_async": false,
+          "args": [
+            "rows",
+            "linked"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_row_event",
+          "is_async": false,
+          "args": [
+            "row",
+            "order"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "add_sales_report_events",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "history_by_cis",
+            "orders",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": "Добавляет в историю КИЗ продажи и возвраты из отчета продаж WB."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.models.kiz_event",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.wb_client",
+        "app.services.wb_statistics_client",
         "dataclasses",
         "datetime",
         "logging",
@@ -7305,7 +7536,7 @@
     {
       "file": "app/services/wb_archive_service.py",
       "layer": "services",
-      "hash": "8894c7e64883",
+      "hash": "2183d790d89e",
       "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (созданных более 3 месяцев назад).",
       "classes": [],
       "functions": [
@@ -7400,7 +7631,7 @@
     {
       "file": "app/services/wb_client.py",
       "layer": "services",
-      "hash": "e784ad88897f",
+      "hash": "aeec5dda38ec",
       "docstring": "Wildberries Marketplace API Client.",
       "classes": [
         {
@@ -7448,6 +7679,7 @@
             "_request",
             "get_new_orders",
             "get_orders",
+            "get_order_rids",
             "get_orders_status",
             "cancel_order",
             "get_archive_orders",
@@ -7826,6 +8058,39 @@
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_statistics_client.py",
+      "layer": "services",
+      "hash": "db081a6ba288",
+      "docstring": "WB Statistics API Client.",
+      "classes": [
+        {
+          "name": "WBStatisticsAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Base exception for WB Statistics API.",
+          "methods": []
+        },
+        {
+          "name": "WBStatisticsClient",
+          "bases": [],
+          "docstring": "Client for Wildberries Statistics API.",
+          "methods": [
+            "__init__",
+            "get_sales"
+          ]
+        }
+      ],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "httpx",
         "typing"
       ]
     },
@@ -14328,6 +14593,239 @@
       ]
     },
     {
+      "file": "tests/test_unified_kiz_sales_report.py",
+      "layer": "tests",
+      "hash": "9806dca5b7f1",
+      "docstring": "Tests for WB returns in the unified KIZ reconciliation.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_days_ago",
+          "is_async": false,
+          "args": [
+            "days"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_report_row",
+          "is_async": false,
+          "args": [
+            "sale_id",
+            "srid",
+            "days",
+            "price"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_excise_row",
+          "is_async": false,
+          "args": [
+            "days",
+            "srid",
+            "receipt"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_record",
+          "is_async": false,
+          "args": [
+            "status",
+            "checked_at",
+            "owner"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_seller",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_op",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id",
+            "operation",
+            "days"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_sold_order",
+          "is_async": false,
+          "args": [
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_run",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "report_rows",
+            "excise_rows",
+            "status",
+            "live_status",
+            "rids",
+            "report_error"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_return_from_sales_report_is_linked_by_excise_srid_and_uses_sale_receipt",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_previous_return_does_not_block_new_wb_return",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_fbs_return_is_linked_by_backfilled_rid_without_excise",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "A returned FBS order keeps wb_status sold and has no excise row: rid is the only link."
+        },
+        {
+          "name": "test_return_document_without_receipt_is_built_as_other",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sale_after_return_keeps_code_out_of_returns",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_after_return_requires_review",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_live_status_in_circulation_is_not_returned_again",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_failure_is_reported_and_batch_is_still_built",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_malformed_report_row_is_skipped",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_auto_queue_does_not_return_code_sold_later",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "A signed batch marks the old cancelled order as withdrawn: its later sale must block the return."
+        },
+        {
+          "name": "test_auto_queue_still_returns_cancelled_order_without_later_sale",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_auto_queue_does_not_withdraw_returned_order_with_sold_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.kiz_event",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.auto_kiz_queue_service",
+        "app.services.signature_batch_executor",
+        "app.services.unified_kiz_batch_service",
+        "datetime",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_warehouse_sales_returns_correlation.py",
       "layer": "tests",
       "hash": "2f8ea58b4fda",
@@ -16177,7 +16675,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "1cfce502cbf7",
+      "hash": "7445b7479450",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

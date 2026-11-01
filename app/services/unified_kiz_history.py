@@ -48,8 +48,13 @@ def add_pending_batch_events(
     pending_batches: Iterable[Any],
     now_utc: datetime,
 ) -> None:
-    """Добавляет в историю КИЗ позиции из пакетов, ожидающих подписи."""
+    """
+    Добавляет в историю КИЗ позиции из пакетов, ожидающих подписи.
+    Автопакет собран из заказов, которые уже есть в истории, а его дата не связана с событием WB.
+    """
     for batch in pending_batches:
+        if batch.source == "auto":
+            continue
         payload = batch.data_payload or {}
         for item in payload.get("returns", []):
             if not item.get("needs_cz_return", True) or not item.get("selected", True) or not item.get("kiz_code"):

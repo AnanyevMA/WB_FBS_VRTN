@@ -173,17 +173,23 @@ def build_unified_returns_payload(
     seller_inn: str,
     now_utc: datetime,
     returned_cises: Optional[Set[str]] = None,
+    history_by_cis: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    confirmed_returns: Optional[Set[str]] = None,
+    review_returns: Optional[Set[str]] = None,
 ) -> Tuple[List[Dict[str, Any]], int, int, int, int]:
     """
     Формирует payload возвратов (RETURNS) со строгой проверкой владельца
     и разделением на прямой возврат (свой ИНН) и перемаркировку (баланс WB/сторонний).
     Исключает повторные возвраты, если товар уже введен в оборот (KizOperation или Order).
+    Возврат WB, подтвержденный живым статусом True API, эти исключения не проходит.
     """
     returns_payload = []
     seller_owned_direct_count = 0
     wb_owned_remarking_count = 0
     foreign_remarking_count = 0
     already_in_circ_count = 0
+    confirmed_returns = confirmed_returns or set()
+    review_returns = review_returns or set()
 
     for cis, ev in return_candidates.items():
         cz_item = cz_info_map.get(cis, {})
@@ -198,11 +204,13 @@ def build_unified_returns_payload(
         is_wb = (owner_inn == "9714053621")
         is_foreign = (owner_inn in ("100083608",) or "бел" in owner_name.lower() or "рб" in owner_name.lower())
 
-        fbs_order = ev.get("order") or fbs_order_lookup.get(cis)
+        is_confirmed = cis in confirmed_returns
+        needs_review = cis in review_returns
+        fbs_order = ev.get("order") if is_confirmed else (ev.get("order") or fbs_order_lookup.get(cis))
 
         # 1. Многоуровневое исключение повторных возвратов (Order + KizOperation)
         is_order_returned = False
-        if fbs_order:
+        if fbs_order and not is_confirmed:
             if fbs_order.kiz_status == KizStatus.RETURNED:
                 is_order_returned = True
             elif fbs_order.cz_return_doc_id and fbs_order.cz_doc_status in ("IN_PROGRESS", "CHECKED_OK", "ACCEPTED", "SUCCESS"):
@@ -210,7 +218,7 @@ def build_unified_returns_payload(
             elif fbs_order.cz_doc_status == "CHECKED_OK" and fbs_order.status == OrderStatus.CANCELLED:
                 is_order_returned = True
 
-        if returned_cises and cis in returned_cises:
+        if returned_cises and cis in returned_cises and not is_confirmed:
             is_order_returned = True
 
         is_already_in_circ = (not withdrawn) or (cz_status == "INTRODUCED") or is_order_returned
@@ -223,6 +231,10 @@ def build_unified_returns_payload(
             return_mode, needs_cz_return, needs_remarking, selected = "INTRODUCED", False, False, False
             action_rec = "✅ Уже в обороте (готов к привязке)"
             already_in_circ_count += 1
+        elif is_seller and needs_review:
+            return_mode, needs_cz_return, needs_remarking, selected = "DIRECT_RETURN", True, False, False
+            action_rec = "⚠️ Вывод отправлен уже после возврата WB. Проверьте, нет ли новой продажи."
+            seller_owned_direct_count += 1
         elif is_seller:
             return_mode, needs_cz_return, needs_remarking, selected = "DIRECT_RETURN", True, False, True
             action_rec = "✅ Баланс продавца (ИП). Готов к возврату в оборот!"
@@ -245,10 +257,25 @@ def build_unified_returns_payload(
         price_val = ev.get("price") or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
         receipt_num = str(ev.get("receipt_number") or ev.get("rrd_id") or (order_id_val if order_id_val else "1"))
         receipt_dt = str(ev.get("receipt_date") or ev.get("rr_date") or now_utc.strftime("%Y-%m-%d"))
+        primary_doc_type = None
+
+        if is_confirmed:
+            # Первичный документ возврата — чек этой продажи, без чека документ оформляется как OTHER
+            excise_ev = pick_sale_excise_event(ev, (history_by_cis or {}).get(cis, []))
+            sale_receipt = excise_ev.get("receipt_number") if excise_ev else None
+            price_val = (excise_ev and excise_ev.get("price")) or price_val
+            primary_doc_type = "RECEIPT" if sale_receipt else "OTHER"
+            receipt_num = str(sale_receipt or order_id_val or "1")
+            receipt_dt = str(
+                (excise_ev and excise_ev.get("receipt_date"))
+                or normalize_event_dt(ev["date"]).strftime("%Y-%m-%d")
+            )
 
         # В рабочий список возвратов включаем ТОЛЬКО позиции, реально требующие ввода в оборот
         if needs_cz_return:
             returns_payload.append({
+                "primary_document_type": primary_doc_type,
+                "needs_review": needs_review,
                 "order_id": order_id_val,
                 "sticker_id": sticker_id_val,
                 "kiz_code": ev.get("raw_kiz") or cis,

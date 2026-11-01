@@ -27,6 +27,7 @@ from app.services.kiz_service import (
 from app.services.cz_client import CZClient, CZDocumentError
 from app.services.telegram_service import TelegramService
 from app.services.crypto_service import is_cryptopro_available
+from app.services.unified_kiz_resale import has_wb_sale_after
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ async def collect_auto_kiz_candidates(
     stmt_withdrawals = select(Order).where(
         Order.seller_id == seller.id,
         Order.kiz_code.isnot(None),
-        Order.kiz_status != KizStatus.WITHDRAWN,
+        Order.kiz_status.notin_([KizStatus.WITHDRAWN, KizStatus.RETURNED]),  # У возвращенного wb_status остается sold
         Order.cz_withdrawal_doc_id.is_(None),  # Не отбираем заказы, у которых уже есть отправленный документ вывода
         or_(
             Order.wb_status == "sold",
@@ -200,6 +201,9 @@ async def collect_auto_kiz_candidates(
             if ("продаж" in name or "продано" in name) and not ("возврат" in name or "отказ" in name or "отмен" in name):
                 # Товар реально продан на WB и не возвращен покупателем — ввод в оборот ЗАПРЕЩЕН!
                 continue
+        if await has_wb_sale_after(db, seller.id, c_cis, r_ord.wb_created_at):
+            # Финотчет отстает: новая продажа КИЗ уже видна в журнале событий
+            continue
         return_orders.append(r_ord)
 
     # 4. Также проверяем отмененные заказы, где КИЗ НЕ выводился (kiz_status != WITHDRAWN)

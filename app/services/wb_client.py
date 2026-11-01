@@ -241,6 +241,20 @@ class WBClient:
             return data.get("orders", [])
         return []
 
+    async def get_order_rids(self, date_start: datetime, date_end: datetime) -> Dict[int, str]:
+        """GET /api/v3/orders with pagination: rid of every order in the date range (at most 30 days)."""
+        rids: Dict[int, str] = {}
+        params = {"dateFrom": int(date_start.timestamp()), "dateTo": int(date_end.timestamp()), "limit": 1000, "next": 0}
+        while True:
+            data = await self._request("GET", "/api/v3/orders", params=params)
+            orders = (data or {}).get("orders", []) if isinstance(data, dict) else []
+            for order in orders:
+                if order.get("id") and order.get("rid"):
+                    rids[int(order["id"])] = str(order["rid"])
+            if len(orders) < params["limit"] or not data.get("next"):
+                return rids
+            params["next"] = data["next"]
+
     async def get_orders_status(self, order_ids: List[int]) -> List[Dict]:
         """
         POST /api/v3/orders/status

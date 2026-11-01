@@ -530,11 +530,13 @@ function renderActiveBatch(batch) {
                 </div>
             </div>
 
-            ${summary.sales_without_receipt || summary.sales_needing_review || summary.resale_check_failed ? `
+            ${summary.sales_without_receipt || summary.sales_needing_review || summary.returns_needing_review || summary.resale_check_failed || summary.sales_report_failed ? `
                 <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 13px; color: var(--text-main);">
                     ${summary.sales_without_receipt ? `<div>🧾 Без чека WB: <b>${summary.sales_without_receipt}</b>. Такие документы уйдут без номера чека.</div>` : ''}
                     ${summary.sales_needing_review ? `<div>⚠️ Нужно проверить перед выводом: <b>${summary.sales_needing_review}</b>. Такие позиции не отмечены.</div>` : ''}
-                    ${summary.resale_check_failed ? `<div>⚠️ Честный Знак не ответил, повторные продажи не проверены. Пересоберите пакет позже.</div>` : ''}
+                    ${summary.returns_needing_review ? `<div>⚠️ Возвраты, которые нужно проверить: <b>${summary.returns_needing_review}</b>. Такие позиции не отмечены.</div>` : ''}
+                    ${summary.resale_check_failed ? `<div>⚠️ Честный Знак не ответил, повторные продажи и возвраты не проверены. Пересоберите пакет позже.</div>` : ''}
+                    ${summary.sales_report_failed ? `<div>⚠️ Отчёт продаж WB не загрузился, свежие возвраты могут быть не видны. Пересоберите пакет через минуту.</div>` : ''}
                 </div>
             ` : ''}
 
@@ -696,6 +698,7 @@ function renderActiveBatch(batch) {
                                                 <div style="display:flex; flex-direction:column; gap:2px;">
                                                     <span class="badge badge-warning">⚠️ Требует возврата</span>
                                                     ${r.cz_status_desc ? `<span style="font-size:10px; color:var(--text-muted);">${r.cz_status_desc}</span>` : ''}
+                                                    ${r.needs_review ? `<span style="font-size:10px; color:var(--text-muted); max-width:220px;">${r.action_recommended}</span>` : ''}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1173,7 +1176,10 @@ async function triggerUnifiedBatch(days = 90) {
                 'success'
             );
             if (s.resale_check_failed) {
-                showToast('Внимание', 'Честный Знак не ответил, повторные продажи не проверены. Пересоберите пакет позже.', 'warning');
+                showToast('Внимание', 'Честный Знак не ответил, повторные продажи и возвраты не проверены. Пересоберите пакет позже.', 'warning');
+            }
+            if (s.sales_report_failed) {
+                showToast('Внимание', 'Отчёт продаж WB не загрузился, свежие возвраты могут быть не видны. Пересоберите пакет через минуту.', 'warning');
             }
             await loadSignatureBatches();
             window.scrollTo({ top: 0, behavior: 'smooth' });

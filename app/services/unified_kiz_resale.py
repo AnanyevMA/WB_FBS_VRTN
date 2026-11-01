@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.kiz import KizOperation, KizOperationType
+from app.models.kiz_event import KizEvent
 from app.models.order import KizStatus, Order
 from app.models.seller import Seller
 from app.services.kiz_service import is_kiz_withdrawn, parse_kiz_code
@@ -19,7 +20,8 @@ from app.services.unified_kiz_history import merge_cz_records, normalize_event_d
 
 logger = logging.getLogger(__name__)
 
-WB_SALE_SOURCES = ("wb_excise_report", "wb_finance")
+WB_SALE_SOURCES = ("wb_excise_report", "wb_finance", "wb_sales_report")
+KIZ_EVENT_SOURCE_NAMES = {"wb_excise": "wb_excise_report"}
 
 
 @dataclass
@@ -86,6 +88,20 @@ def latest_unreturned_wb_sale(events: List[Dict[str, Any]]) -> Optional[Dict[str
         if e.get("srid") == sale["srid"] or normalize_event_dt(e["date"]) > sale_dt:
             return None
     return sale
+
+
+async def has_wb_sale_after(db: AsyncSession, seller_id: str, cis: str, since: Any) -> bool:
+    """Журнал событий показывает продажу WB без возврата, случившуюся позже указанной даты."""
+    stmt = select(KizEvent.event_type, KizEvent.source, KizEvent.occurred_at, KizEvent.srid).where(
+        KizEvent.seller_id == seller_id,
+        KizEvent.clean_cis == cis,
+    )
+    events = [
+        {"type": event_type, "source": KIZ_EVENT_SOURCE_NAMES.get(source, source), "date": occurred_at, "srid": srid}
+        for event_type, source, occurred_at, srid in (await db.execute(stmt)).all()
+    ]
+    sale = latest_unreturned_wb_sale(events)
+    return bool(sale and normalize_event_dt(sale["date"]) > normalize_event_dt(since))
 
 
 def _find_resale_candidates(

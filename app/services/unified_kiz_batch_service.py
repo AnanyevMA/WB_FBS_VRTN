@@ -37,6 +37,8 @@ from app.services.unified_kiz_payload_builder import (
 )
 from app.services.unified_kiz_history import add_pending_batch_events, merge_cz_records, normalize_event_dt
 from app.services.unified_kiz_resale import confirm_resales, load_kiz_operation_state
+from app.services.unified_kiz_returns import confirm_returns
+from app.services.unified_kiz_sales_report import add_sales_report_events
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +207,9 @@ async def create_unified_kiz_signature_batch(
     pending_batches = res_pending.scalars().all()
     add_pending_batch_events(history_by_cis, pending_batches, now_utc)
 
+    # 2.7. Отчет продаж WB: продажи и возвраты появляются в нем раньше финансового отчета
+    sales_report = await add_sales_report_events(seller, db, history_by_cis, all_fbs_orders, days)
+
     # 4. Анализ терминального состояния каждого КИЗ
     sales_candidates: Dict[str, Dict[str, Any]] = {}
     return_candidates: Dict[str, Dict[str, Any]] = {}
@@ -264,6 +269,16 @@ async def create_unified_kiz_signature_batch(
         ops=kiz_ops,
     )
 
+    # 5.7. Возвраты WB: прошлый возврат не закрывает следующий возврат того же КИЗ
+    wb_returns = await confirm_returns(
+        seller=seller,
+        db=db,
+        verify=batch_verify_and_sync_cises,
+        return_candidates=return_candidates,
+        cz_info_map=cz_info_map,
+        ops=kiz_ops,
+    )
+
     # 6. Формирование выбытий (WITHDRAWALS)
     (
         withdrawals_payload,
@@ -298,6 +313,9 @@ async def create_unified_kiz_signature_batch(
         seller_inn=seller_inn,
         now_utc=now_utc,
         returned_cises=returned_cises,
+        history_by_cis=history_by_cis,
+        confirmed_returns=wb_returns.confirmed,
+        review_returns=wb_returns.needs_review,
     )
 
     # 8. Сводка пакета
@@ -313,7 +331,10 @@ async def create_unified_kiz_signature_batch(
         "sales_without_receipt": sales_without_receipt_count,
         "sales_resold_confirmed": len(resales.confirmed),
         "sales_needing_review": sum(1 for w in withdrawals_payload if w.get("needs_review")),
-        "resale_check_failed": resales.failed,
+        "resale_check_failed": resales.failed or wb_returns.failed,
+        "sales_report_failed": sales_report.failed,
+        "sales_report_events": sales_report.events,
+        "returns_needing_review": sum(1 for r in returns_payload if r.get("needs_review")),
         "return_candidates_count": len(return_candidates),
         "resold_after_return_count": resold_after_return_count,
         "returns_needing_cz_return": seller_owned_direct_count,

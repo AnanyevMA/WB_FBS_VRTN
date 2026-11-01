@@ -1163,6 +1163,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                     wb_supply_id=supply_id,
                     chrt_id=chrt_id,
                     nm_id=nm_id,
+                    rid=str(raw["rid"]) if raw.get("rid") else None,
                     article=article,
                     brand=final_brand,
                     subject=final_subj,
@@ -1242,6 +1243,9 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                     updated = True
                 if prod_brand and existing.brand != prod_brand:
                     existing.brand = prod_brand
+                    updated = True
+                if raw.get("rid") and not existing.rid:
+                    existing.rid = str(raw["rid"])
                     updated = True
                 if final_kiz_code and existing.kiz_code != final_kiz_code:
                     existing.kiz_code = final_kiz_code

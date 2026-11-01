@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-11-01 03:50:43 UTC | **Файлов проиндексировано**: 198  
+> **Дата актуализации**: 2026-11-01 14:00:02 UTC | **Файлов проиндексировано**: 199  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -58,7 +58,7 @@
 | Файл | Классы / Модели | Функции / Эндпоинты / Таски | Назначение |
 |---|---|---|---|
 | [`app/services/__init__.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/__init__.py) | — | — | WB FBS Manager — README |
-| [`app/services/archive_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/archive_service.py) | — | `_parse_date_str`, `parse_wb_archive_excel`, `analyze_archive_data` | Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx). |
+| [`app/services/archive_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/archive_service.py) | — | `_archive_row_date`, `_parse_date_str`, `parse_wb_archive_excel`, `analyze_archive_data` | Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx). |
 | [`app/services/auth_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/auth_service.py) | — | `hash_password`, `verify_password`, `create_access_token`, `decode_access_token`, +еще 5 | Authentication Service — Password hashing, JWT token handling, and user authentication |
 | [`app/services/auto_kiz_queue_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/auto_kiz_queue_service.py) | — | `sync_delivered_orders_with_wb`, `collect_auto_kiz_candidates`, `verify_candidates_against_cz`, `process_auto_kiz_queue_for_seller` | Auto KIZ Queue Service — WB FBS Manager |
 | [`app/services/codebase_indexer.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/codebase_indexer.py) | `CodebaseIndexer` | — | Codebase Semantic & Symbol Indexer — WB FBS Manager |
@@ -155,6 +155,7 @@
 | [`tests/test_api_item_returns_and_frontend.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_item_returns_and_frontend.py) | — | `db_session`, `_create_test_seller`, `test_seller_schemas_accept_item_returns_settings`, `test_seller_response_schema_serializes_item_returns`, +еще 11 | Tier 1 & Tier 2 Tests for REST API Kiz Item Returns Router, Seller Settings, and Frontend Coverage. |
 | [`tests/test_api_sellers.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_api_sellers.py) | — | `_get_auth_headers`, `test_patch_seller_notification_settings_preserves_tokens_and_chat_ids`, `test_patch_seller_updates_tokens_when_non_empty_values_provided`, `test_patch_seller_schedule_validation_errors`, +еще 4 | Tests for Seller API Endpoints (PATCH, POST, GET) & Token/ChatID Preservation. |
 | [`tests/test_archive_reminder.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_reminder.py) | — | `sync_db`, `test_archive_reminder_never_uploaded`, `test_archive_reminder_uploaded_recently_skipped`, `test_archive_reminder_uploaded_3_days_ago_triggers`, +еще 4 | Unit & Integration Tests for Archive Upload Reminders Agent (Every 2 days) |
+| [`tests/test_archive_resold_returns.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_resold_returns.py) | — | `setup_test_db`, `_seller`, `_event`, `_analyze`, +еще 6 | Tests for old refusals in an uploaded WB archive. |
 | [`tests/test_archive_unified_reconcile.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_archive_unified_reconcile.py) | — | `setup_test_db`, `test_unified_reconciliation_preserves_archive_batch_and_order_sync`, `test_signature_batch_submitter_syncs_status_and_handles_error_14` | Tests for Archive Orders Status Synchronization, Unified Reconciliation Preservation, |
 | [`tests/test_auth.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auth.py) | — | `test_password_hashing_and_verification`, `test_jwt_token_generation_and_decode`, `test_admin_bootstrap_and_login_flow`, `test_protected_routes_require_authentication`, +еще 6 | Tests for Authentication, JWT, User Management, and Endpoint Security Protection |
 | [`tests/test_auto_kiz_queue_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_auto_kiz_queue_service.py) | — | `test_sync_wb_orders_status`, `test_collect_candidates_and_deduplication`, `test_process_auto_kiz_queue_flow`, `test_cancelled_fbs_order_resold_fbo_not_picked_as_return` | Tests for Auto KIZ Queue Service (app/services/auto_kiz_queue_service.py) |

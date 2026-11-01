@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-01T03:50:43.058940+00:00",
+  "updated_at": "2026-11-01T14:00:02.493978+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 198,
+  "total_files": 199,
   "files": [
     {
       "file": "alembic/env.py",
@@ -5778,10 +5778,19 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "aae9bef42520",
+      "hash": "6fe44892fd3b",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
+        {
+          "name": "_archive_row_date",
+          "is_async": false,
+          "args": [
+            "date_str"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
         {
           "name": "_parse_date_str",
           "is_async": false,
@@ -5820,6 +5829,7 @@
         "app.models.order",
         "app.models.seller",
         "app.services.kiz_service",
+        "app.services.unified_kiz_resale",
         "datetime",
         "io",
         "logging",
@@ -7189,7 +7199,7 @@
     {
       "file": "app/services/unified_kiz_resale.py",
       "layer": "services",
-      "hash": "880dd0c9d101",
+      "hash": "d85c7042e8d4",
       "docstring": "Unified KIZ Resale — Repeat sales of a KIZ for unified_kiz_batch_service.",
       "classes": [
         {
@@ -7241,7 +7251,8 @@
             "db",
             "seller_id",
             "cis",
-            "since"
+            "since",
+            "ignore_srid"
           ],
           "decorators": [],
           "docstring": "Журнал событий показывает продажу WB без возврата, случившуюся позже указанной даты."
@@ -9255,6 +9266,128 @@
         "sqlalchemy.orm",
         "unittest.mock",
         "zoneinfo"
+      ]
+    },
+    {
+      "file": "tests/test_archive_resold_returns.py",
+      "layer": "tests",
+      "hash": "64400b018055",
+      "docstring": "Tests for old refusals in an uploaded WB archive.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_seller",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_event",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "event_type",
+            "day",
+            "srid",
+            "source"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_analyze",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "order_id",
+            "date"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_refusal_is_not_returned_when_code_was_sold_later",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_refusal_is_returned_when_later_sale_was_also_returned",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sale_of_the_refused_order_itself_does_not_block_return",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "WB fiscalizes the next day, so the sale of this order can be dated after the refusal row."
+        },
+        {
+          "name": "test_refusal_without_later_sale_is_still_returned",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sale_before_the_refusal_does_not_block_return",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sale_is_detected_with_archive_events_from_other_sources_ignored",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "Events recorded from the uploaded file itself are not WB sales."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.kiz_event",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.archive_service",
+        "datetime",
+        "pytest",
+        "random",
+        "unittest.mock",
+        "uuid"
       ]
     },
     {

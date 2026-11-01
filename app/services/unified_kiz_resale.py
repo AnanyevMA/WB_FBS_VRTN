@@ -90,8 +90,17 @@ def latest_unreturned_wb_sale(events: List[Dict[str, Any]]) -> Optional[Dict[str
     return sale
 
 
-async def has_wb_sale_after(db: AsyncSession, seller_id: str, cis: str, since: Any) -> bool:
-    """Журнал событий показывает продажу WB без возврата, случившуюся позже указанной даты."""
+async def has_wb_sale_after(
+    db: AsyncSession,
+    seller_id: str,
+    cis: str,
+    since: Any,
+    ignore_srid: Optional[str] = None,
+) -> bool:
+    """
+    Журнал событий показывает продажу WB без возврата, случившуюся позже указанной даты.
+    ignore_srid исключает продажу того заказа, возврат которого сейчас проверяется.
+    """
     stmt = select(KizEvent.event_type, KizEvent.source, KizEvent.occurred_at, KizEvent.srid).where(
         KizEvent.seller_id == seller_id,
         KizEvent.clean_cis == cis,
@@ -99,6 +108,7 @@ async def has_wb_sale_after(db: AsyncSession, seller_id: str, cis: str, since: A
     events = [
         {"type": event_type, "source": KIZ_EVENT_SOURCE_NAMES.get(source, source), "date": occurred_at, "srid": srid}
         for event_type, source, occurred_at, srid in (await db.execute(stmt)).all()
+        if not (ignore_srid and event_type == "SALE" and srid == ignore_srid)
     ]
     sale = latest_unreturned_wb_sale(events)
     return bool(sale and normalize_event_dt(sale["date"]) > normalize_event_dt(since))

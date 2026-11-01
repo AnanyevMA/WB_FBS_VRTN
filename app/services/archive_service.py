@@ -24,8 +24,16 @@ from app.services.kiz_service import (
     parse_kiz_code,
     batch_verify_and_sync_cises,
 )
+from app.services.unified_kiz_resale import has_wb_sale_after
 
 logger = logging.getLogger(__name__)
+
+
+def _archive_row_date(date_str: str) -> datetime:
+    try:
+        return datetime.strptime(date_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return datetime.now(timezone.utc)
 
 
 def _parse_date_str(val: Any) -> Optional[str]:
@@ -321,6 +329,12 @@ async def analyze_archive_data(
                     or db_order.cz_withdrawal_doc_id
                 )
             )
+            # Старая строка архива не должна возвращать КИЗ, который WB продал уже после этого отказа
+            if is_already_withdrawn and not is_resold_or_withdrawn_sale:
+                is_resold_or_withdrawn_sale = await has_wb_sale_after(
+                    db, seller.id, clean_cis, _archive_row_date(date_formatted),
+                    ignore_srid=db_order.rid if db_order else None,
+                )
 
             needs_cz_return = is_already_withdrawn and not is_foreign_owner and not is_resold_or_withdrawn_sale
             needs_remarking = is_foreign_owner and is_already_withdrawn and not is_resold_or_withdrawn_sale

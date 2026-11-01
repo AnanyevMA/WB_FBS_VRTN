@@ -127,7 +127,7 @@ async def test_resale_with_returned_order_does_not_link_old_order():
 
 
 @pytest.mark.asyncio
-async def test_resale_without_receipt_waits_and_does_not_reuse_old_receipt():
+async def test_resale_without_receipt_goes_without_number_and_does_not_reuse_old_receipt():
     async with AsyncSessionLocal() as db:
         seller = await _seller(db)
         await _withdrawal_op(db, seller.id, days=8)
@@ -141,21 +141,44 @@ async def test_resale_without_receipt_waits_and_does_not_reuse_old_receipt():
 
         payload, _ = await _run(seller, db, rows)
 
-        assert payload["withdrawals"] == []
-        assert payload["summary"]["sales_waiting_receipt"] == 1
-        assert payload["summary"]["sales_needing_withdrawal"] == 0
+        item = payload["withdrawals"][0]
+        assert item["receipt_number"] == ""
+        assert item["fn_number"] == ""
+        assert item["price"] == 3578
+        assert item["selected"] is True
+        assert payload["summary"]["sales_without_receipt"] == 1
+        assert payload["summary"]["sales_needing_withdrawal"] == 1
 
 
 @pytest.mark.asyncio
-async def test_new_sale_without_previous_withdrawal_waits_for_receipt():
+async def test_new_sale_without_receipt_is_proposed_without_number():
     async with AsyncSessionLocal() as db:
         seller = await _seller(db)
 
         payload, calls = await _run(seller, db, [_excise_row(1, "srid-new", None)])
 
-        assert payload["withdrawals"] == []
-        assert payload["summary"]["sales_waiting_receipt"] == 1
+        assert payload["withdrawals"][0]["receipt_number"] == ""
+        assert payload["summary"]["sales_without_receipt"] == 1
         assert True not in calls
+
+
+@pytest.mark.asyncio
+async def test_order_id_is_not_sent_as_receipt_number():
+    async with AsyncSessionLocal() as db:
+        seller = await _seller(db)
+        order_id = random.randint(10**9, 10**12)
+        db.add(Order(
+            id=order_id, seller_id=seller.id, status=OrderStatus.DELIVERED, wb_status="sold",
+            kiz_code=CIS, kiz_status=KizStatus.VALIDATED, wb_created_at=_days_ago(2), price=3505,
+        ))
+        await db.commit()
+
+        payload, _ = await _run(seller, db, [])
+
+        item = payload["withdrawals"][0]
+        assert item["order_id"] == order_id
+        assert item["receipt_number"] == ""
+        assert payload["summary"]["sales_without_receipt"] == 1
 
 
 @pytest.mark.asyncio

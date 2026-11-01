@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-10-31 11:11:30 UTC | **Файлов проиндексировано**: 192  
+> **Дата актуализации**: 2026-11-01 03:14:10 UTC | **Файлов проиндексировано**: 192  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -197,7 +197,7 @@
 | [`tests/test_telegram_notifications.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_telegram_notifications.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_telegram_send_new_order_notification_with_full_metadata`, +еще 8 | Модуль кодовой базы |
 | [`tests/test_time_service.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_time_service.py) | `TestTimeServiceResolution`, `TestServerTimeInfo`, `TestSellerTimeFormatting`, `TestIsSellerDigestDue` | — | Unit tests for app.services.time_service. |
 | [`tests/test_unified_kiz_batch.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_batch.py) | — | `setup_test_db`, `test_unified_reconciliation_ownership_and_chronology`, `test_sync_batch_with_cz_data_preserves_owner_safety`, `test_unified_reconcile_api_endpoint`, +еще 1 | Unit tests for Unified KIZ Batch Reconciliation and Owner Validation. |
-| [`tests/test_unified_kiz_resale.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_resale.py) | — | `setup_test_db`, `_days_ago`, `_excise_row`, `_record`, +еще 12 | Tests for repeat sales in the unified KIZ reconciliation. |
+| [`tests/test_unified_kiz_resale.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_resale.py) | — | `setup_test_db`, `_days_ago`, `_excise_row`, `_record`, +еще 13 | Tests for repeat sales in the unified KIZ reconciliation. |
 | [`tests/test_warehouse_sales_returns_correlation.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_warehouse_sales_returns_correlation.py) | — | `test_warehouse_sales_skips_returned_srid` | Tests for Warehouse Sales and Returns Correlation (WbSalesReportRow cross-check). |
 | [`tests/test_warehouse_sales_storno_returns.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_warehouse_sales_storno_returns.py) | — | `db_session`, `_create_test_seller`, `test_warehouse_sales_service_line_length_under_limit`, `test_builder_file_line_length_under_limit`, +еще 21 | Tier 1 & Tier 2 In-Memory SQLite Test Suite for WB Warehouse Sales Storno & Return Receipts. |
 | [`tests/test_wb_analytics_challenger_m1_iter2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_analytics_challenger_m1_iter2.py) | — | `_make_req`, `test_multi_page_pagination_traversal`, `test_multi_page_pagination_mid_stream_429_recovery`, `test_date_variations_date_datetime_and_timezone`, +еще 7 | Challenger M1 Iteration 2 Adversarial Stress Suite. |

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-10-31T11:11:30.917791+00:00",
+  "updated_at": "2026-11-01T03:14:10.403473+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 192,
   "files": [
@@ -6957,7 +6957,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "948a3bb32400",
+      "hash": "c4716dada696",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -7079,7 +7079,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "5e182de67e82",
+      "hash": "12423ce1f248",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -14138,7 +14138,7 @@
     {
       "file": "tests/test_unified_kiz_resale.py",
       "layer": "tests",
-      "hash": "aecc21c7565f",
+      "hash": "cdcc6b303ba8",
       "docstring": "Tests for repeat sales in the unified KIZ reconciliation.",
       "classes": [],
       "functions": [
@@ -14235,7 +14235,7 @@
           "docstring": ""
         },
         {
-          "name": "test_resale_without_receipt_waits_and_does_not_reuse_old_receipt",
+          "name": "test_resale_without_receipt_goes_without_number_and_does_not_reuse_old_receipt",
           "is_async": true,
           "args": [],
           "decorators": [
@@ -14244,7 +14244,16 @@
           "docstring": ""
         },
         {
-          "name": "test_new_sale_without_previous_withdrawal_waits_for_receipt",
+          "name": "test_new_sale_without_receipt_is_proposed_without_number",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_order_id_is_not_sent_as_receipt_number",
           "is_async": true,
           "args": [],
           "decorators": [
@@ -16168,7 +16177,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "e9c1ccbe9efe",
+      "hash": "1cfce502cbf7",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

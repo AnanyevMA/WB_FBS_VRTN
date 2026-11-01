@@ -271,7 +271,7 @@ async def create_unified_kiz_signature_batch(
         sales_already_withdrawn_count,
         sales_wb_owned_count,
         sales_foreign_count,
-        sales_waiting_receipt_count,
+        sales_without_receipt_count,
     ) = build_unified_withdrawals_payload(
         sales_candidates=sales_candidates,
         cz_info_map=cz_info_map,
@@ -310,7 +310,7 @@ async def create_unified_kiz_signature_batch(
         "sales_already_withdrawn": sales_already_withdrawn_count,
         "sales_wb_owned_count": sales_wb_owned_count,
         "sales_foreign_count": sales_foreign_count,
-        "sales_waiting_receipt": sales_waiting_receipt_count,
+        "sales_without_receipt": sales_without_receipt_count,
         "sales_resold_confirmed": len(resales.confirmed),
         "sales_needing_review": sum(1 for w in withdrawals_payload if w.get("needs_review")),
         "resale_check_failed": resales.failed,

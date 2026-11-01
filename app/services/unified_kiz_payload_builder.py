@@ -34,14 +34,14 @@ def build_unified_withdrawals_payload(
     многоуровневым исключением уже выбывших заказов/операций и обогащением
     реквизитами фискальных чеков из онлайн-отчета WB excise-report.
     Подтвержденная повторная продажа не связана со старым заказом и прошлыми операциями.
-    Продажа без номера чека не попадает в пакет и учитывается как ожидающая чек.
+    Продажа без номера чека идет в пакет без первичного документа: номер не подставляется.
     """
     withdrawals_payload = []
     sales_needing_count = 0
     sales_already_withdrawn_count = 0
     sales_wb_owned_count = 0
     sales_foreign_count = 0
-    sales_waiting_receipt_count = 0
+    sales_without_receipt_count = 0
     confirmed_resales = confirmed_resales or set()
     review_resales = review_resales or set()
 
@@ -71,7 +71,6 @@ def build_unified_withdrawals_payload(
 
         # Обогащение реквизитами фискального чека из excise-report
         excise_ev = pick_sale_excise_event(ev, history_by_cis.get(cis, []))
-        receipt_missing = (excise_ev is None and is_resale) or bool(excise_ev and not excise_ev.get("receipt_number"))
         needs_review = cis in review_resales
 
         if withdrawn:
@@ -83,9 +82,6 @@ def build_unified_withdrawals_payload(
             else:
                 action_rec = "✅ Уже выбыл из оборота"
             sales_already_withdrawn_count += 1
-        elif is_seller and receipt_missing:
-            sales_waiting_receipt_count += 1
-            continue
         elif is_seller and needs_review:
             needs_withdrawal, selected = True, False
             action_rec = "⚠️ Продажа уже выводилась, затем код вернули в оборот, а возврата WB не видно. Проверьте перед выводом."
@@ -116,12 +112,7 @@ def build_unified_withdrawals_payload(
             or (float(fbs_order.price) if fbs_order and fbs_order.price else 0.0)
         )
 
-        receipt_num = str(
-            (excise_ev and excise_ev.get("receipt_number"))
-            or ev.get("receipt_number")
-            or ev.get("rrd_id")
-            or (fbs_order.id if fbs_order else "")
-        )
+        receipt_num = str((excise_ev and excise_ev.get("receipt_number")) or ev.get("receipt_number") or "")
         fn_num = str((excise_ev and excise_ev.get("fn_number")) or ev.get("fn_number") or "")
         receipt_dt = str(
             (excise_ev and excise_ev.get("receipt_date"))
@@ -132,6 +123,9 @@ def build_unified_withdrawals_payload(
 
         # В рабочий список выбытия включаем ТОЛЬКО позиции, реально требующие вывода
         if needs_withdrawal:
+            if not receipt_num:
+                sales_without_receipt_count += 1
+                action_rec = f"{action_rec} 🧾 Чека WB нет, документ уйдет без чека."
             order_id_val = fbs_order.id if fbs_order else ev.get("order_id")
             sticker_id_val = fbs_order.sticker_id if fbs_order else ev.get("sticker_id")
             withdrawals_payload.append({
@@ -168,7 +162,7 @@ def build_unified_withdrawals_payload(
         sales_already_withdrawn_count,
         sales_wb_owned_count,
         sales_foreign_count,
-        sales_waiting_receipt_count,
+        sales_without_receipt_count,
     )
 
 

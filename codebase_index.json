@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-02T14:04:21.022353+00:00",
+  "updated_at": "2026-11-02T14:16:07.128094+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 200,
+  "total_files": 201,
   "files": [
     {
       "file": "alembic/env.py",
@@ -1996,7 +1996,7 @@
     {
       "file": "app/agents/wb_warehouse_sales_agent.py",
       "layer": "agents",
-      "hash": "8ab12c167104",
+      "hash": "29b9ee73c729",
       "docstring": "WB Warehouse Sales Celery Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -8180,7 +8180,7 @@
     {
       "file": "app/services/wb_warehouse_sales_service.py",
       "layer": "services",
-      "hash": "fc6ea4888e47",
+      "hash": "a7be1ca0526d",
       "docstring": "WB Warehouse Sales Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -8210,10 +8210,26 @@
           "args": [
             "seller",
             "db",
-            "days"
+            "days",
+            "create_batch"
           ],
           "decorators": [],
-          "docstring": "Основной метод обработки продаж и возвратов со склада WB:"
+          "docstring": "Основной метод обработки продаж и возвратов со склада WB."
+        },
+        {
+          "name": "_finish_status_sync",
+          "is_async": true,
+          "args": [
+            "seller",
+            "db",
+            "total_records",
+            "sales_seen",
+            "returns_seen",
+            "already_retired_count",
+            "other_owner_count"
+          ],
+          "decorators": [],
+          "docstring": "Завершает обновление статусов без пакета и фиксирует результат в журнале аудита."
         },
         {
           "name": "_send_telegram_notification",
@@ -15181,6 +15197,104 @@
         "datetime",
         "pytest",
         "random",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_warehouse_agent_no_batches.py",
+      "layer": "tests",
+      "hash": "a388b25d245c",
+      "docstring": "Tests for the nightly warehouse agent without signature batches.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_code",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_excise_row",
+          "is_async": false,
+          "args": [
+            "code"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_record",
+          "is_async": false,
+          "args": [
+            "code",
+            "status"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_batches",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_status_sync_creates_no_batch_and_sends_no_notification",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_status_sync_still_updates_order_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_nightly_agent_does_not_request_batches",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents.wb_warehouse_sales_agent",
+        "app.database",
+        "app.models.audit",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.wb_warehouse_sales_service",
+        "datetime",
+        "pytest",
+        "random",
+        "sqlalchemy",
+        "sqlalchemy.orm",
         "unittest.mock",
         "uuid"
       ]

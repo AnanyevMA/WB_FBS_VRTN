@@ -692,7 +692,7 @@
     {
       "id": "wb_warehouse_sales",
       "name": "WB Warehouse Sales & FBO KIZ Agent",
-      "role": "Polls WB excise-report API for sales of marked goods from WB warehouse, verifies True API, and queues batches for UKEP signature.",
+      "role": "Polls WB excise-report API for sales of marked goods from WB warehouse, verifies True API, and updates order statuses. Does not create signature batches.",
       "celery_task": "app.agents.wb_warehouse_sales_agent.sync_all_sellers_warehouse_sales",
       "queue": "cz_operations",
       "schedule": "daily at 04:30",

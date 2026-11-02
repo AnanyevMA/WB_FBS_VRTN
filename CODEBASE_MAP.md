@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-11-02 14:04:21 UTC | **Файлов проиндексировано**: 200  
+> **Дата актуализации**: 2026-11-02 14:16:07 UTC | **Файлов проиндексировано**: 201  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -89,7 +89,7 @@
 | [`app/services/wb_item_returns_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_item_returns_service.py) | — | `_get_seller_lock`, `fetch_wb_item_returns_data`, `get_already_queued_return_cises`, `_extract_owner_inn`, +еще 3 | WB Item Returns Service - WB FBS Manager. |
 | [`app/services/wb_statistics_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_statistics_client.py) | `WBStatisticsAPIError`, `WBStatisticsClient` | — | WB Statistics API Client. |
 | [`app/services/wb_warehouse_sales_builder.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_warehouse_sales_builder.py) | — | `extract_owner_inn`, `_resolve_fields`, `build_warehouse_sale_item`, `build_warehouse_return_item` | WB Warehouse Sales and Returns Builder — WB FBS Manager. |
-| [`app/services/wb_warehouse_sales_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_warehouse_sales_service.py) | — | `fetch_wb_excise_data`, `get_already_queued_cises`, `process_warehouse_sales_for_seller`, `_send_telegram_notification` | WB Warehouse Sales Service — WB FBS Manager |
+| [`app/services/wb_warehouse_sales_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/wb_warehouse_sales_service.py) | — | `fetch_wb_excise_data`, `get_already_queued_cises`, `process_warehouse_sales_for_seller`, `_finish_status_sync`, +еще 1 | WB Warehouse Sales Service — WB FBS Manager |
 
 ### 🤖 Мультиагентный Слой Celery (`app/agents/`)
 
@@ -205,6 +205,7 @@
 | [`tests/test_unified_kiz_batch.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_batch.py) | — | `setup_test_db`, `test_unified_reconciliation_ownership_and_chronology`, `test_sync_batch_with_cz_data_preserves_owner_safety`, `test_unified_reconcile_api_endpoint`, +еще 1 | Unit tests for Unified KIZ Batch Reconciliation and Owner Validation. |
 | [`tests/test_unified_kiz_resale.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_resale.py) | — | `setup_test_db`, `_days_ago`, `_excise_row`, `_record`, +еще 13 | Tests for repeat sales in the unified KIZ reconciliation. |
 | [`tests/test_unified_kiz_sales_report.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_unified_kiz_sales_report.py) | — | `setup_test_db`, `_days_ago`, `_report_row`, `_excise_row`, +еще 17 | Tests for WB returns in the unified KIZ reconciliation. |
+| [`tests/test_warehouse_agent_no_batches.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_warehouse_agent_no_batches.py) | — | `setup_test_db`, `_code`, `_excise_row`, `_record`, +еще 4 | Tests for the nightly warehouse agent without signature batches. |
 | [`tests/test_warehouse_sales_returns_correlation.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_warehouse_sales_returns_correlation.py) | — | `test_warehouse_sales_skips_returned_srid` | Tests for Warehouse Sales and Returns Correlation (WbSalesReportRow cross-check). |
 | [`tests/test_warehouse_sales_storno_returns.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_warehouse_sales_storno_returns.py) | — | `db_session`, `_create_test_seller`, `test_warehouse_sales_service_line_length_under_limit`, `test_builder_file_line_length_under_limit`, +еще 21 | Tier 1 & Tier 2 In-Memory SQLite Test Suite for WB Warehouse Sales Storno & Return Receipts. |
 | [`tests/test_wb_analytics_challenger_m1_iter2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_wb_analytics_challenger_m1_iter2.py) | — | `_make_req`, `test_multi_page_pagination_traversal`, `test_multi_page_pagination_mid_stream_429_recovery`, `test_date_variations_date_datetime_and_timezone`, +еще 7 | Challenger M1 Iteration 2 Adversarial Stress Suite. |

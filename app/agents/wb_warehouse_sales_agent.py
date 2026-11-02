@@ -1,7 +1,7 @@
 """
 WB Warehouse Sales Celery Agent — WB FBS Manager
-Периодический опрос отчетов маркировки WB (excise-report) для выявления и вывода
-из оборота товаров, повторно проданных со склада WB (FBO / остатки после возвратов).
+Периодический опрос отчетов маркировки WB (excise-report) для обновления статусов заказов.
+Пакеты на подпись агент не создает: их собирает единая сверка.
 """
 import asyncio
 from datetime import datetime, timezone
@@ -73,7 +73,7 @@ def sync_seller_warehouse_sales(self, seller_id: str, days: int = 30) -> Dict[st
             if not seller or not seller.is_active or not seller.wb_api_token_encrypted:
                 return {"success": False, "error": f"Seller {seller_id} not eligible"}
 
-            return await process_warehouse_sales_for_seller(seller=seller, db=db, days=days)
+            return await process_warehouse_sales_for_seller(seller=seller, db=db, days=days, create_batch=False)
 
     try:
         try:

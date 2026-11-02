@@ -78,9 +78,13 @@ async def process_warehouse_sales_for_seller(
     seller: Seller,
     db: AsyncSession,
     days: int = 30,
+    create_batch: bool = True,
 ) -> Dict[str, Any]:
     """
-    Основной метод обработки продаж и возвратов со склада WB:
+    Основной метод обработки продаж и возвратов со склада WB.
+    С create_batch=False обновляет только статусы заказов: пакет и уведомление не создаются.
+    Пакет агента не видит свежие возвраты и повторные продажи, поэтому пакеты собирает единая сверка.
+    Шаги обработки:
     1. Загружает операции из WB excise-report.
     2. Сопоставляет КИЗ с локальной базой и запрашивает True API ГИС МТ.
     3. Для RETIRED продаж — обновляет статус в БД (без лишних документов).
@@ -215,6 +219,11 @@ async def process_warehouse_sales_for_seller(
 
     await db.commit()
 
+    if not create_batch:
+        return await _finish_status_sync(
+            seller, db, len(excise_rows), len(batch_withdrawals), len(batch_returns), already_retired_count, other_owner_count,
+        )
+
     if not batch_withdrawals and not batch_returns:
         details = []
         if already_retired_count:
@@ -284,6 +293,39 @@ async def process_warehouse_sales_for_seller(
         "already_retired_count": already_retired_count, "other_owner_count": other_owner_count,
         "total_sales_sum": total_sales_sum, "status": batch.status.value,
         "message": f"Сформирован пакет на вывод {len(batch_withdrawals)} и возврат {len(batch_returns)} товаров со склада WB",
+    }
+
+
+async def _finish_status_sync(
+    seller: Seller,
+    db: AsyncSession,
+    total_records: int,
+    sales_seen: int,
+    returns_seen: int,
+    already_retired_count: int,
+    other_owner_count: int,
+) -> Dict[str, Any]:
+    """Завершает обновление статусов без пакета и фиксирует результат в журнале аудита."""
+    payload = {
+        "total_wb_records": total_records,
+        "sales_seen": sales_seen,
+        "returns_seen": returns_seen,
+        "already_retired_count": already_retired_count,
+        "other_owner_count": other_owner_count,
+    }
+    db.add(AuditLog(
+        seller_id=seller.id,
+        agent="wb_warehouse_sales",
+        action="WAREHOUSE_SALES_STATUS_SYNC",
+        entity_type="Seller",
+        entity_id=str(seller.id),
+        payload=payload,
+    ))
+    await db.commit()
+    return {
+        "success": True, "seller_id": seller.id, "created": False,
+        "message": "Статусы заказов обновлены, пакет формирует единая сверка",
+        **payload,
     }
 
 

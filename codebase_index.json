@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-01T14:00:02.493978+00:00",
+  "updated_at": "2026-11-02T14:04:21.022353+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 199,
+  "total_files": 200,
   "files": [
     {
       "file": "alembic/env.py",
@@ -6627,7 +6627,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "3d05f295d4fc",
+      "hash": "facf4f3615b5",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -7011,7 +7011,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "a3885cc1799d",
+      "hash": "1678ae79b564",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -7076,7 +7076,7 @@
     {
       "file": "app/services/unified_kiz_history.py",
       "layer": "services",
-      "hash": "e590e792ad35",
+      "hash": "7af00a8c1427",
       "docstring": "Unified KIZ History — Helpers for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -12731,6 +12731,117 @@
       ]
     },
     {
+      "file": "tests/test_kiz_records_without_status.py",
+      "layer": "tests",
+      "hash": "9628faff8696",
+      "docstring": "Tests for KIZ registry records without a Chestny Znak status.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_code",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_seller",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_record",
+          "is_async": false,
+          "args": [
+            "seller_id",
+            "kiz_code",
+            "clean_cis",
+            "status"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_record_with_status_wins_over_duplicate_without_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_record_without_status_is_requested_again_despite_fresh_check_date",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_failed_true_api_call_does_not_return_record_without_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_resolve_does_not_create_duplicate_for_code_stored_with_tail",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_reconciliation_does_not_propose_documents_for_code_without_status",
+          "is_async": true,
+          "args": [
+            "operation",
+            "key"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('operation,key', List(elts=[Tuple(elts=[Constant(value='sale'), Constant(value='withdrawals')], ctx=Load()), Tuple(elts=[Constant(value='return'), Constant(value='returns')], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.unified_kiz_batch_service",
+        "datetime",
+        "pytest",
+        "sqlalchemy",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_kiz_service.py",
       "layer": "tests",
       "hash": "0bc474e0c04e",
@@ -16924,7 +17035,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "f94ca226d685",
+      "hash": "9695d5e270e0",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

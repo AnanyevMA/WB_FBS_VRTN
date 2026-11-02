@@ -477,10 +477,14 @@ async def resolve_kiz_product_info(
     kiz_info_obj: Optional[KizProductInfo] = None
 
     if db:
+        # Один КИЗ может быть записан с криптохвостом и без него: новая запись создала бы дубль без статуса
         res = await db.execute(
-            select(KizProductInfo).where(KizProductInfo.kiz_code == kiz_code)
+            select(KizProductInfo).where(
+                (KizProductInfo.kiz_code == kiz_code) | (KizProductInfo.clean_cis == clean_cis)
+            )
         )
-        kiz_info_obj = res.scalars().first()
+        rows = res.scalars().all()
+        kiz_info_obj = next((r for r in rows if r.cz_status), rows[0] if rows else None)
 
     if kiz_info_obj and not force_refresh:
         if order and kiz_info_obj.order_id != order.id and db:
@@ -850,8 +854,11 @@ async def batch_verify_and_sync_cises(
         for row in res.scalars().all():
             if row.kiz_code not in cached_map:
                 cached_map[row.kiz_code] = row
-            if row.clean_cis and row.clean_cis not in cached_map:
-                cached_map[row.clean_cis] = row
+            if row.clean_cis:
+                # Из нескольких записей одного КИЗ берем ту, где известен статус ЧЗ
+                known = cached_map.get(row.clean_cis)
+                if known is None or (not known.cz_status and row.cz_status):
+                    cached_map[row.clean_cis] = row
 
     # 2. Интеллектуальная фильтрация (Skip-Filter):
     # Если по КИЗ уже известно, что его владелец — НЕ текущий продавец (ООО «РВБ», РБ, сторонние лица)
@@ -862,7 +869,7 @@ async def batch_verify_and_sync_cises(
     for c in unique_codes:
         parsed_c = parse_kiz_code(c)
         clean_c = parsed_c.get("clean_cis") or c.strip()
-        rec = cached_map.get(c) or cached_map.get(clean_c)
+        rec = cached_map.get(clean_c) or cached_map.get(c)
 
         if not rec:
             # Новый, ранее не проверявшийся КИЗ — обязательно запрашиваем в ГИС МТ
@@ -879,8 +886,10 @@ async def batch_verify_and_sync_cises(
             results[c] = rec
             continue
 
-        if not force_refresh:
-            if rec.checked_at and (now_utc - rec.checked_at).total_seconds() < 86400:
+        # Запись без статуса ЧЗ не считается проверенной: ответ True API мог не прийти
+        if not force_refresh and rec.cz_status and rec.checked_at:
+            checked_at = rec.checked_at if rec.checked_at.tzinfo else rec.checked_at.replace(tzinfo=timezone.utc)
+            if (now_utc - checked_at).total_seconds() < 86400:
                 results[c] = rec
                 continue
 

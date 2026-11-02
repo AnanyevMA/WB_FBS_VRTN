@@ -71,7 +71,7 @@ def add_pending_batch_events(
 def merge_cz_records(k_info_map: Dict[str, Any], cz_info_map: Dict[str, Dict[str, Any]]) -> None:
     """Переносит записи kiz_product_info в словарь сведений True API."""
     for cis_key, rec in k_info_map.items():
-        if not rec:
+        if not rec or not (rec.cz_status or (rec.raw_cz_payload or {}).get("status")):
             continue
         info = dict(rec.raw_cz_payload or {})
         if rec.cz_status:

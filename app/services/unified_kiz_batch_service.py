@@ -279,6 +279,9 @@ async def create_unified_kiz_signature_batch(
         ops=kiz_ops,
     )
 
+    # КИЗ без статуса ЧЗ не попадают в пакет: сообщаем об этом в сводке
+    cz_unverified_count = sum(1 for cis in all_cises if not cz_info_map.get(cis, {}).get("status"))
+
     # 6. Формирование выбытий (WITHDRAWALS)
     (
         withdrawals_payload,
@@ -332,6 +335,7 @@ async def create_unified_kiz_signature_batch(
         "sales_resold_confirmed": len(resales.confirmed),
         "sales_needing_review": sum(1 for w in withdrawals_payload if w.get("needs_review")),
         "resale_check_failed": resales.failed or wb_returns.failed,
+        "cz_unverified_count": cz_unverified_count,
         "sales_report_failed": sales_report.failed,
         "sales_report_events": sales_report.events,
         "returns_needing_review": sum(1 for r in returns_payload if r.get("needs_review")),

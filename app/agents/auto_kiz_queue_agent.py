@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 from typing import Optional, Dict, Any
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -18,7 +18,7 @@ from app.services.time_service import resolve_timezone
 from app.services.auto_kiz_queue_service import process_auto_kiz_queue_for_seller
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 # In-memory трекер для защиты от повторного выполнения в рамках одного интервала:
 # seller_id -> datetime последнего запуска в UTC

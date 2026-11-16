@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-02T14:16:07.128094+00:00",
+  "updated_at": "2026-11-16T15:51:11.916349+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 201,
+  "total_files": 206,
   "files": [
     {
       "file": "alembic/env.py",
@@ -585,7 +585,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "8ba76b3f6a82",
+      "hash": "74d276d668f6",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -680,6 +680,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models.order",
         "app.models.seller",
         "app.services.crypto_service",
@@ -700,7 +701,7 @@
     {
       "file": "app/agents/auto_kiz_queue_agent.py",
       "layer": "agents",
-      "hash": "f2f47aea0e42",
+      "hash": "9702bb060ff4",
       "docstring": "Auto KIZ Queue Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -771,6 +772,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models.seller",
         "app.services.auto_kiz_queue_service",
         "app.services.time_service",
@@ -785,7 +787,7 @@
     {
       "file": "app/agents/cleanup.py",
       "layer": "agents",
-      "hash": "2b030fb1feea",
+      "hash": "49e6137a9d1a",
       "docstring": "Cleanup Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -814,6 +816,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models",
         "datetime",
         "logging",
@@ -826,7 +829,7 @@
     {
       "file": "app/agents/cz_return.py",
       "layer": "agents",
-      "hash": "c9576f4e35a4",
+      "hash": "3b83866cc8df",
       "docstring": "CZ Return Agent — Возврат КИЗ в оборот при возврате товара",
       "classes": [],
       "functions": [
@@ -886,6 +889,7 @@
       "imports": [
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.kiz",
         "app.models.order",
@@ -906,7 +910,7 @@
     {
       "file": "app/agents/cz_token_refresher.py",
       "layer": "agents",
-      "hash": "36df9d3d13d9",
+      "hash": "1124c410bc51",
       "docstring": "Chestny Znak Token Refresher Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -984,6 +988,7 @@
         "app.agents.notifier",
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.order",
         "app.models.seller",
@@ -1005,7 +1010,7 @@
     {
       "file": "app/agents/cz_withdrawal.py",
       "layer": "agents",
-      "hash": "1c91d56e12c5",
+      "hash": "b048e1c9b53b",
       "docstring": "CZ Withdrawal Celery Agent — Вывод КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -1094,6 +1099,7 @@
         "app.agents.notifier",
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.kiz",
         "app.models.order",
@@ -1101,6 +1107,7 @@
         "app.services.crypto_service",
         "app.services.cz_client",
         "app.services.encryption",
+        "app.services.wb_prices",
         "asyncio",
         "concurrent.futures",
         "datetime",
@@ -1114,7 +1121,7 @@
     {
       "file": "app/agents/kb_sync_agent.py",
       "layer": "agents",
-      "hash": "02cf330dd1bf",
+      "hash": "6229d7cfcb98",
       "docstring": "Knowledge Base & Codebase Synchronization Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1172,6 +1179,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models",
         "app.services.codebase_indexer",
         "app.services.kb_service",
@@ -1237,7 +1245,7 @@
     {
       "file": "app/agents/morning_digest.py",
       "layer": "agents",
-      "hash": "da935199a466",
+      "hash": "544246668da5",
       "docstring": "Morning Digest Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1291,6 +1299,7 @@
       "imports": [
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.order",
         "app.models.seller",
@@ -1308,7 +1317,7 @@
     {
       "file": "app/agents/notifier.py",
       "layer": "agents",
-      "hash": "556ca83e2e87",
+      "hash": "00b947344958",
       "docstring": "Notifier Agent — отправка уведомлений через Telegram",
       "classes": [],
       "functions": [
@@ -1481,6 +1490,7 @@
       "imports": [
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.order",
         "app.models.seller",
@@ -1499,7 +1509,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "84f8cf5a17bb",
+      "hash": "aa19fc0dbbba",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1595,15 +1605,16 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models",
         "app.models.order",
         "app.services.encryption",
         "app.services.security",
         "app.services.wb_client",
+        "app.services.wb_prices",
         "asyncio",
         "celery",
         "datetime",
-        "decimal",
         "inspect",
         "logging",
         "sqlalchemy",
@@ -1669,7 +1680,7 @@
     {
       "file": "app/agents/security_audit_agent.py",
       "layer": "agents",
-      "hash": "fcc03130437f",
+      "hash": "0a829fc1339e",
       "docstring": "Security Audit Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1704,6 +1715,7 @@
       "imports": [
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.seller",
         "app.models.user",
@@ -1722,7 +1734,7 @@
     {
       "file": "app/agents/supply_agent.py",
       "layer": "agents",
-      "hash": "4249204002bc",
+      "hash": "f21603285354",
       "docstring": "Supply Manager Agent — создание и управление поставками WB FBS",
       "classes": [],
       "functions": [
@@ -1781,6 +1793,7 @@
         "app.agents.notifier",
         "app.celery_app",
         "app.config",
+        "app.database_sync",
         "app.models.audit",
         "app.models.order",
         "app.models.seller",
@@ -1799,7 +1812,7 @@
     {
       "file": "app/agents/wb_finance_agent.py",
       "layer": "agents",
-      "hash": "afbe74c8f548",
+      "hash": "d93657d9a0c9",
       "docstring": "WB Finance Celery Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1846,6 +1859,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models.audit",
         "app.models.seller",
         "app.services.wb_finance_service",
@@ -1996,7 +2010,7 @@
     {
       "file": "app/agents/wb_warehouse_sales_agent.py",
       "layer": "agents",
-      "hash": "29b9ee73c729",
+      "hash": "28654c603899",
       "docstring": "WB Warehouse Sales Celery Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -2043,6 +2057,7 @@
         "app.celery_app",
         "app.config",
         "app.database",
+        "app.database_sync",
         "app.models.seller",
         "app.services.wb_warehouse_sales_service",
         "asyncio",
@@ -2470,7 +2485,7 @@
     {
       "file": "app/api/kiz/archive.py",
       "layer": "api",
-      "hash": "c2e34710f607",
+      "hash": "4d773013c717",
       "docstring": "FastAPI WB Archive Upload, Analysis & Sync Endpoints — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -3118,7 +3133,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "14413333373a",
+      "hash": "16d6351a9019",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3368,11 +3383,13 @@
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.wb_client",
+        "app.services.wb_prices",
         "datetime",
         "decimal",
         "fastapi",
         "logging",
         "sqlalchemy",
+        "sqlalchemy.exc",
         "sqlalchemy.ext.asyncio",
         "typing",
         "uuid"
@@ -4224,7 +4241,7 @@
     {
       "file": "app/bot/helpers.py",
       "layer": "core",
-      "hash": "250da7a2ba3e",
+      "hash": "2f8b62ccad0d",
       "docstring": "Telegram Bot Helpers & Shared State — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4244,6 +4261,7 @@
       "db_tables": [],
       "imports": [
         "app.config",
+        "app.database_sync",
         "app.models.seller",
         "logging",
         "sqlalchemy",
@@ -4378,7 +4396,7 @@
     {
       "file": "app/config.py",
       "layer": "core",
-      "hash": "89bec3134378",
+      "hash": "15ba2e6d633f",
       "docstring": "Application Configuration — WB FBS Manager",
       "classes": [
         {
@@ -4468,6 +4486,31 @@
         "sqlalchemy.ext.asyncio",
         "sqlalchemy.orm",
         "sqlalchemy.pool"
+      ]
+    },
+    {
+      "file": "app/database_sync.py",
+      "layer": "core",
+      "hash": "dc799550db5a",
+      "docstring": "Synchronous SQLAlchemy engine shared by the Celery agents and the Telegram bot.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "build_sync_engine_kwargs",
+          "is_async": false,
+          "args": [
+            "database_url"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.config",
+        "sqlalchemy"
       ]
     },
     {
@@ -4877,7 +4920,7 @@
     {
       "file": "app/models/wb_finance.py",
       "layer": "models",
-      "hash": "fa534bd15e19",
+      "hash": "6b385e05c4de",
       "docstring": "WB Finance Data Models — WB FBS Manager",
       "classes": [
         {
@@ -4909,10 +4952,20 @@
     {
       "file": "app/national_catalog/__init__.py",
       "layer": "core",
-      "hash": "c35f226f8a81",
+      "hash": "2b3bb592ece5",
       "docstring": "Национальный Каталог (НКТ) Честного Знака — модуль управления карточками товаров.",
       "classes": [],
-      "functions": [],
+      "functions": [
+        {
+          "name": "__getattr__",
+          "is_async": false,
+          "args": [
+            "name"
+          ],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
@@ -5778,7 +5831,7 @@
     {
       "file": "app/services/archive_service.py",
       "layer": "services",
-      "hash": "6fe44892fd3b",
+      "hash": "aae66a5f69e2",
       "docstring": "Archive Service — парсинг и обработка выгрузок архива Wildberries (.xlsx).",
       "classes": [],
       "functions": [
@@ -5961,7 +6014,7 @@
     {
       "file": "app/services/auto_kiz_queue_service.py",
       "layer": "services",
-      "hash": "37b73836fb1a",
+      "hash": "8a8d8f8e3d54",
       "docstring": "Auto KIZ Queue Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6149,7 +6202,7 @@
     {
       "file": "app/services/cz_client.py",
       "layer": "services",
-      "hash": "f8e0ba9ddba1",
+      "hash": "10c356544a9d",
       "docstring": "True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак)",
       "classes": [
         {
@@ -6747,7 +6800,7 @@
     {
       "file": "app/services/signature_batch_executor.py",
       "layer": "services",
-      "hash": "57203ba01cea",
+      "hash": "1b15029afc47",
       "docstring": "Signature Batch Executor Service.",
       "classes": [],
       "functions": [
@@ -6785,6 +6838,7 @@
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.signature_batch_submitter",
+        "app.services.wb_prices",
         "copy",
         "datetime",
         "logging",
@@ -6837,9 +6891,37 @@
     {
       "file": "app/services/telegram_service.py",
       "layer": "services",
-      "hash": "1f9fefb625dd",
-      "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам",
+      "hash": "010dcaed0838",
+      "docstring": "Telegram Notification Service — отправка Push-уведомлений менеджерам.",
       "classes": [
+        {
+          "name": "_RedactBotTokenFilter",
+          "bases": [
+            "logging.Filter"
+          ],
+          "docstring": "httpx пишет в лог полный адрес запроса, а токен бота входит в адрес.",
+          "methods": [
+            "filter"
+          ]
+        },
+        {
+          "name": "TelegramAPIError",
+          "bases": [
+            "Exception"
+          ],
+          "docstring": "Telegram отклонил запрос или до него не удалось достучаться.",
+          "methods": []
+        },
+        {
+          "name": "TelegramBotClient",
+          "bases": [],
+          "docstring": "Минимальный клиент Bot API: только отправка сообщений.",
+          "methods": [
+            "__init__",
+            "send_message",
+            "close"
+          ]
+        },
         {
           "name": "TelegramService",
           "bases": [],
@@ -6865,6 +6947,35 @@
         }
       ],
       "functions": [
+        {
+          "name": "_redact_token",
+          "is_async": false,
+          "args": [
+            "text"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_button",
+          "is_async": false,
+          "args": [
+            "text",
+            "callback_data",
+            "url"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_keyboard",
+          "is_async": false,
+          "args": [
+            "rows"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
         {
           "name": "get_telegram_service",
           "is_async": false,
@@ -6915,16 +7026,13 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
-        "aiogram",
-        "aiogram.client.default",
-        "aiogram.enums",
-        "aiogram.exceptions",
-        "aiogram.types",
         "app.config",
         "asyncio",
         "datetime",
         "html",
+        "httpx",
         "logging",
+        "re",
         "typing"
       ]
     },
@@ -7559,7 +7667,7 @@
     {
       "file": "app/services/wb_archive_service.py",
       "layer": "services",
-      "hash": "2183d790d89e",
+      "hash": "732511316a9d",
       "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (созданных более 3 месяцев назад).",
       "classes": [],
       "functions": [
@@ -7642,6 +7750,7 @@
         "app.services.encryption",
         "app.services.kiz_service",
         "app.services.wb_client",
+        "app.services.wb_prices",
         "datetime",
         "decimal",
         "logging",
@@ -8081,6 +8190,59 @@
         "logging",
         "sqlalchemy",
         "sqlalchemy.ext.asyncio",
+        "typing"
+      ]
+    },
+    {
+      "file": "app/services/wb_prices.py",
+      "layer": "services",
+      "hash": "7c67438fbb4a",
+      "docstring": "Цены заказов WB.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_is_rub",
+          "is_async": false,
+          "args": [
+            "code"
+          ],
+          "decorators": [],
+          "docstring": "Отсутствующий код валюты считаем рублями: старые ответы WB его не содержали."
+        },
+        {
+          "name": "_from_hundredths",
+          "is_async": false,
+          "args": [
+            "value"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "wb_order_price_rub",
+          "is_async": false,
+          "args": [
+            "raw"
+          ],
+          "decorators": [],
+          "docstring": "Цена заказа в рублях или None, если рублёвой цены в ответе WB нет."
+        },
+        {
+          "name": "price_to_kopecks",
+          "is_async": false,
+          "args": [
+            "price"
+          ],
+          "decorators": [],
+          "docstring": "Стоимость для документа ЧЗ в копейках. None, если цены нет: отправлять 0 нельзя."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "decimal",
+        "logging",
         "typing"
       ]
     },
@@ -13173,6 +13335,88 @@
       ]
     },
     {
+      "file": "tests/test_memory_footprint.py",
+      "layer": "tests",
+      "hash": "ed41629dca78",
+      "docstring": "Guards for the memory budget of the production processes (957 MB host).",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_loaded_in_fresh_process",
+          "is_async": false,
+          "args": [
+            "setup",
+            "modules"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_worker_does_not_load_bot_or_web_frameworks",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "aiogram costs ~50 MB per process; the worker only needs to send messages."
+        },
+        {
+          "name": "test_api_does_not_load_aiogram",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_bot_does_not_load_web_framework_or_excel",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_agents_share_one_sync_engine",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Each engine keeps its own idle PostgreSQL connections, and each connection is a server process."
+        },
+        {
+          "name": "test_sync_engine_pool_is_small_for_postgres",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_raw_payload_is_not_loaded_by_default",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_national_catalog_router_is_still_reachable",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.agents",
+        "app.bot",
+        "app.database_sync",
+        "app.models.wb_finance",
+        "app.national_catalog",
+        "app.national_catalog.router",
+        "sqlalchemy",
+        "subprocess",
+        "sys"
+      ]
+    },
+    {
       "file": "tests/test_morning_digest.py",
       "layer": "tests",
       "hash": "ccbe024d1e98",
@@ -13484,7 +13728,7 @@
     {
       "file": "tests/test_order_poller_adversarial.py",
       "layer": "tests",
-      "hash": "42c5d355326e",
+      "hash": "97bf87aad4d6",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -14509,6 +14753,95 @@
       ]
     },
     {
+      "file": "tests/test_telegram_client.py",
+      "layer": "tests",
+      "hash": "ed35664a5090",
+      "docstring": "Отправка сообщений в Telegram напрямую через Bot API, без aiogram.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "_client",
+          "is_async": false,
+          "args": [
+            "handler"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_send_message_posts_html_text_and_keyboard",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_send_message_without_keyboard_omits_reply_markup",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_api_error_is_raised_with_description",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_network_error_does_not_leak_token",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_broadcast_survives_failed_chat_and_reports_success",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_httpx_log_filter_hides_bot_token",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_telegram_service_does_not_import_aiogram",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "aiogram costs ~50 MB per process; the API and the worker must not load it for notifications."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.telegram_service",
+        "httpx",
+        "json",
+        "logging",
+        "pytest",
+        "subprocess",
+        "sys"
+      ]
+    },
+    {
       "file": "tests/test_telegram_notifications.py",
       "layer": "tests",
       "hash": "3d205c687599",
@@ -14706,7 +15039,7 @@
     {
       "file": "tests/test_unified_kiz_batch.py",
       "layer": "tests",
-      "hash": "97548202f801",
+      "hash": "fae348abfaba",
       "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
       "classes": [],
       "functions": [
@@ -16678,7 +17011,7 @@
     {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
-      "hash": "1c84db16e702",
+      "hash": "f1f11085091a",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -16699,6 +17032,15 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify that refresh_orders fetches WB statuses and updates Order.wb_status / supplier_status."
+        },
+        {
+          "name": "test_refresh_orders_survives_order_inserted_by_poller",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "The poller may insert an order between the sync's lookup and its insert: skip it, keep the rest."
         },
         {
           "name": "test_sync_all_orders_cz_status_not_found",
@@ -16795,12 +17137,125 @@
         "app.services.wb_client",
         "base64",
         "datetime",
+        "decimal",
         "fastapi",
         "json",
         "pytest",
         "random",
         "unittest.mock",
         "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_wb_prices.py",
+      "layer": "tests",
+      "hash": "1c99600f5560",
+      "docstring": "Цена заказа WB: рубли из convertedPrice, а не цена в валюте покупателя.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_rub_order_uses_price",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_kazakh_order_uses_converted_price",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_belarus_order_uses_converted_price",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_archive_price_info",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_foreign_currency_without_converted_price_gives_none",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_converted_price_not_in_rub_gives_none",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_cheap_item_is_always_divided_by_100",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_missing_currency_is_treated_as_rub",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_no_price_gives_none",
+          "is_async": false,
+          "args": [
+            "raw"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('raw', List(elts=[Dict(), Dict(keys=[Constant(value='price')], values=[Constant(value=0)]), Dict(keys=[Constant(value='price')], values=[Constant(value=None)]), Dict(keys=[Constant(value='priceInfo')], values=[Dict()])], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_price_to_kopecks",
+          "is_async": false,
+          "args": [
+            "price",
+            "expected"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('price,expected', List(elts=[Tuple(elts=[Call(func=Name(id='Decimal', ctx=Load()), args=[Constant(value='6785.00')]), Constant(value=678500)], ctx=Load()), Tuple(elts=[Constant(value=3563.63), Constant(value=356363)], ctx=Load()), Tuple(elts=[Constant(value='4156.9'), Constant(value=415690)], ctx=Load()), Tuple(elts=[Constant(value=None), Constant(value=None)], ctx=Load()), Tuple(elts=[Constant(value=0), Constant(value=None)], ctx=Load()), Tuple(elts=[UnaryOp(op=USub(), operand=Constant(value=1)), Constant(value=None)], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_document_refuses_zero_cost",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_document_keeps_positive_cost",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services.cz_client",
+        "app.services.wb_prices",
+        "decimal",
+        "json",
+        "pytest"
       ]
     },
     {

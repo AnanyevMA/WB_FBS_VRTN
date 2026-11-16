@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import logging
 from typing import Any, Dict
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -18,7 +18,7 @@ from app.models.seller import Seller
 from app.services.wb_warehouse_sales_service import process_warehouse_sales_for_seller
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 
 @celery_app.task(

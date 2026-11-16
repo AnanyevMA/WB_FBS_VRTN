@@ -3,14 +3,14 @@ Telegram Bot Helpers & Shared State — WB FBS Manager
 """
 import logging
 from typing import Optional, Dict
-from sqlalchemy import select, create_engine
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.seller import Seller
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 # User state memory for waiting KIZ code input: chat_id -> order_id
 _pending_kiz_input: Dict[int, int] = {}

@@ -8,7 +8,7 @@ digest time in their local timezone. Sends a morning summary of all pending
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine, select, and_
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -20,7 +20,7 @@ from app.services.time_service import (
 )
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 # Guard: tracks (seller_id, date) pairs where digest was already sent today
 _digest_sent: dict[str, str] = {}  # seller_id → "YYYY-MM-DD" (local date)

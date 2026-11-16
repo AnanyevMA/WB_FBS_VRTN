@@ -14,7 +14,7 @@ import uuid
 import logging
 from typing import Dict, Any, List
 
-from sqlalchemy import create_engine, select, func
+from sqlalchemy import select, func
 from sqlalchemy.orm import sessionmaker
 
 from app.celery_app import celery_app
@@ -28,10 +28,7 @@ from app.services.telegram_service import TelegramService
 logger = logging.getLogger(__name__)
 
 # Synchronous session factory for Celery workers
-sync_engine = create_engine(
-    settings.database_url_sync,
-    pool_pre_ping=True,
-)
+from app.database_sync import sync_engine
 SyncSessionLocal = sessionmaker(
     bind=sync_engine,
     autoflush=False,

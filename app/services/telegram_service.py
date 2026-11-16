@@ -1,25 +1,90 @@
 """
-Telegram Notification Service — отправка Push-уведомлений менеджерам
-Использует aiogram 3.x для отправки сообщений с inline-кнопками
+Telegram Notification Service — отправка Push-уведомлений менеджерам.
+
+Сообщения отправляются прямыми запросами к Telegram Bot API через httpx.
+aiogram здесь намеренно не используется: его импорт занимает около 50 МБ памяти,
+а API и воркеру нужна только отправка сообщений. Сам бот (app/bot) работает на aiogram.
 """
 import asyncio
 import html
 import logging
+import re
 from typing import Any, Optional
 
-from aiogram import Bot
-try:
-    from aiogram.client.default import DefaultBotProperties
-except (ImportError, ModuleNotFoundError):
-    DefaultBotProperties = None
-
-from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramAPIError
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+import httpx
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+TELEGRAM_API_URL = "https://api.telegram.org"
+_BOT_TOKEN_IN_URL = re.compile(r"/bot\d+:[A-Za-z0-9_-]+")
+
+
+def _redact_token(text: str) -> str:
+    return _BOT_TOKEN_IN_URL.sub("/bot<redacted>", text)
+
+
+class _RedactBotTokenFilter(logging.Filter):
+    """httpx пишет в лог полный адрес запроса, а токен бота входит в адрес."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        if "/bot" in message:
+            record.msg = _redact_token(message)
+            record.args = ()
+        return True
+
+
+logging.getLogger("httpx").addFilter(_RedactBotTokenFilter())
+
+
+class TelegramAPIError(Exception):
+    """Telegram отклонил запрос или до него не удалось достучаться."""
+
+
+def _button(text: str, callback_data: Optional[str] = None, url: Optional[str] = None) -> dict:
+    button = {"text": text}
+    if url:
+        button["url"] = url
+    else:
+        button["callback_data"] = callback_data
+    return button
+
+
+def _keyboard(rows: list[list[dict]]) -> dict:
+    return {"inline_keyboard": rows}
+
+
+class TelegramBotClient:
+    """Минимальный клиент Bot API: только отправка сообщений."""
+
+    def __init__(self, token: str, timeout: float = 15.0, transport: Optional[httpx.AsyncBaseTransport] = None):
+        self._token = token
+        self._client = httpx.AsyncClient(timeout=timeout, transport=transport)
+
+    async def send_message(self, chat_id: str | int, text: str, reply_markup: Optional[dict] = None) -> dict:
+        payload: dict[str, Any] = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        try:
+            response = await self._client.post(f"{TELEGRAM_API_URL}/bot{self._token}/sendMessage", json=payload)
+        except httpx.HTTPError as exc:
+            raise TelegramAPIError(_redact_token(f"{type(exc).__name__}: {exc}")) from None
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+        if response.status_code != 200 or not data.get("ok"):
+            description = data.get("description") or f"HTTP {response.status_code}"
+            raise TelegramAPIError(f"Telegram server says - {description}")
+        return data.get("result") or {}
+
+    async def close(self) -> None:
+        await self._client.aclose()
 
 
 class TelegramService:
@@ -30,19 +95,16 @@ class TelegramService:
 
     def __init__(self, bot_token: str):
         self.bot_token = bot_token
-        self._bot: Optional[Bot] = None
+        self._bot: Optional[TelegramBotClient] = None
 
-    async def _get_bot(self) -> Bot:
+    async def _get_bot(self) -> TelegramBotClient:
         if self._bot is None:
-            if DefaultBotProperties is not None:
-                self._bot = Bot(token=self.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-            else:
-                self._bot = Bot(token=self.bot_token, parse_mode=ParseMode.HTML)
+            self._bot = TelegramBotClient(self.bot_token)
         return self._bot
 
     async def close(self):
         if self._bot:
-            await self._bot.session.close()
+            await self._bot.close()
             self._bot = None
 
     async def send_new_order_notification(
@@ -84,20 +146,19 @@ class TelegramService:
             f"💰 <b>Цена:</b> {price_str}"
         )
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
+        keyboard = _keyboard([
                 [
-                    InlineKeyboardButton(
+                    _button(
                         text="📋 Детали",
                         callback_data=f"order:detail:{order_id}"
                     ),
-                    InlineKeyboardButton(
+                    _button(
                         text="✅ В сборку",
                         callback_data=f"order:assemble:{order_id}"
                     ),
                 ],
                 [
-                    InlineKeyboardButton(
+                    _button(
                         text="❌ Отклонить",
                         callback_data=f"order:cancel:{order_id}"
                     ),
@@ -120,9 +181,8 @@ class TelegramService:
             f"Заказ #{order_id} ({order_name_esc})\n"
             f"Товар подлежит маркировке. Отсканируйте КИЗ."
         )
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[[
-                InlineKeyboardButton(
+        keyboard = _keyboard([[
+                _button(
                     text="📷 Сканировать КИЗ",
                     callback_data=f"kiz:scan:{order_id}"
                 )
@@ -286,14 +346,13 @@ class TelegramService:
             f"💰 <b>Итого:</b> {total_rub:.0f} ₽"
         )
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
+        keyboard = _keyboard([
                 [
-                    InlineKeyboardButton(
+                    _button(
                         text="📋 Все необработанные",
                         callback_data=f"orders:pending:{seller_id}",
                     ),
-                    InlineKeyboardButton(
+                    _button(
                         text="📦 Сформировать поставку",
                         callback_data=f"supply:create_all:{seller_id}",
                     ),
@@ -405,16 +464,15 @@ class TelegramService:
             + "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         )
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
+        keyboard = _keyboard([
                 [
-                    InlineKeyboardButton(
+                    _button(
                         text=f"📦 Сформировать поставку ({count} шт.)",
                         callback_data=f"supply:create_all:{seller_id}",
                     ),
                 ],
                 [
-                    InlineKeyboardButton(
+                    _button(
                         text="📋 Показать полный список",
                         callback_data=f"orders:pending:{seller_id}",
                     ),
@@ -501,10 +559,9 @@ class TelegramService:
         keyboard = None
         base_url = (getattr(settings, "public_url", "") or "").rstrip("/")
         if not is_auto_signed and batch_id and base_url:
-            keyboard = InlineKeyboardMarkup(
-                inline_keyboard=[
+            keyboard = _keyboard([
                     [
-                        InlineKeyboardButton(
+                        _button(
                             text="✍️ Перейти к подписанию",
                             url=f"{base_url}/#/signature-queue",
                         ),
@@ -527,7 +584,7 @@ class TelegramService:
         self,
         chat_ids: list[str | int],
         text: str,
-        keyboard: Optional[InlineKeyboardMarkup] = None,
+        keyboard: Optional[dict] = None,
     ) -> bool:
         """Отправить сообщение всем указанным chat_ids."""
         bot = await self._get_bot()
@@ -548,6 +605,8 @@ class TelegramService:
             except Exception as e:
                 logger.error(f"Unexpected error sending to {chat_id}: {e}")
 
+        # Celery запускает каждую задачу в своём event loop: соединение нельзя переносить в следующий
+        await self.close()
         return success_count > 0
 
 

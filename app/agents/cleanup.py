@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 from typing import Dict, Any
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine, delete, text
+from sqlalchemy import Column, DateTime, Integer, String, Text, delete, text
 from sqlalchemy.orm import sessionmaker
 
 from app.celery_app import celery_app
@@ -16,10 +16,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # Synchronous engine and session factory
-sync_engine = create_engine(
-    settings.database_url_sync,
-    pool_pre_ping=True,
-)
+from app.database_sync import sync_engine
 SyncSessionLocal = sessionmaker(
     bind=sync_engine,
     autoflush=False,

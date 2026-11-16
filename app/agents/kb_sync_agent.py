@@ -10,7 +10,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.celery_app import celery_app
@@ -21,12 +20,7 @@ from app.services.kb_service import KBService
 logger = logging.getLogger(__name__)
 
 # Synchronous SQLAlchemy engine and session factory for Celery tasks
-sync_engine = create_engine(
-    settings.database_url_sync,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-)
+from app.database_sync import sync_engine
 SyncSessionLocal = sessionmaker(
     bind=sync_engine,
     autoflush=False,

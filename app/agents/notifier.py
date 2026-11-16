@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import logging
 from typing import Optional, Dict, Any
 
-from sqlalchemy import create_engine, select, and_, update
+from sqlalchemy import select, and_, update
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -18,7 +18,7 @@ from app.models.audit import AuditLog
 from app.services.encryption import decrypt
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 
 def _get_seller(db: Session, seller_id: str):

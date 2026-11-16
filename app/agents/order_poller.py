@@ -12,7 +12,7 @@ import logging
 from typing import Any, List, Optional
 
 from celery import chain
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, create_engine
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.celery_app import celery_app
@@ -27,12 +27,7 @@ logger = logging.getLogger(__name__)
 _last_polled: dict[str, datetime] = {}
 
 # Synchronous SQLAlchemy engine and session factory for Celery tasks
-sync_engine = create_engine(
-    settings.database_url_sync,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+from app.database_sync import sync_engine
 SyncSessionLocal = sessionmaker(
     bind=sync_engine,
     autoflush=False,

@@ -89,7 +89,9 @@ class WbSalesReportRow(Base):
 
     date_from: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     date_to: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    raw_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # Never read by the code and no longer written: deferred so that loading thousands of rows
+    # does not pull megabytes of JSON into memory
+    raw_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, deferred=True)
 
     # Верификация в Честном Знаке (True API)
     cz_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

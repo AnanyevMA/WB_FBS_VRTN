@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import create_engine, select, and_
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -17,7 +17,7 @@ from app.models.audit import AuditLog
 from app.services.encryption import decrypt
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 
 @celery_app.task(

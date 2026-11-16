@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import logging
 from typing import Dict, Any, List
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -21,7 +21,7 @@ from app.services.cz_client import CZClient, CZAPIError, CZUnauthorizedError
 from app.services.kiz_service import batch_verify_and_sync_cises
 
 logger = logging.getLogger(__name__)
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 
 @celery_app.task(

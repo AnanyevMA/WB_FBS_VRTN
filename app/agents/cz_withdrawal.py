@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import create_engine, select, and_
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from app.celery_app import celery_app
@@ -22,7 +22,7 @@ from app.agents.notifier import send_cz_status_notification
 logger = logging.getLogger(__name__)
 
 # Synchronous DB engine for Celery tasks
-sync_engine = create_engine(settings.database_url_sync)
+from app.database_sync import sync_engine
 
 
 @celery_app.task(

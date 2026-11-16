@@ -10,7 +10,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
-import openpyxl
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -66,6 +65,7 @@ def parse_wb_archive_excel(file_bytes: bytes) -> Dict[str, List[Dict[str, Any]]]
     - 'kiz_rows': записи листа «КИЗ»
     - 'tasks_rows': записи листа «Сборочные задания»
     """
+    import openpyxl  # imported here: only archive uploads need it, and it pulls in numpy
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     
     # Locate sheets (case-insensitive search)

@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     db_pool_recycle: int = 1800
     db_pool_timeout: int = 30
     db_use_null_pool: bool = False  # Celery worker only: every asyncio.run() needs its own connection
+    db_sync_pool_size: int = 2  # idle connections kept by the shared synchronous engine
+    db_sync_max_overflow: int = 8
 
     # Redis / Celery
     redis_url: str = "redis://redis:6379/0"

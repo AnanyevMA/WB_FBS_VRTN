@@ -57,6 +57,7 @@ async def test_unified_reconciliation_ownership_and_chronology():
             doc_type_name="Возврат",
             rr_date=date.today() - timedelta(days=10),
             retail_amount=500.0,
+            retail_price=500.0,
         )
         # 2. Row 2: Return owned by Seller (190207495060)
         r2 = WbSalesReportRow(
@@ -67,6 +68,7 @@ async def test_unified_reconciliation_ownership_and_chronology():
             doc_type_name="Возврат покупателя",
             rr_date=date.today() - timedelta(days=5),
             retail_amount=600.0,
+            retail_price=600.0,
         )
         # 3. Row 3: Return that was subsequentely resold!
         r3_ret = WbSalesReportRow(
@@ -78,6 +80,7 @@ async def test_unified_reconciliation_ownership_and_chronology():
             sale_dt=datetime.now(timezone.utc) - timedelta(days=15),
             rr_date=date.today() - timedelta(days=15),
             retail_amount=700.0,
+            retail_price=700.0,
         )
         r3_sale = WbSalesReportRow(
             seller_id=seller_id,
@@ -88,6 +91,7 @@ async def test_unified_reconciliation_ownership_and_chronology():
             sale_dt=datetime.now(timezone.utc) - timedelta(days=2),
             rr_date=date.today() - timedelta(days=2),
             retail_amount=700.0,
+            retail_price=700.0,
         )
         # 4. Row 4: Sale owned by WB (9714053621) - in INTRODUCED status!
         r4_sale = WbSalesReportRow(
@@ -99,6 +103,7 @@ async def test_unified_reconciliation_ownership_and_chronology():
             sale_dt=datetime.now(timezone.utc) - timedelta(days=1),
             rr_date=date.today() - timedelta(days=1),
             retail_amount=800.0,
+            retail_price=800.0,
         )
         db.add_all([r1, r2, r3_ret, r3_sale, r4_sale])
         await db.commit()

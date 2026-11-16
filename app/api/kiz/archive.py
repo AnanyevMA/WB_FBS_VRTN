@@ -182,6 +182,9 @@ async def process_wb_archive(
 
                 if not kiz_code:
                     continue
+                if not price_kopecks or price_kopecks <= 0:
+                    logger.warning(f"Skip withdrawal of {kiz_code}: no product cost (order {order_id})")
+                    continue
 
                 unsigned_doc = client.build_withdrawal_payload(
                     kiz_codes=[kiz_code],

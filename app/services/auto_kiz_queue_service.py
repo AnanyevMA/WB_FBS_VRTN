@@ -458,6 +458,9 @@ async def process_auto_kiz_queue_for_seller(
             async with CZClient(inn=seller.cz_inn or "", token=cz_token, cert_thumbprint=seller.cz_cert_path) as cz_client:
                 # Withdrawals
                 for w in batch_withdrawals:
+                    if not w.get("price_kopecks") or w["price_kopecks"] <= 0:
+                        logger.warning(f"[Auto KIZ] Skip withdrawal of {w['kiz_code']}: no product cost")
+                        continue
                     await cz_client.withdraw_from_circulation(
                         kiz_codes=[w["kiz_code"]],
                         price_kopecks=w["price_kopecks"],

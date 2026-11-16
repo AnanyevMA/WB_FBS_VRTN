@@ -22,6 +22,7 @@ from app.services.kiz_service import (
     parse_kiz_code,
 )
 from app.services.encryption import decrypt
+from app.services.wb_prices import price_to_kopecks
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +244,10 @@ def build_batch_signing_payloads(
         if selected_set is not None and kiz not in selected_set:
             continue
 
-        price_kop = w.get("price_kopecks") or int((w.get("price") or 0) * 100)
+        price_kop = w.get("price_kopecks") or price_to_kopecks(w.get("price"))
+        if not price_kop or price_kop <= 0:
+            logger.warning(f"Skip withdrawal of {kiz}: no product cost (order {w.get('order_id')})")
+            continue
         receipt_num = w.get("receipt_number")
         receipt_date = w.get("receipt_date")
 

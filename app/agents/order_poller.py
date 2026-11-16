@@ -469,8 +469,8 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
     d. Log to audit_log
     e. Return (order_ids, order_payloads) — caller dispatches notifications
     """
-    from decimal import Decimal, InvalidOperation
     from app.models.order import OrderStatus, KizStatus
+    from app.services.wb_prices import price_to_kopecks, wb_order_price_rub
 
     seller_id_str = str(seller.id)
     raw_token = getattr(seller, "wb_api_token_encrypted", getattr(seller, "wb_api_token", getattr(seller, "wb_token", getattr(seller, "api_token", ""))))
@@ -548,16 +548,7 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
         else:
             wb_created_dt = datetime.now(timezone.utc)
 
-        raw_price = order_raw.get("price", 0)
-        try:
-            if isinstance(raw_price, int) and raw_price > 10000:
-                price_dec = Decimal(str(raw_price / 100.0))
-            elif raw_price is not None:
-                price_dec = Decimal(str(raw_price))
-            else:
-                price_dec = Decimal("0.00")
-        except (InvalidOperation, TypeError, ValueError):
-            price_dec = Decimal("0.00")
+        price_dec = wb_order_price_rub(order_raw)
 
         new_order = Order(
             id=wb_order_id_int,
@@ -589,7 +580,7 @@ def poll_seller_orders(seller: Seller, session: Session) -> tuple[list[int], lis
             "brand": meta.get("brand") or "—",
             "subject": meta.get("subject") or "—",
             "article": meta.get("article") or "",
-            "price": raw_price,
+            "price": price_to_kopecks(price_dec) or 0,
             "kiz_required": kiz_required,
             "wb_created_at": wb_created_dt.isoformat(),
         })

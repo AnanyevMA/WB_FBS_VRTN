@@ -21,6 +21,7 @@ from app.models.seller import Seller
 from app.services.encryption import decrypt
 from app.services.kiz_service import parse_kiz_code
 from app.services.wb_client import WBClient
+from app.services.wb_prices import wb_order_price_rub
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +127,7 @@ async def _upsert_archive_order(
     kiz_code = str(meta_details.get("sgtin") or "").strip()
     clean_cis = parse_kiz_code(kiz_code).get("clean_cis") if kiz_code else None
 
-    price_kop = (raw_order.get("priceInfo") or {}).get("price") or 0
-    price_rub = Decimal(str(round(float(price_kop) / 100.0, 2))) if price_kop else Decimal("0.00")
+    price_rub = wb_order_price_rub(raw_order)
 
     product = raw_order.get("product") or {}
     article = str(product.get("article") or "").strip() or None

@@ -365,7 +365,8 @@ def test_poll_seller_orders_malformed_orders_and_type_casting(test_seller):
             assert db_order is not None
             assert db_order.chrt_id == 12345
             assert db_order.nm_id == 67890
-            assert db_order.price == Decimal("0.00") or db_order.price is not None
+            # Нечитаемая цена сохраняется как неизвестная, а не как 0 ₽
+            assert db_order.price is None
 
 
 def test_poll_seller_orders_idempotent_deduplication(test_seller):

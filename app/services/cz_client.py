@@ -452,6 +452,8 @@ class CZClient:
                 raw_kiz = it.get("cis") or it.get("kiz_code") or ""
                 clean_cis = self._clean_cis_for_true_api(raw_kiz) or raw_kiz
                 cost = int(it.get("product_cost") or it.get("price_kopecks") or price_kopecks)
+                if cost <= 0:
+                    raise ValueError(f"Стоимость товара для вывода из оборота не указана (КИЗ {clean_cis})")
                 doc_num = str(it.get("primary_document_number") or it.get("receipt_number") or primary_document_number or "").strip()
                 doc_dt = str(it.get("primary_document_date") or it.get("receipt_date") or doc_date_str).strip()
                 doc_tp = it.get("primary_document_type") or it.get("document_type") or (
@@ -470,6 +472,8 @@ class CZClient:
                         prod_obj["primary_document_custom_name"] = it.get("primary_document_custom_name", "Продажа через Wildberries FBS")
                 products_list.append(prod_obj)
         else:
+            if int(price_kopecks or 0) <= 0:
+                raise ValueError("Стоимость товара для вывода из оборота не указана (product_cost <= 0)")
             resolved_doc_type = document_type or ("RECEIPT" if primary_document_number else "OTHER")
             for kiz_code in kiz_codes:
                 clean_cis = self._clean_cis_for_true_api(kiz_code) or kiz_code

@@ -240,7 +240,7 @@ async def create_finance_return_signature_batch(
         if fbs_order and fbs_order.status.value in ("ASSEMBLING", "ASSEMBLED"):
             action_rec += " 🚨 Внимание: товар в сборке под новый заказ!"
 
-        price_val = float(row.retail_amount or row.retail_price or 0.0)
+        price_val = float(row.retail_price or 0.0)
 
         returns_payload.append({
             "order_id": fbs_order_id,

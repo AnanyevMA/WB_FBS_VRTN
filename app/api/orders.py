@@ -15,6 +15,7 @@ from app.models.audit import AuditLog
 from app.schemas.order import OrderResponse, OrderListItem
 from app.services.encryption import decrypt
 from app.services.wb_client import WBClient, is_kiz_required
+from app.services.wb_prices import wb_order_price_rub
 from app.services.kiz_service import normalize_kiz_light_industry
 
 logger = logging.getLogger(__name__)
@@ -1041,8 +1042,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
 
         for oid, raw in all_raw.items():
             existing = await db.get(Order, oid)
-            raw_price = raw.get("price", 0)
-            price_val = Decimal(str(round(raw_price / 100.0, 2))) if raw_price >= 100 else Decimal(str(raw_price))
+            price_val = wb_order_price_rub(raw)
 
             dt_str = raw.get("createdAt")
             try:

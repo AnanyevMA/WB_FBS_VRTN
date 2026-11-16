@@ -16,6 +16,7 @@ from app.models.kiz import KizOperation, KizOperationType, KizProductInfo
 from app.models.seller import Seller
 from app.models.audit import AuditLog
 from app.services.encryption import decrypt
+from app.services.wb_prices import price_to_kopecks
 from app.agents.notifier import send_cz_status_notification
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,12 @@ def withdraw_order_kiz(
         # Check if already withdrawn
         if order.kiz_status == KizStatus.WITHDRAWN:
             logger.info(f"Order {order_id} KIZ already withdrawn, skipping")
+            return
+
+        if not price_kopecks or price_kopecks <= 0:
+            msg = "Нет цены товара в рублях: документ с нулевой стоимостью в ЧЗ не отправляется"
+            logger.warning(f"[CZ Withdrawal] Order {order_id}: {msg}")
+            _log_audit(db, seller_id, "cz_withdrawal", "FAILED", "order", str(order_id), error=msg)
             return
 
         # Create KIZ operation record
@@ -311,7 +318,7 @@ def process_seller_archive(self, seller_id: str, archive_data: list[dict]):
         kiz_code = record.get("kiz_code")
         status = record.get("status", "sold")
         price_rubles = record.get("price", 0)
-        price_kopecks = record.get("price_kopecks") or int(price_rubles * 100)
+        price_kopecks = record.get("price_kopecks") or price_to_kopecks(price_rubles) or 0
         receipt_number = record.get("receipt_number")
         receipt_date = record.get("receipt_date") or record.get("sale_date")
 

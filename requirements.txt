@@ -12,6 +12,8 @@ psycopg2-binary==2.9.10
 # Task Queue
 celery[redis]==5.4.0
 redis==5.2.0
+# kombu 5.7 requires redis-py >= 6.1; celery 5.4 does not pin it
+kombu==5.6.2
 flower==2.0.1
 
 # Pydantic & Settings

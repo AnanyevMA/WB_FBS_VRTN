@@ -110,7 +110,7 @@ def finance_row_to_draft(row: Any) -> Optional[Dict[str, Any]]:
     return {
         "source": SOURCE_FINANCE, "external_id": str(row.rrd_id), "clean_cis": row.clean_cis, "raw_kiz": row.kiz,
         "event_type": event_type, "occurred_at": occurred_at, "srid": _text(row.srid, 100),
-        "price": _price(row.retail_price),
+        "price": _price(row.retail_amount or row.retail_price),
         "article": _text(row.vendor_code or row.nm_id, 255), "name": _text(row.subject_name, 255),
     }
 
@@ -120,7 +120,7 @@ async def collect_finance(db: AsyncSession, seller: Seller) -> CollectResult:
         select(
             WbSalesReportRow.rrd_id, WbSalesReportRow.clean_cis, WbSalesReportRow.kiz,
             WbSalesReportRow.seller_oper_name, WbSalesReportRow.sale_dt, WbSalesReportRow.rr_date,
-            WbSalesReportRow.srid, WbSalesReportRow.retail_price,
+            WbSalesReportRow.srid, WbSalesReportRow.retail_amount, WbSalesReportRow.retail_price,
             WbSalesReportRow.vendor_code, WbSalesReportRow.nm_id, WbSalesReportRow.subject_name,
         ).where(
             WbSalesReportRow.seller_id == seller.id,

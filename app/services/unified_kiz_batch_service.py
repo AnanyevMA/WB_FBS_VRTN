@@ -124,7 +124,7 @@ async def create_unified_kiz_signature_batch(
         ev_date = r.sale_dt or (datetime.combine(r.rr_date, datetime.min.time(), tzinfo=timezone.utc) if r.rr_date else now_utc)
         history_by_cis.setdefault(cis, []).append({
             "source": "wb_finance", "type": ev_type, "date": ev_date, "rrd_id": r.rrd_id,
-            "rr_date": r.rr_date, "raw_kiz": r.kiz, "price": float(r.retail_price or 0.0),
+            "rr_date": r.rr_date, "raw_kiz": r.kiz, "price": float(r.retail_amount or r.retail_price or 0.0),
             "article": str(r.nm_id or ""), "name": r.subject_name or "", "srid": r.srid,
         })
 
@@ -192,7 +192,7 @@ async def create_unified_kiz_signature_batch(
                             "date": ev_date,
                             "rrd_id": r.rrd_id,
                             "rr_date": r.rr_date,
-                            "price": float(r.retail_price or 0.0),
+                            "price": float(r.retail_amount or r.retail_price or 0.0),
                             "srid": r.srid,
                         })
         except Exception as exc_err:

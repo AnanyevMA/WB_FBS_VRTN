@@ -2,6 +2,7 @@ import pytest
 import uuid
 import random
 from datetime import datetime, timezone
+from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 from app.services.wb_client import WBClient
@@ -103,6 +104,54 @@ async def test_refresh_orders_syncs_wb_status_and_supplier_status():
             assert saved_order.wb_status == "sorted"
             assert saved_order.supplier_status == "complete"
             assert saved_order.status == OrderStatus.DELIVERING
+
+
+@pytest.mark.asyncio
+async def test_refresh_orders_survives_order_inserted_by_poller():
+    """The poller may insert an order between the sync's lookup and its insert: skip it, keep the rest."""
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        session.add(Seller(
+            id=seller_id, name="Race Seller", wb_supplier_id=f"WB-{seller_id[:6]}",
+            wb_api_token_encrypted=encrypt("wb_valid_token"), is_active=True,
+        ))
+        raced_id = random.randint(5500000000, 5549999999)
+        fresh_id = raced_id + 50000000
+        # Already written by the poller, with its own data
+        session.add(Order(
+            id=raced_id, seller_id=seller_id, status=OrderStatus.NEW, wb_created_at=datetime.now(timezone.utc),
+            name="from poller", kiz_status=KizStatus.NOT_REQUIRED,
+        ))
+        await session.commit()
+        session.expunge_all()
+
+        raw = [
+            {"id": raced_id, "rid": f"rid-{raced_id}", "createdAt": "2026-11-16T08:03:42Z", "article": "A", "price": 683800},
+            {"id": fresh_id, "rid": f"rid-{fresh_id}", "createdAt": "2026-11-16T08:03:14Z", "article": "B", "price": 683800},
+        ]
+        real_get = session.get
+
+        async def get_misses_raced(model, ident, *args, **kwargs):
+            # The sync looked before the poller committed
+            if model is Order and ident == raced_id:
+                return None
+            return await real_get(model, ident, *args, **kwargs)
+
+        with patch("app.services.wb_client.WBClient.get_new_orders", new_callable=AsyncMock, return_value=[]), \
+             patch("app.services.wb_client.WBClient.get_orders", new_callable=AsyncMock, return_value=raw), \
+             patch("app.services.wb_client.WBClient.get_orders_meta", new_callable=AsyncMock, return_value={"orders": []}), \
+             patch("app.services.wb_client.WBClient.get_supplies", new_callable=AsyncMock, return_value={"supplies": []}), \
+             patch("app.services.wb_client.WBClient.get_cards_catalog", new_callable=AsyncMock,
+                   return_value={"by_vendor_code": {}, "by_nm_id": {}, "by_chrt_id": {}}), \
+             patch("app.services.wb_client.WBClient.get_orders_status", new_callable=AsyncMock, return_value=[]), \
+             patch.object(session, "get", side_effect=get_misses_raced):
+            res = await refresh_orders(seller_id=seller_id, db=session)
+
+        assert res["new_count"] == 1
+        session.expunge_all()
+        assert (await real_get(Order, fresh_id)).price == Decimal("6838.00")
+        assert (await real_get(Order, raced_id)).name == "from poller"
 
 
 @pytest.mark.asyncio

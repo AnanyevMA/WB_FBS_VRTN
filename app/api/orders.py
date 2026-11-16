@@ -6,6 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
 from app.models.seller import Seller
@@ -1177,8 +1178,15 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                     kiz_status=final_kiz_status,
                     kiz_attached_at=now if final_kiz_code else None,
                 )
-                db.add(order)
-                new_count += 1
+                # The order poller may insert the same order while this sync runs. Insert in a savepoint
+                # so a duplicate only skips this order instead of rolling back the whole sync
+                try:
+                    async with db.begin_nested():
+                        db.add(order)
+                        await db.flush()
+                    new_count += 1
+                except IntegrityError:
+                    logger.info(f"Order {oid} was added by the poller during sync, skipping insert")
             else:
                 updated = False
                 if wb_st and existing.wb_status != wb_st:

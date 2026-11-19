@@ -696,6 +696,13 @@ async def resolve_kiz_product_info(
     return kiz_info_obj
 
 
+def order_owns_kiz_outcome(order: Order, target_order_id: Optional[int]) -> bool:
+    """Whether a CZ result for the order's KIZ describes this order's own lifecycle."""
+    if target_order_id is not None:
+        return order.id == target_order_id
+    return order.status != OrderStatus.CANCELLED
+
+
 async def sync_kiz_status_record(
     db: AsyncSession,
     kiz_code: str,
@@ -791,7 +798,13 @@ async def sync_kiz_status_record(
             o.kiz_cz_status = normalized_cz_status
             o.kiz_cz_status_updated_at = now
 
-        if doc_id and (target_order_id is None or o.id == target_order_id):
+        if not order_owns_kiz_outcome(o, target_order_id):
+            # Cancelled order: the code went back to stock and may have been sold again in another
+            # order. Its later withdrawal or rejection belongs to that sale, not to this order
+            o.updated_at = now
+            continue
+
+        if doc_id:
             o.cz_withdrawal_doc_id = doc_id
 
         # Обновление локального жизненного цикла КИЗ в заказе

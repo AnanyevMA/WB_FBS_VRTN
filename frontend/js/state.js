@@ -69,6 +69,9 @@ const STATUS_MAP_CZ = {
 
 const STATUS_MAP_WB = {
     'waiting': 'Ожидает приемки СЦ',
+    'delivering_by_carrier': 'Передан перевозчику, в пути на склад WB',
+    'accepted_by_carrier': 'Передан перевозчику, в пути на склад WB',
+    'sent_to_carrier': 'Передан перевозчику, в пути на склад WB',
     'sorted': 'Отсортирован на СЦ',
     'ready_for_pickup': 'В ПВЗ (готов к выдаче)',
     'sold': 'Выкуплен покупателем',

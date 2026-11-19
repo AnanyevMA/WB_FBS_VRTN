@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-16T15:51:11.916349+00:00",
+  "updated_at": "2026-11-19T12:18:47.852452+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 206,
+  "total_files": 208,
   "files": [
     {
       "file": "alembic/env.py",
@@ -585,7 +585,7 @@
     {
       "file": "app/agents/archive_processor.py",
       "layer": "agents",
-      "hash": "74d276d668f6",
+      "hash": "133a4d7e1e51",
       "docstring": "Archive Processor Agent — пакетная обработка архива WB для вывода КИЗ из оборота",
       "classes": [],
       "functions": [
@@ -689,6 +689,7 @@
         "app.services.time_service",
         "app.services.wb_archive_service",
         "app.services.wb_client",
+        "app.services.wb_statuses",
         "asyncio",
         "datetime",
         "io",
@@ -1509,7 +1510,7 @@
     {
       "file": "app/agents/order_poller.py",
       "layer": "agents",
-      "hash": "aa19fc0dbbba",
+      "hash": "f6f61e89ea69",
       "docstring": "Order Polling Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -1612,6 +1613,7 @@
         "app.services.security",
         "app.services.wb_client",
         "app.services.wb_prices",
+        "app.services.wb_statuses",
         "asyncio",
         "celery",
         "datetime",
@@ -3133,7 +3135,7 @@
     {
       "file": "app/api/orders.py",
       "layer": "api",
-      "hash": "16d6351a9019",
+      "hash": "d7f757775b05",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -3384,6 +3386,7 @@
         "app.services.kiz_service",
         "app.services.wb_client",
         "app.services.wb_prices",
+        "app.services.wb_statuses",
         "datetime",
         "decimal",
         "fastapi",
@@ -3923,7 +3926,7 @@
     {
       "file": "app/bot/handlers/callbacks.py",
       "layer": "core",
-      "hash": "8d21abc945a8",
+      "hash": "f1554b775d33",
       "docstring": "Telegram Bot Inline Callback Query Handlers — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6014,7 +6017,7 @@
     {
       "file": "app/services/auto_kiz_queue_service.py",
       "layer": "services",
-      "hash": "8a8d8f8e3d54",
+      "hash": "2bb81096fc21",
       "docstring": "Auto KIZ Queue Service — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -6078,6 +6081,7 @@
         "app.services.telegram_service",
         "app.services.unified_kiz_resale",
         "app.services.wb_client",
+        "app.services.wb_statuses",
         "datetime",
         "logging",
         "sqlalchemy",
@@ -6680,7 +6684,7 @@
     {
       "file": "app/services/kiz_service.py",
       "layer": "services",
-      "hash": "facf4f3615b5",
+      "hash": "507705f581e8",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -6744,6 +6748,16 @@
           ],
           "decorators": [],
           "docstring": "Получает и сохраняет полную информацию о товаре по коду КИЗ (SGTIN)."
+        },
+        {
+          "name": "order_owns_kiz_outcome",
+          "is_async": false,
+          "args": [
+            "order",
+            "target_order_id"
+          ],
+          "decorators": [],
+          "docstring": "Whether a CZ result for the order's KIZ describes this order's own lifecycle."
         },
         {
           "name": "sync_kiz_status_record",
@@ -6850,7 +6864,7 @@
     {
       "file": "app/services/signature_batch_submitter.py",
       "layer": "services",
-      "hash": "54ae563683e8",
+      "hash": "1b7c9420d22e",
       "docstring": "Signature Batch Submitter Service.",
       "classes": [],
       "functions": [
@@ -8278,6 +8292,18 @@
         "httpx",
         "typing"
       ]
+    },
+    {
+      "file": "app/services/wb_statuses.py",
+      "layer": "services",
+      "hash": "df0bb6b8208c",
+      "docstring": "WB assembly task statuses (wbStatus from POST /api/v3/orders/status) grouped by what they mean for an order.",
+      "classes": [],
+      "functions": [],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": []
     },
     {
       "file": "app/services/wb_warehouse_sales_builder.py",
@@ -14201,6 +14227,127 @@
       ]
     },
     {
+      "file": "tests/test_resold_kiz_cancelled_order.py",
+      "layer": "tests",
+      "hash": "594ed1be0c86",
+      "docstring": "A cancelled FBS order returns its KIZ to stock, and the same code can then be sold again in another order.",
+      "classes": [],
+      "functions": [
+        {
+          "name": "setup_test_db",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "_cis",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_seller",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_order",
+          "is_async": false,
+          "args": [
+            "seller",
+            "cis",
+            "status",
+            "wb_status",
+            "kiz_status"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_submit_withdrawal",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller",
+            "cis",
+            "order_id"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_of_resold_code_keeps_cancelled_order_intact",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_withdrawal_of_sold_order_still_updates_it_without_inventing_wb_status",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_cz_sync_of_retired_code_does_not_mark_cancelled_order_withdrawn",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_cz_sync_still_marks_delivered_order_withdrawn",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_return_for_cancelled_order_still_updates_it",
+          "is_async": true,
+          "args": [],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": "A return of the order's own code targets the cancelled order explicitly and must still apply."
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.database",
+        "app.models.kiz",
+        "app.models.order",
+        "app.models.seller",
+        "app.services.encryption",
+        "app.services.kiz_service",
+        "app.services.signature_batch_submitter",
+        "datetime",
+        "pytest",
+        "sqlalchemy",
+        "unittest.mock",
+        "uuid"
+      ]
+    },
+    {
       "file": "tests/test_returns_challenges.py",
       "layer": "tests",
       "hash": "330e22539c71",
@@ -17011,7 +17158,7 @@
     {
       "file": "tests/test_wb_order_status.py",
       "layer": "tests",
-      "hash": "f1f11085091a",
+      "hash": "258d2b65d8d8",
       "docstring": "",
       "classes": [],
       "functions": [
@@ -17120,6 +17267,18 @@
             "pytest.mark.asyncio"
           ],
           "docstring": "Verify refresh_orders handles pre-existing and duplicate supply IDs without race condition crashes."
+        },
+        {
+          "name": "test_refresh_orders_treats_cross_border_carrier_status_as_delivering",
+          "is_async": true,
+          "args": [
+            "wb_status"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio",
+            "pytest.mark.parametrize('wb_status', List(elts=[Constant(value='delivering_by_carrier'), Constant(value='accepted_by_carrier'), Constant(value='sent_to_carrier')], ctx=Load()))"
+          ],
+          "docstring": "Cross-border supplies: the order is with the carrier on its way to a WB warehouse."
         }
       ],
       "endpoints": [],
@@ -17604,7 +17763,7 @@
     {
       "file": "frontend/index.html",
       "layer": "frontend",
-      "hash": "9695d5e270e0",
+      "hash": "fcebb8c1d3ad",
       "docstring": "Single Page Application Dashboard (HTML/CSS/JS)",
       "classes": [],
       "functions": [],

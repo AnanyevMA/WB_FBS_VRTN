@@ -530,3 +530,38 @@ async def test_refresh_orders_with_duplicate_and_existing_supplies():
 
 
 
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("wb_status", ["delivering_by_carrier", "accepted_by_carrier", "sent_to_carrier"])
+async def test_refresh_orders_treats_cross_border_carrier_status_as_delivering(wb_status):
+    """Cross-border supplies: the order is with the carrier on its way to a WB warehouse."""
+    await init_db()
+    async with AsyncSessionLocal() as session:
+        seller_id = str(uuid.uuid4())
+        session.add(Seller(
+            id=seller_id, name="Cross-border Seller", wb_supplier_id=f"WB-{seller_id[:6]}",
+            wb_api_token_encrypted=encrypt("wb_valid_token"), is_active=True,
+        ))
+        order_id = random.randint(5600000000, 5649999999)
+        session.add(Order(
+            id=order_id, seller_id=seller_id, status=OrderStatus.ASSEMBLING, wb_status="waiting",
+            wb_created_at=datetime.now(timezone.utc), kiz_status=KizStatus.NOT_REQUIRED,
+        ))
+        await session.commit()
+
+        raw = [{"id": order_id, "rid": f"rid-{order_id}", "createdAt": "2026-11-18T10:00:00Z", "article": "A", "price": 100000}]
+        with patch("app.services.wb_client.WBClient.get_new_orders", new_callable=AsyncMock, return_value=[]), \
+             patch("app.services.wb_client.WBClient.get_orders", new_callable=AsyncMock, return_value=raw), \
+             patch("app.services.wb_client.WBClient.get_orders_meta", new_callable=AsyncMock, return_value={"orders": []}), \
+             patch("app.services.wb_client.WBClient.get_supplies", new_callable=AsyncMock, return_value={"supplies": []}), \
+             patch("app.services.wb_client.WBClient.get_cards_catalog", new_callable=AsyncMock,
+                   return_value={"by_vendor_code": {}, "by_nm_id": {}, "by_chrt_id": {}}), \
+             patch("app.services.wb_client.WBClient.get_orders_status", new_callable=AsyncMock,
+                   return_value=[{"id": order_id, "supplierStatus": "complete", "wbStatus": wb_status}]):
+            await refresh_orders(seller_id=seller_id, db=session)
+
+        session.expunge_all()
+        saved = await session.get(Order, order_id)
+        assert saved.wb_status == wb_status
+        assert saved.status == OrderStatus.DELIVERING

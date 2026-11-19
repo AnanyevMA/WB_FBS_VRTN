@@ -92,18 +92,24 @@ async def execute_signed_batch_submission(
                 is_confirmed = None
 
             ord_obj = await db.get(Order, order_id) if order_id else None
+            if ord_obj and str(ord_obj.seller_id) != str(seller.id):
+                ord_obj = None
+            if ord_obj and action == "WITHDRAWAL" and ord_obj.status == OrderStatus.CANCELLED:
+                # A cancelled order was not sold: the code was sold again in another order, and this
+                # withdrawal belongs to that sale. Keep the cancelled order as it is
+                logger.warning(f"Withdrawal of {kiz_code} is linked to cancelled order {ord_obj.id}, not updating the order")
+                ord_obj = None
 
             if is_confirmed is True:
                 successful_submissions += 1
                 results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "status": "SUCCESS", "cz_status": doc_status})
 
                 target_cz_status = "RETIRED" if action == "WITHDRAWAL" else "INTRODUCED"
-                if ord_obj and str(ord_obj.seller_id) == str(seller.id):
+                if ord_obj:
                     if action == "WITHDRAWAL":
                         ord_obj.kiz_status = KizStatus.WITHDRAWN
                         ord_obj.kiz_cz_status = target_cz_status
                         ord_obj.status = OrderStatus.DELIVERED
-                        ord_obj.wb_status = "sold"
                         ord_obj.cz_withdrawal_doc_id = doc_id
                     elif action == "RETURN":
                         ord_obj.kiz_status = KizStatus.RETURNED
@@ -143,7 +149,7 @@ async def execute_signed_batch_submission(
                 failed_submissions += 1
                 results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "error": error_reason, "status": "FAILED", "cz_status": doc_status})
 
-                if ord_obj and str(ord_obj.seller_id) == str(seller.id):
+                if ord_obj:
                     ord_obj.kiz_status = KizStatus.ERROR
                     ord_obj.kiz_cz_status = "CHECKED_NOT_OK"
                     ord_obj.cz_doc_status = "CHECKED_NOT_OK"
@@ -193,7 +199,7 @@ async def execute_signed_batch_submission(
                 successful_submissions += 1
                 results.append({"kiz_code": kiz_code, "order_id": order_id, "doc_id": doc_id, "status": "IN_PROGRESS", "cz_status": doc_status})
 
-                if ord_obj and str(ord_obj.seller_id) == str(seller.id):
+                if ord_obj:
                     if action == "WITHDRAWAL":
                         ord_obj.kiz_status = KizStatus.WITHDRAWN
                         ord_obj.kiz_cz_status = "RETIRED"

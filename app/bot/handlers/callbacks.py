@@ -41,6 +41,9 @@ async def cb_order_detail(callback: CallbackQuery):
 
         wb_status_human = {
             "waiting": "Ожидает приемки СЦ 🚚",
+            "delivering_by_carrier": "Передан перевозчику, в пути на склад WB 🚛",
+            "accepted_by_carrier": "Передан перевозчику, в пути на склад WB 🚛",
+            "sent_to_carrier": "Передан перевозчику, в пути на склад WB 🚛",
             "sorted": "Отсортирован на СЦ 📦",
             "ready_for_pickup": "В ПВЗ (готов к выдаче) 🏪",
             "sold": "Выкуплен покупателем 💰",

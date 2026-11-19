@@ -28,6 +28,7 @@ from app.services.cz_client import CZClient, CZDocumentError
 from app.services.telegram_service import TelegramService
 from app.services.crypto_service import is_cryptopro_available
 from app.services.unified_kiz_resale import has_wb_sale_after
+from app.services.wb_statuses import WB_IN_TRANSIT_STATUSES
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ async def sync_delivered_orders_with_wb(seller: Seller, db: AsyncSession) -> int
         elif wb_status in ["canceled", "canceled_by_client", "declined_by_client", "defect"] and order.status != OrderStatus.CANCELLED:
             order.status = OrderStatus.CANCELLED
             order_updated = True
-        elif wb_status in ["sorted", "ready_for_pickup", "waiting"] and order.status != OrderStatus.DELIVERING:
+        elif wb_status in WB_IN_TRANSIT_STATUSES and order.status != OrderStatus.DELIVERING:
             order.status = OrderStatus.DELIVERING
             order_updated = True
 

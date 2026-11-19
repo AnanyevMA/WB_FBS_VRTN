@@ -18,6 +18,7 @@ from app.services.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 from app.database_sync import sync_engine
+from app.services.wb_statuses import WB_IN_TRANSIT_STATUSES
 
 
 @celery_app.task(
@@ -213,7 +214,7 @@ def sync_order_statuses(seller_id: str):
             elif wb_status in ["canceled", "canceled_by_client", "declined_by_client", "defect"] and order.status != OrderStatus.CANCELLED:
                 order.status = OrderStatus.CANCELLED
                 order_updated = True
-            elif wb_status in ["sorted", "ready_for_pickup", "waiting"] and order.status != OrderStatus.DELIVERING:
+            elif wb_status in WB_IN_TRANSIT_STATUSES and order.status != OrderStatus.DELIVERING:
                 order.status = OrderStatus.DELIVERING
                 order_updated = True
 

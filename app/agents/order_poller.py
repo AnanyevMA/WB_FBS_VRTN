@@ -28,6 +28,7 @@ _last_polled: dict[str, datetime] = {}
 
 # Synchronous SQLAlchemy engine and session factory for Celery tasks
 from app.database_sync import sync_engine
+from app.services.wb_statuses import WB_IN_TRANSIT_STATUSES
 SyncSessionLocal = sessionmaker(
     bind=sync_engine,
     autoflush=False,
@@ -677,7 +678,7 @@ def sync_seller_active_orders_status(seller: Seller, session: Session, wb_client
                         )
                     except Exception as e:
                         logger.warning(f"Could not dispatch return_order_kiz for {order.id}: {e}")
-            elif wb_status in ["sorted", "ready_for_pickup", "waiting"] and order.status != OrderStatus.DELIVERING:
+            elif wb_status in WB_IN_TRANSIT_STATUSES and order.status != OrderStatus.DELIVERING:
                 order.status = OrderStatus.DELIVERING
                 order_updated = True
 

@@ -96,6 +96,8 @@ function getWbStatusBadge(wbStatus, supplierStatus) {
         return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Покупатель отказался от товара">${s === 'canceled_by_client' ? '🔄 Отказ на ПВЗ' : '🚫 Отмена клиентом'}</span>`;
     } else if (s === 'waiting') {
         return `<span style="background: rgba(100, 116, 139, 0.15); color: #cbd5e1; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(100, 116, 139, 0.3);" title="Заказ передан в доставку, ожидает приемки на СЦ">🚚 В пути на СЦ</span>`;
+    } else if (s === 'delivering_by_carrier' || s === 'accepted_by_carrier' || s === 'sent_to_carrier') {
+        return `<span style="background: rgba(100, 116, 139, 0.15); color: #cbd5e1; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(100, 116, 139, 0.3);" title="Трансграничная поставка: заказ передан перевозчику и едет на склад WB">🚛 У перевозчика</span>`;
     } else if (s === 'defect') {
         return `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size:11px; font-weight:600; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);" title="Отменен по причине брака">⚠️ Брак</span>`;
     } else if (wbStatus) {

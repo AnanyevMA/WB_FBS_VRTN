@@ -18,6 +18,7 @@ from app.services.encryption import decrypt
 from app.services.wb_client import WBClient, is_kiz_required
 from app.services.wb_prices import wb_order_price_rub
 from app.services.kiz_service import normalize_kiz_light_industry
+from app.services.wb_statuses import WB_IN_TRANSIT_STATUSES
 
 logger = logging.getLogger(__name__)
 
@@ -1143,7 +1144,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                 status = OrderStatus.DELIVERED
             elif wb_st in ["canceled", "canceled_by_client", "declined_by_client", "defect"]:
                 status = OrderStatus.CANCELLED
-            elif wb_st in ["sorted", "ready_for_pickup"] or supply_id:
+            elif wb_st in WB_IN_TRANSIT_STATUSES or supply_id:
                 status = OrderStatus.DELIVERING
             elif supp_st == "confirm":
                 status = OrderStatus.ASSEMBLING
@@ -1225,7 +1226,7 @@ async def refresh_orders(seller_id: str, db: AsyncSession = Depends(get_db)):
                             )
                         except Exception as e:
                             logger.warning(f"Could not dispatch return_order_kiz for {existing.id}: {e}")
-                elif wb_st in ["sorted", "ready_for_pickup", "waiting"] and existing.status != OrderStatus.DELIVERING:
+                elif wb_st in WB_IN_TRANSIT_STATUSES and existing.status != OrderStatus.DELIVERING:
                     existing.status = OrderStatus.DELIVERING
                     updated = True
                 if supply_id and existing.wb_supply_id != supply_id:

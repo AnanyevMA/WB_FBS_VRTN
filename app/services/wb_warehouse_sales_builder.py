@@ -6,6 +6,7 @@ Pure builder module with no external side-effects. Strict limit: < 120 lines.
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 from app.models.order import Order
+from app.services.wb_prices import excise_price_rub
 
 
 def extract_owner_inn(payload: Optional[Dict[str, Any]]) -> Optional[str]:
@@ -28,7 +29,7 @@ def _resolve_fields(record, clean_cis, matched_order, kw) -> Tuple:
     doc_num = str(raw_doc).strip() if raw_doc not in (None, "", 0, "0") else ""
     fn_num = str(kw.get("fiscal_drive_number") or rec.get("fiscal_drive_number") or "").strip()
     doc_date = str(kw.get("fiscal_dt") or rec.get("fiscal_dt") or "").strip()
-    price_val = float(kw.get("price") if kw.get("price") is not None else (rec.get("price") or (matched_order.price if matched_order and matched_order.price else 0.0)) or 0.0)
+    price_val = float(kw.get("price") if kw.get("price") is not None else (excise_price_rub(rec) or (matched_order.price if matched_order and matched_order.price else 0.0)) or 0.0)
     oid = matched_order.id if matched_order else kw.get("order_id")
     art = matched_order.article if matched_order and matched_order.article else nm_val
     bcode = str(kw.get("barcode") or rec.get("barcode") or "")

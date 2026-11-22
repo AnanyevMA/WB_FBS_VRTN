@@ -6,7 +6,7 @@ and a returned code must not be withdrawn because of an old sale or a pending ba
 import random
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -25,6 +25,14 @@ CIS = "0104630199252674215RESALETEST1"
 @pytest.fixture(autouse=True)
 async def setup_test_db():
     await init_db()
+
+
+@pytest.fixture(autouse=True)
+def sales_report_loaded():
+    """These scenarios assume the WB sales report loaded and had no rows for their codes.
+    A failed report now leaves every item unselected, which is tested separately."""
+    with patch("app.services.unified_kiz_sales_report.fetch_wb_sales_rows", new=AsyncMock(return_value=[])):
+        yield
 
 
 def _days_ago(days: int) -> datetime:

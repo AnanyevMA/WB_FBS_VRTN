@@ -55,6 +55,27 @@ def wb_order_price_rub(raw: Dict[str, Any]) -> Optional[Decimal]:
     return None
 
 
+RUB_CURRENCY_NAMES = {"руб", "rub", "rur", "₽"}
+
+
+def excise_price_rub(row: Dict[str, Any]) -> Optional[float]:
+    """
+    Цена продажи из отчёта по маркировке WB (excise-report) в рублях или None.
+
+    Отчёт отдаёт цену в валюте страны продажи (поле currency_name_short: руб, BYN, KZT, AMD).
+    Цену не в рублях использовать нельзя: в документ ЧЗ ушли бы 120.65 вместо 3 298.86 ₽.
+    Пустая валюта считается рублями: так отдавались старые строки отчёта.
+    """
+    currency = str(row.get("currency_name_short") or "").strip().lower()
+    if currency and currency not in RUB_CURRENCY_NAMES:
+        return None
+    try:
+        price = float(row.get("price") or 0.0)
+    except (TypeError, ValueError):
+        return None
+    return price if price > 0 else None
+
+
 def price_to_kopecks(price: Any) -> Optional[int]:
     """Стоимость для документа ЧЗ в копейках. None, если цены нет: отправлять 0 нельзя."""
     if price is None:

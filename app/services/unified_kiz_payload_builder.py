@@ -18,6 +18,30 @@ def pick_sale_excise_event(ev: Dict[str, Any], events: List[Dict[str, Any]]) -> 
     return max(excise, key=lambda e: normalize_event_dt(e["date"])) if excise else None
 
 
+SALES_REPORT_MISSING_NOTE = (
+    "⚠️ Отчёт продаж WB не загрузился: свежие продажи и возвраты не видны. "
+    "Позиция не отмечена, пересоберите пакет через минуту."
+)
+
+
+def hold_items_without_sales_report(*payloads: List[Dict[str, Any]]) -> int:
+    """
+    Без отчёта продаж WB сборщик не видит возвратов и повторных продаж последних дней:
+    продажа могла уже вернуться, а возвращённый код могли продать снова. Такие позиции
+    остаются в пакете для просмотра, но не отмечаются к подписи.
+    """
+    held = 0
+    for items in payloads:
+        for item in items:
+            if not item.get("selected"):
+                continue
+            item["selected"] = False
+            item["needs_review"] = True
+            item["action_recommended"] = f"{SALES_REPORT_MISSING_NOTE} {item.get('action_recommended') or ''}".strip()
+            held += 1
+    return held
+
+
 def build_unified_withdrawals_payload(
     sales_candidates: Dict[str, Dict[str, Any]],
     cz_info_map: Dict[str, Dict[str, Any]],

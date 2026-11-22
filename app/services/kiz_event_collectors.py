@@ -29,6 +29,7 @@ from app.services.kiz_event_service import save_events
 from app.services.kiz_service import parse_kiz_code
 from app.services.wb_analytics_client import WBAnalyticsClient
 from app.services.wb_warehouse_sales_service import fetch_wb_excise_data
+from app.services.wb_prices import excise_price_rub
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ def excise_row_to_draft(row: Dict[str, Any], now: datetime) -> Optional[Dict[str
         "source": SOURCE_EXCISE, "external_id": f"{srid or fiscal_doc or 'no-id'}:{clean_cis}"[:255],
         "clean_cis": clean_cis, "raw_kiz": raw_kiz, "event_type": EVENT_SALE,
         "occurred_at": parse_event_datetime(fiscal_dt) or now, "srid": srid,
-        "price": _price(row.get("price")), "article": _text(row.get("nm_id"), 255), "name": _text(row.get("name"), 255),
+        "price": _price(excise_price_rub(row)), "article": _text(row.get("nm_id"), 255), "name": _text(row.get("name"), 255),
         "receipt_number": fiscal_doc, "fn_number": _text(row.get("fiscal_drive_number"), 64),
         "receipt_date": fiscal_dt[:10] or None,
     }

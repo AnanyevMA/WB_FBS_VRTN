@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-19T12:18:47.852452+00:00",
+  "updated_at": "2026-11-22T14:32:21.788991+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
-  "total_files": 208,
+  "total_files": 209,
   "files": [
     {
       "file": "alembic/env.py",
@@ -6399,7 +6399,7 @@
     {
       "file": "app/services/kiz_event_collectors.py",
       "layer": "services",
-      "hash": "a5d4cde570d6",
+      "hash": "fa351d6d0b73",
       "docstring": "KIZ Event Collectors — WB FBS Manager",
       "classes": [
         {
@@ -6586,6 +6586,7 @@
         "app.services.wb_analytics_client",
         "app.services.wb_archive_service",
         "app.services.wb_client",
+        "app.services.wb_prices",
         "app.services.wb_warehouse_sales_service",
         "dataclasses",
         "datetime",
@@ -7133,7 +7134,7 @@
     {
       "file": "app/services/unified_kiz_batch_service.py",
       "layer": "services",
-      "hash": "1678ae79b564",
+      "hash": "5372d069035b",
       "docstring": "Unified KIZ Batch Reconciliation Service.",
       "classes": [],
       "functions": [
@@ -7186,6 +7187,7 @@
         "app.services.unified_kiz_sales_report",
         "app.services.wb_archive_service",
         "app.services.wb_finance_service",
+        "app.services.wb_prices",
         "app.services.wb_warehouse_sales_service",
         "datetime",
         "logging",
@@ -7257,7 +7259,7 @@
     {
       "file": "app/services/unified_kiz_payload_builder.py",
       "layer": "services",
-      "hash": "11e81409092a",
+      "hash": "eb84a0d92462",
       "docstring": "Unified KIZ Payload Builder — Helper for unified_kiz_batch_service.",
       "classes": [],
       "functions": [
@@ -7270,6 +7272,13 @@
           ],
           "decorators": [],
           "docstring": "Строка excise-report именно этой продажи: у КИЗ могут быть чеки прошлых продаж."
+        },
+        {
+          "name": "hold_items_without_sales_report",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": "Без отчёта продаж WB сборщик не видит возвратов и повторных продаж последних дней:"
         },
         {
           "name": "build_unified_withdrawals_payload",
@@ -8210,7 +8219,7 @@
     {
       "file": "app/services/wb_prices.py",
       "layer": "services",
-      "hash": "7c67438fbb4a",
+      "hash": "e3fa8d05d630",
       "docstring": "Цены заказов WB.",
       "classes": [],
       "functions": [
@@ -8242,6 +8251,15 @@
           "docstring": "Цена заказа в рублях или None, если рублёвой цены в ответе WB нет."
         },
         {
+          "name": "excise_price_rub",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [],
+          "docstring": "Цена продажи из отчёта по маркировке WB (excise-report) в рублях или None."
+        },
+        {
           "name": "price_to_kopecks",
           "is_async": false,
           "args": [
@@ -8263,7 +8281,7 @@
     {
       "file": "app/services/wb_statistics_client.py",
       "layer": "services",
-      "hash": "db081a6ba288",
+      "hash": "19d920dc58ef",
       "docstring": "WB Statistics API Client.",
       "classes": [
         {
@@ -8280,6 +8298,7 @@
           "docstring": "Client for Wildberries Statistics API.",
           "methods": [
             "__init__",
+            "_retry_after",
             "get_sales"
           ]
         }
@@ -8289,7 +8308,9 @@
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "asyncio",
         "httpx",
+        "logging",
         "typing"
       ]
     },
@@ -8308,7 +8329,7 @@
     {
       "file": "app/services/wb_warehouse_sales_builder.py",
       "layer": "services",
-      "hash": "aebf05afc2e1",
+      "hash": "915be802a809",
       "docstring": "WB Warehouse Sales and Returns Builder — WB FBS Manager.",
       "classes": [],
       "functions": [
@@ -8361,6 +8382,7 @@
       "db_tables": [],
       "imports": [
         "app.models.order",
+        "app.services.wb_prices",
         "datetime",
         "typing"
       ]
@@ -9825,6 +9847,139 @@
         "pytest",
         "unittest.mock",
         "uuid"
+      ]
+    },
+    {
+      "file": "tests/test_batch_sales_report_and_currency.py",
+      "layer": "tests",
+      "hash": "00e280c50351",
+      "docstring": "Batch 76138a74 (22.11.2026): the WB sales report hit the rate limit, the button still marked 11 withdrawals",
+      "classes": [],
+      "functions": [
+        {
+          "name": "test_excise_price_rub",
+          "is_async": false,
+          "args": [
+            "currency",
+            "price",
+            "expected"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('currency,price,expected', List(elts=[Tuple(elts=[Constant(value='руб'), Constant(value=3836), Constant(value=3836.0)], ctx=Load()), Tuple(elts=[Constant(value='RUB'), Constant(value=100), Constant(value=100.0)], ctx=Load()), Tuple(elts=[Constant(value=''), Constant(value=500), Constant(value=500.0)], ctx=Load()), Tuple(elts=[Constant(value=None), Constant(value=500), Constant(value=500.0)], ctx=Load()), Tuple(elts=[Constant(value='BYN'), Constant(value=120.65), Constant(value=None)], ctx=Load()), Tuple(elts=[Constant(value='KZT'), Constant(value=20640), Constant(value=None)], ctx=Load()), Tuple(elts=[Constant(value='AMD'), Constant(value=15370), Constant(value=None)], ctx=Load()), Tuple(elts=[Constant(value='руб'), Constant(value=0), Constant(value=None)], ctx=Load())], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_journal_does_not_store_foreign_excise_price",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_warehouse_item_does_not_take_foreign_excise_price",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_candidate",
+          "is_async": false,
+          "args": [
+            "price"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "_withdrawals",
+          "is_async": false,
+          "args": [
+            "history_price"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_batch_falls_back_to_ruble_price_when_excise_is_in_another_currency",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_batch_still_prefers_ruble_excise_price",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_items_are_unselected_when_sales_report_is_missing",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "no_sleep",
+          "is_async": false,
+          "args": [
+            "monkeypatch"
+          ],
+          "decorators": [
+            "pytest.fixture"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_retries_once_after_rate_limit",
+          "is_async": true,
+          "args": [
+            "no_sleep"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_gives_up_on_long_rate_limit",
+          "is_async": true,
+          "args": [
+            "no_sleep"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_second_rate_limit_is_an_error",
+          "is_async": true,
+          "args": [
+            "no_sleep"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        }
+      ],
+      "endpoints": [],
+      "celery_tasks": [],
+      "db_tables": [],
+      "imports": [
+        "app.services",
+        "app.services.kiz_event_collectors",
+        "app.services.unified_kiz_payload_builder",
+        "app.services.wb_prices",
+        "app.services.wb_statistics_client",
+        "app.services.wb_warehouse_sales_builder",
+        "datetime",
+        "httpx",
+        "pytest"
       ]
     },
     {
@@ -15186,7 +15341,7 @@
     {
       "file": "tests/test_unified_kiz_batch.py",
       "layer": "tests",
-      "hash": "fae348abfaba",
+      "hash": "5fb6e34ea4e6",
       "docstring": "Unit tests for Unified KIZ Batch Reconciliation and Owner Validation.",
       "classes": [],
       "functions": [
@@ -15198,6 +15353,15 @@
             "pytest.fixture()"
           ],
           "docstring": ""
+        },
+        {
+          "name": "sales_report_loaded",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": "These scenarios assume the WB sales report loaded and had no rows for their codes."
         },
         {
           "name": "test_unified_reconciliation_ownership_and_chronology",
@@ -15259,7 +15423,7 @@
     {
       "file": "tests/test_unified_kiz_resale.py",
       "layer": "tests",
-      "hash": "cdcc6b303ba8",
+      "hash": "5cd634668b22",
       "docstring": "Tests for repeat sales in the unified KIZ reconciliation.",
       "classes": [],
       "functions": [
@@ -15271,6 +15435,15 @@
             "pytest.fixture()"
           ],
           "docstring": ""
+        },
+        {
+          "name": "sales_report_loaded",
+          "is_async": false,
+          "args": [],
+          "decorators": [
+            "pytest.fixture()"
+          ],
+          "docstring": "These scenarios assume the WB sales report loaded and had no rows for their codes."
         },
         {
           "name": "_days_ago",

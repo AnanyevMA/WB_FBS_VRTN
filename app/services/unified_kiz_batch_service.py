@@ -34,7 +34,9 @@ from app.services.wb_warehouse_sales_service import fetch_wb_excise_data
 from app.services.unified_kiz_payload_builder import (
     build_unified_withdrawals_payload,
     build_unified_returns_payload,
+    hold_items_without_sales_report,
 )
+from app.services.wb_prices import excise_price_rub
 from app.services.unified_kiz_history import add_pending_batch_events, merge_cz_records, normalize_event_dt
 from app.services.unified_kiz_resale import confirm_resales, load_kiz_operation_state
 from app.services.unified_kiz_returns import confirm_returns
@@ -169,7 +171,9 @@ async def create_unified_kiz_signature_batch(
                     "receipt_number": str(er.get("fiscal_doc_number") or "").strip(),
                     "fn_number": str(er.get("fiscal_drive_number") or "").strip(),
                     "receipt_date": dt_str,
-                    "price": float(er.get("price") or 0.0),
+                    # 0 for a sale in another currency: the builder then takes the ruble price of this sale
+                    "price": excise_price_rub(er) or 0.0,
+                    "currency": str(er.get("currency_name_short") or ""),
                     "article": str(er.get("nm_id") or ""),
                     "raw_kiz": raw_kiz,
                     "srid": srid,
@@ -320,6 +324,9 @@ async def create_unified_kiz_signature_batch(
         confirmed_returns=wb_returns.confirmed,
         review_returns=wb_returns.needs_review,
     )
+    if sales_report.failed:
+        held = hold_items_without_sales_report(withdrawals_payload, returns_payload)
+        logger.warning(f"[Unified KIZ] WB sales report unavailable for seller {seller.id}: {held} items left unselected")
 
     # 8. Сводка пакета
     summary = {

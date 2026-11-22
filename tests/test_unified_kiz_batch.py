@@ -35,6 +35,14 @@ async def setup_test_db():
         await ensure_initial_admin(session)
 
 
+@pytest.fixture(autouse=True)
+def sales_report_loaded():
+    """These scenarios assume the WB sales report loaded and had no rows for their codes.
+    A failed report now leaves every item unselected, which is tested separately."""
+    with patch("app.services.unified_kiz_sales_report.fetch_wb_sales_rows", new=AsyncMock(return_value=[])):
+        yield
+
+
 @pytest.mark.asyncio
 async def test_unified_reconciliation_ownership_and_chronology():
     async with AsyncSessionLocal() as db:

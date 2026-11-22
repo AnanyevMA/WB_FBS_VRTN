@@ -14,12 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.kiz_event import (
     EVENT_RETURN,
+    KizEvent,
     EVENT_SALE,
     SOURCE_ARCHIVE_FILE,
     SOURCE_EXCISE,
     SOURCE_FINANCE,
     SOURCE_ITEM_RETURNS,
     SOURCE_ORDERS,
+    SOURCE_SALES_REPORT,
 )
 from app.models.order import KizStatus, Order, OrderStatus
 from app.models.seller import Seller
@@ -30,6 +32,7 @@ from app.services.kiz_service import parse_kiz_code
 from app.services.wb_analytics_client import WBAnalyticsClient
 from app.services.wb_warehouse_sales_service import fetch_wb_excise_data
 from app.services.wb_prices import excise_price_rub
+from app.services.unified_kiz_sales_report import MOSCOW_TZ, fetch_wb_sales_rows
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +46,10 @@ WB_CANCELLED_STATUSES = ("canceled", "canceled_by_client", "declined_by_client",
 
 EXCISE_DAYS = 30
 ITEM_RETURNS_DAYS = 90
+# The sales report keeps about 90 days; each run re-reads them, so a row whose KIZ was unknown gets linked later
+SALES_REPORT_DAYS = 90
+SALES_REPORT_KINDS = {"S": EVENT_SALE, "R": EVENT_RETURN}
+SRID_CHUNK = 500
 ORDER_STATUS_DAYS = 90
 ORDER_STATUS_CHUNK = 1000
 
@@ -248,6 +255,89 @@ async def collect_item_returns(db: AsyncSession, seller: Seller) -> CollectResul
             result.drafts.append(draft)
         else:
             result.skip("unmatched")
+    return result
+
+
+# --- WB sales report -------------------------------------------------------------------------------------------------
+
+def sales_report_row_to_draft(
+    row: Dict[str, Any], srid_to_cis: Dict[str, str], orders_by_rid: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """
+    The report has no KIZ. A row is linked by srid: to a known KIZ event, a financial report row
+    or an FBS order with that rid. Only sales (saleID S...) and returns (R...) become events.
+    """
+    sale_id = str(row.get("saleID") or "").strip()
+    event_type = SALES_REPORT_KINDS.get(sale_id[:1])
+    srid = _text(row.get("srid"), 100)
+    if not event_type or not srid or not row.get("date"):
+        return None
+    order = orders_by_rid.get(srid)
+    order_cis = clean_cis_of(order.kiz_code) if order else None
+    clean_cis = srid_to_cis.get(srid) or order_cis
+    if not clean_cis:
+        return None
+    try:
+        # The report's dates are Moscow time without an offset
+        occurred_at = datetime.fromisoformat(str(row["date"])[:19]).replace(tzinfo=MOSCOW_TZ)
+        price = abs(Decimal(str(row.get("finishedPrice") or 0)))
+    except (ValueError, InvalidOperation):
+        return None
+    return {
+        "source": SOURCE_SALES_REPORT, "external_id": f"{sale_id}:{clean_cis}"[:255],
+        "clean_cis": clean_cis, "raw_kiz": order.kiz_code if order and order_cis == clean_cis else None,
+        "event_type": event_type, "occurred_at": occurred_at, "srid": srid,
+        "order_id": order.id if order and order_cis == clean_cis else None,
+        "price": price or None,  # finishedPrice is in rubles even for sales abroad
+        "article": _text(row.get("nmId"), 255), "name": _text(row.get("subject"), 255),
+    }
+
+
+async def _sales_report_lookups(db: AsyncSession, seller: Seller, srids: List[str]) -> tuple[Dict[str, str], Dict[str, Any]]:
+    srid_to_cis: Dict[str, str] = {}
+    orders_by_rid: Dict[str, Any] = {}
+    for i in range(0, len(srids), SRID_CHUNK):
+        chunk = srids[i:i + SRID_CHUNK]
+        res = await db.execute(
+            select(WbSalesReportRow.srid, WbSalesReportRow.clean_cis).where(
+                WbSalesReportRow.seller_id == seller.id,
+                WbSalesReportRow.srid.in_(chunk),
+                WbSalesReportRow.clean_cis.isnot(None),
+            )
+        )
+        srid_to_cis.update({srid: cis for srid, cis in res.all()})
+        # Events of other sources win over the financial report: the excise report gives the KIZ of this exact sale
+        res = await db.execute(
+            select(KizEvent.srid, KizEvent.clean_cis).where(
+                KizEvent.seller_id == seller.id,
+                KizEvent.srid.in_(chunk),
+                KizEvent.source != SOURCE_SALES_REPORT,
+            )
+        )
+        srid_to_cis.update({srid: cis for srid, cis in res.all()})
+        res = await db.execute(
+            select(Order.id, Order.rid, Order.kiz_code).where(
+                Order.seller_id == seller.id, Order.rid.in_(chunk), Order.kiz_code.isnot(None),
+            )
+        )
+        orders_by_rid.update({row.rid: row for row in res.all()})
+    return srid_to_cis, orders_by_rid
+
+
+async def collect_sales_report(db: AsyncSession, seller: Seller) -> CollectResult:
+    rows = await fetch_wb_sales_rows(seller, SALES_REPORT_DAYS)
+    result = CollectResult(seen=len(rows))
+    srids = sorted({str(r["srid"]) for r in rows if r.get("srid")})
+    srid_to_cis, orders_by_rid = await _sales_report_lookups(db, seller, srids)
+    for row in rows:
+        if str(row.get("saleID") or "")[:1] not in SALES_REPORT_KINDS:
+            result.skip("not_sale_or_return")
+            continue
+        draft = sales_report_row_to_draft(row, srid_to_cis, orders_by_rid)
+        if draft:
+            result.drafts.append(draft)
+        else:
+            result.skip("no_kiz")
     return result
 
 

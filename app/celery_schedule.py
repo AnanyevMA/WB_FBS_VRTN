@@ -103,6 +103,14 @@ BEAT_SCHEDULE = {
         "args": (["wb_excise", "wb_item_returns"],),
         "options": {"queue": "cz_operations"},
     },
+    # The statistics API allows one request a minute per token and the financial report uses it too:
+    # skip the 05:00 hour of sync-financial-reports-daily, and stay off :00 when the auto queue builds batches
+    "kiz-events-sales-report": {
+        "task": "app.agents.kiz_events_agent.collect_kiz_events",
+        "schedule": crontab(minute="10,40", hour="0-4,6-23"),
+        "args": (["wb_sales_report"],),
+        "options": {"queue": "cz_operations"},
+    },
     # After sync-financial-reports-daily at 05:00, which also retries for a few minutes
     "kiz-events-finance": {
         "task": "app.agents.kiz_events_agent.collect_kiz_events",

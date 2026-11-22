@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditLog
-from app.models.kiz_event import SOURCE_EXCISE, SOURCE_FINANCE, SOURCE_ITEM_RETURNS, SOURCE_ORDERS
+from app.models.kiz_event import SOURCE_EXCISE, SOURCE_FINANCE, SOURCE_ITEM_RETURNS, SOURCE_ORDERS, SOURCE_SALES_REPORT
 from app.models.seller import Seller
 from app.services.kiz_event_collectors import (
     SOURCE_ORDER_STATUS,
@@ -17,6 +17,7 @@ from app.services.kiz_event_collectors import (
     collect_finance,
     collect_item_returns,
     collect_orders,
+    collect_sales_report,
     refresh_delivered_order_statuses,
 )
 from app.services.kiz_event_service import save_events
@@ -28,10 +29,11 @@ COLLECTORS: Dict[str, Callable[[AsyncSession, Seller], Awaitable[CollectResult]]
     SOURCE_EXCISE: collect_excise,
     SOURCE_ITEM_RETURNS: collect_item_returns,
     SOURCE_ORDERS: collect_orders,
+    SOURCE_SALES_REPORT: collect_sales_report,
     SOURCE_ORDER_STATUS: refresh_delivered_order_statuses,
 }
-# Runs every 30 minutes from local data: an audit row per run would only add noise
-QUIET_SOURCES = {SOURCE_ORDERS}
+# Run every 30 minutes: an audit row per run would only add noise, errors and new events are still recorded
+QUIET_SOURCES = {SOURCE_ORDERS, SOURCE_SALES_REPORT}
 
 
 async def run_collector(db: AsyncSession, seller: Seller, source: str) -> Dict[str, Any]:

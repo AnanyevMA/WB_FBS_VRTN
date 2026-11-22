@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-22T14:32:21.788991+00:00",
+  "updated_at": "2026-11-22T14:47:08.206913+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 209,
   "files": [
@@ -1196,7 +1196,7 @@
     {
       "file": "app/agents/kiz_events_agent.py",
       "layer": "agents",
-      "hash": "6d4ff4b26b86",
+      "hash": "2fde9cee4403",
       "docstring": "KIZ Events Celery Agent — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -4385,7 +4385,7 @@
     {
       "file": "app/celery_schedule.py",
       "layer": "core",
-      "hash": "003b0e171e86",
+      "hash": "12ea6f2aee3f",
       "docstring": "Celery Beat Schedule — WB FBS Manager",
       "classes": [],
       "functions": [],
@@ -4720,7 +4720,7 @@
     {
       "file": "app/models/kiz_event.py",
       "layer": "models",
-      "hash": "c86d13d1e670",
+      "hash": "5df5ccbcc66e",
       "docstring": "KIZ Event Log — WB FBS Manager",
       "classes": [
         {
@@ -6399,7 +6399,7 @@
     {
       "file": "app/services/kiz_event_collectors.py",
       "layer": "services",
-      "hash": "fa351d6d0b73",
+      "hash": "3676cf3282ca",
       "docstring": "KIZ Event Collectors — WB FBS Manager",
       "classes": [
         {
@@ -6521,6 +6521,38 @@
           "docstring": ""
         },
         {
+          "name": "sales_report_row_to_draft",
+          "is_async": false,
+          "args": [
+            "row",
+            "srid_to_cis",
+            "orders_by_rid"
+          ],
+          "decorators": [],
+          "docstring": "The report has no KIZ. A row is linked by srid: to a known KIZ event, a financial report row"
+        },
+        {
+          "name": "_sales_report_lookups",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller",
+            "srids"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "collect_sales_report",
+          "is_async": true,
+          "args": [
+            "db",
+            "seller"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
           "name": "order_to_drafts",
           "is_async": false,
           "args": [
@@ -6583,6 +6615,7 @@
         "app.services.encryption",
         "app.services.kiz_event_service",
         "app.services.kiz_service",
+        "app.services.unified_kiz_sales_report",
         "app.services.wb_analytics_client",
         "app.services.wb_archive_service",
         "app.services.wb_client",
@@ -6600,7 +6633,7 @@
     {
       "file": "app/services/kiz_event_runner.py",
       "layer": "services",
-      "hash": "52111d86d5f3",
+      "hash": "5aa296763ad2",
       "docstring": "KIZ Event Runner — WB FBS Manager",
       "classes": [],
       "functions": [
@@ -12286,7 +12319,7 @@
     {
       "file": "tests/test_kiz_events.py",
       "layer": "tests",
-      "hash": "4866779d278e",
+      "hash": "689a08b9f72c",
       "docstring": "Tests for the KIZ event log and its background collectors.",
       "classes": [],
       "functions": [
@@ -12688,13 +12721,88 @@
             "pytest.mark.asyncio"
           ],
           "docstring": ""
+        },
+        {
+          "name": "_sale_row",
+          "is_async": false,
+          "args": [
+            "sale_id",
+            "srid",
+            "date_str",
+            "price"
+          ],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_row_links_by_known_srid",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_row_links_by_order_rid",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_row_does_not_attach_order_with_another_kiz",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_row_without_a_fact_about_a_kiz_is_skipped",
+          "is_async": false,
+          "args": [
+            "row"
+          ],
+          "decorators": [
+            "pytest.mark.parametrize('row', List(elts=[Call(func=Name(id='_sale_row', ctx=Load()), args=[Constant(value='S1'), Constant(value='unknown')]), Call(func=Name(id='_sale_row', ctx=Load()), args=[Constant(value='D1'), Constant(value='eBU.1')]), Dict(keys=[None, Constant(value='date')], values=[Call(func=Name(id='_sale_row', ctx=Load()), args=[Constant(value='S1'), Constant(value='eBU.1')]), Constant(value=None)]), Dict(keys=[None, Constant(value='srid')], values=[Call(func=Name(id='_sale_row', ctx=Load()), args=[Constant(value='S1'), Constant(value='eBU.1')]), Constant(value='')])], ctx=Load()))"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_collector_records_returns_once_and_quietly",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_failure_is_recorded_and_saves_nothing",
+          "is_async": true,
+          "args": [
+            "db"
+          ],
+          "decorators": [
+            "pytest.mark.asyncio"
+          ],
+          "docstring": ""
+        },
+        {
+          "name": "test_sales_report_schedule_keeps_off_the_financial_report_and_batch_hours",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
         }
       ],
       "endpoints": [],
       "celery_tasks": [],
       "db_tables": [],
       "imports": [
+        "app.agents.kiz_events_agent",
         "app.api.orders",
+        "app.celery_schedule",
         "app.database",
         "app.models.audit",
         "app.models.kiz",

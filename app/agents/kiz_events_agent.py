@@ -11,14 +11,14 @@ from sqlalchemy import select
 
 from app.celery_app import celery_app
 from app.database import AsyncSessionLocal
-from app.models.kiz_event import SOURCE_EXCISE, SOURCE_FINANCE, SOURCE_ITEM_RETURNS, SOURCE_ORDERS
+from app.models.kiz_event import SOURCE_EXCISE, SOURCE_FINANCE, SOURCE_ITEM_RETURNS, SOURCE_ORDERS, SOURCE_SALES_REPORT
 from app.models.seller import Seller
 from app.services.kiz_event_collectors import SOURCE_ORDER_STATUS
 from app.services.kiz_event_runner import run_collector
 
 logger = logging.getLogger(__name__)
 
-ALL_SOURCES = [SOURCE_ORDER_STATUS, SOURCE_FINANCE, SOURCE_EXCISE, SOURCE_ITEM_RETURNS, SOURCE_ORDERS]
+ALL_SOURCES = [SOURCE_ORDER_STATUS, SOURCE_FINANCE, SOURCE_EXCISE, SOURCE_ITEM_RETURNS, SOURCE_ORDERS, SOURCE_SALES_REPORT]
 
 
 async def _collect(sources: List[str]) -> Dict[str, Any]:

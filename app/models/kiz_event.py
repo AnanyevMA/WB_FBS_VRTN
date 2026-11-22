@@ -22,6 +22,8 @@ SOURCE_EXCISE = "wb_excise"
 SOURCE_ITEM_RETURNS = "wb_item_returns"
 SOURCE_ORDERS = "fbs_orders"
 SOURCE_ARCHIVE_FILE = "archive_file"
+# WB sales report (supplier/sales): sales and returns days before the financial report shows them
+SOURCE_SALES_REPORT = "wb_sales_report"
 
 
 class KizEvent(Base):

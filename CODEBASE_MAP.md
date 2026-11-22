@@ -1,7 +1,7 @@
 # 🗺️ Карта Архитектуры и Символов Проекта (Codebase Map)
 
 > **Автоматически сгенерированный индекс кодовой базы**  
-> **Дата актуализации**: 2026-11-22 14:32:21 UTC | **Файлов проиндексировано**: 209  
+> **Дата актуализации**: 2026-11-22 14:47:08 UTC | **Файлов проиндексировано**: 209  
 > **Правило для ИИ-Агентов**: Перед открытием файлов используйте этот справочник или `codebase_index.json` для точечной локализации кода и экономии контекстных токенов.
 
 ---
@@ -66,7 +66,7 @@
 | [`app/services/cz_client.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/cz_client.py) | `CZAPIError`, `CZUnauthorizedError`, `CZDocumentError`, `CZClient` | `parse_cz_token_expiration` | True API & СУЗ 5.0 Client — интеграция с ГИС МТ / СУЗ-Облако 3.0.38 (Честный Знак) |
 | [`app/services/encryption.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/encryption.py) | `EncryptionService` | `_get_fernet`, `encrypt`, `decrypt` | Encryption Service — шифрование чувствительных данных (токены API, credentials) |
 | [`app/services/kb_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kb_service.py) | `KBService` | — | Knowledge Base Service & Fast Two-Tier Search Engine — WB FBS Manager |
-| [`app/services/kiz_event_collectors.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_collectors.py) | `CollectResult` | `clean_cis_of`, `parse_event_datetime`, `_price`, `_text`, +еще 12 | KIZ Event Collectors — WB FBS Manager |
+| [`app/services/kiz_event_collectors.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_collectors.py) | `CollectResult` | `clean_cis_of`, `parse_event_datetime`, `_price`, `_text`, +еще 15 | KIZ Event Collectors — WB FBS Manager |
 | [`app/services/kiz_event_runner.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_runner.py) | — | `run_collector` | KIZ Event Runner — WB FBS Manager |
 | [`app/services/kiz_event_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_event_service.py) | — | `save_events`, `_save_chunk`, `_fill_empty_fields` | KIZ Event Service — WB FBS Manager |
 | [`app/services/kiz_service.py`](file:///D:/PyCharm_Projects/WB FBS/app/services/kiz_service.py) | — | `is_kiz_withdrawn`, `extract_cz_item_info`, `normalize_kiz_light_industry`, `parse_kiz_code`, +еще 5 | Модуль кодовой базы |
@@ -183,7 +183,7 @@
 | [`tests/test_kiz_adversarial_challenge_m2_2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_adversarial_challenge_m2_2.py) | — | `test_celery_withdraw_order_kiz_e2e_checked_not_ok_error_07`, `test_celery_withdraw_order_kiz_array_response_with_error_07`, `test_celery_withdraw_order_kiz_transient_error_triggers_retry`, `test_withdraw_order_kiz_grace_period_404_then_checked_not_ok_error_07`, +еще 3 | Adversarial Challenge & Empirical Verification Suite for Milestone M2. |
 | [`tests/test_kiz_attach_safety.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_attach_safety.py) | — | `_order`, `_db`, `_kiz_info`, `_attach`, +еще 6 | Regression tests for attaching a KIZ from the order card. |
 | [`tests/test_kiz_dashboard_retry_r3.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_dashboard_retry_r3.py) | — | `mock_celery_apply`, `test_order_model_cz_columns`, `test_order_serialization_in_list_and_get_orders`, `test_retry_withdrawal_endpoint_cleans_cis_and_resets_status`, +еще 4 | Модуль кодовой базы |
-| [`tests/test_kiz_events.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_events.py) | — | `db`, `_seller`, `_finance_row`, `_order`, +еще 38 | Tests for the KIZ event log and its background collectors. |
+| [`tests/test_kiz_events.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_events.py) | — | `db`, `_seller`, `_finance_row`, `_order`, +еще 46 | Tests for the KIZ event log and its background collectors. |
 | [`tests/test_kiz_heuristics_r2.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_heuristics_r2.py) | — | `_stub_aiogram`, `setup_db`, `test_seller`, `test_is_kiz_required_sgtin_in_required_meta_precedence`, +еще 10 | Unit and integration tests for Milestone 2 (R2): |
 | [`tests/test_kiz_normalization_m1.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_normalization_m1.py) | — | `test_normalize_kiz_light_industry_clean_31`, `test_normalize_kiz_light_industry_spaces_tail`, `test_normalize_kiz_light_industry_space_key_no_space_sig`, `test_normalize_kiz_light_industry_gs_delimiters`, +еще 22 | Milestone M1 Test Suite: Guaranteed KIZ Normalization & Ingestion Integrity. |
 | [`tests/test_kiz_records_without_status.py`](file:///D:/PyCharm_Projects/WB FBS/tests/test_kiz_records_without_status.py) | — | `_code`, `setup_test_db`, `_seller`, `_record`, +еще 5 | Tests for KIZ registry records without a Chestny Znak status. |

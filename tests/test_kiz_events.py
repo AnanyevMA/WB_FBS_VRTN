@@ -427,3 +427,92 @@ async def test_sync_does_not_restore_kiz_of_cancelled_orders(db):
         except Exception:
             pass  # Only the request sent to WB matters here
     meta.assert_awaited_once_with([10])
+
+
+# --- WB sales report -------------------------------------------------------------------------------------------------
+
+def _sale_row(sale_id, srid, date_str="2026-11-08T12:03:05", price=3298.86):
+    return {"saleID": sale_id, "srid": srid, "date": date_str, "finishedPrice": price if sale_id[0] == "S" else -price,
+            "nmId": 473414499, "subject": "Брюки"}
+
+
+def test_sales_report_row_links_by_known_srid():
+    draft = collectors.sales_report_row_to_draft(_sale_row("R677159294", "eBU.1"), {"eBU.1": CIS_A}, {})
+    assert draft["source"] == "wb_sales_report"
+    assert (draft["event_type"], draft["clean_cis"], draft["srid"]) == (EVENT_RETURN, CIS_A, "eBU.1")
+    assert draft["price"] == Decimal("3298.86")  # a return row has a negative price in the report
+    assert draft["external_id"] == f"R677159294:{CIS_A}"
+    # report dates are Moscow time: 12:03 MSK is 09:03 UTC
+    assert draft["occurred_at"].astimezone(timezone.utc) == datetime(2026, 11, 8, 9, 3, 5, tzinfo=timezone.utc)
+
+
+def test_sales_report_row_links_by_order_rid():
+    order = SimpleNamespace(id=6268232178, rid="eo.1", kiz_code=CIS_B + "\x1d91EE12")
+    draft = collectors.sales_report_row_to_draft(_sale_row("S1", "eo.1"), {}, {"eo.1": order})
+    assert (draft["event_type"], draft["clean_cis"], draft["order_id"]) == (EVENT_SALE, CIS_B, 6268232178)
+
+
+def test_sales_report_row_does_not_attach_order_with_another_kiz():
+    order = SimpleNamespace(id=1, rid="eo.1", kiz_code=CIS_B)
+    draft = collectors.sales_report_row_to_draft(_sale_row("S1", "eo.1"), {"eo.1": CIS_A}, {"eo.1": order})
+    assert draft["clean_cis"] == CIS_A
+    assert draft["order_id"] is None
+
+
+@pytest.mark.parametrize("row", [
+    _sale_row("S1", "unknown"),            # no KIZ known for this srid yet: linked on a later run
+    _sale_row("D1", "eBU.1"),              # surcharge, not a sale or a return
+    {**_sale_row("S1", "eBU.1"), "date": None},
+    {**_sale_row("S1", "eBU.1"), "srid": ""},
+])
+def test_sales_report_row_without_a_fact_about_a_kiz_is_skipped(row):
+    assert collectors.sales_report_row_to_draft(row, {"eBU.1": CIS_A}, {}) is None
+
+
+@pytest.mark.asyncio
+async def test_sales_report_collector_records_returns_once_and_quietly(db):
+    # KIZ A is known from the excise report by srid, KIZ B from an FBS order by rid
+    await save_events(db, SELLER_ID, [_draft("x1", srid="eBU.1", clean_cis=CIS_A)])
+    order = _order(7, kiz_code=CIS_B)
+    order.rid = "eo.1"
+    db.add(order)
+    await db.commit()
+    rows = [
+        _sale_row("S1", "eBU.1", "2026-11-08T12:03:05"),
+        _sale_row("R1", "eBU.1", "2026-11-16T10:55:52"),
+        _sale_row("S2", "eo.1", "2026-11-22T09:00:00"),
+        _sale_row("S3", "unknown", "2026-11-22T09:00:00"),
+    ]
+    seller = await db.get(Seller, SELLER_ID)
+    with patch("app.services.kiz_event_collectors.fetch_wb_sales_rows", new=AsyncMock(return_value=rows)):
+        first = await run_collector(db, seller, "wb_sales_report")
+        second = await run_collector(db, seller, "wb_sales_report")
+
+    assert (first["status"], first["inserted"], first["seen"]) == ("ok", 3, 4)
+    assert first["skipped"] == {"no_kiz": 1}
+    assert second["inserted"] == 0
+    events = await _events(db, "wb_sales_report")
+    assert [(e.clean_cis, e.event_type) for e in events] == [(CIS_A, EVENT_SALE), (CIS_A, EVENT_RETURN), (CIS_B, EVENT_SALE)]
+    assert events[2].order_id == 7
+    assert len([a for a in await _audit(db) if a.payload.get("source") == "wb_sales_report"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_sales_report_failure_is_recorded_and_saves_nothing(db):
+    seller = await db.get(Seller, SELLER_ID)
+    with patch("app.services.kiz_event_collectors.fetch_wb_sales_rows", new=AsyncMock(side_effect=RuntimeError("API Error 429"))):
+        payload = await run_collector(db, seller, "wb_sales_report")
+    assert payload["status"] == "error"
+    assert "429" in (await _audit(db))[0].error
+    assert await _events(db, "wb_sales_report") == []
+
+
+def test_sales_report_schedule_keeps_off_the_financial_report_and_batch_hours():
+    from app.agents.kiz_events_agent import ALL_SOURCES
+    from app.celery_schedule import BEAT_SCHEDULE
+
+    entry = BEAT_SCHEDULE["kiz-events-sales-report"]
+    assert entry["args"] == (["wb_sales_report"],)
+    assert 5 not in entry["schedule"].hour       # sync-financial-reports-daily uses the same API limit at 05:00
+    assert 0 not in entry["schedule"].minute     # the auto queue builds batches on the hour
+    assert "wb_sales_report" in ALL_SOURCES

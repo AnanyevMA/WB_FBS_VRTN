@@ -35,6 +35,27 @@ DELIVERED_WB_STATUSES = {"sold", "delivered"}
 ARCHIVE_AGE_MONTHS = 3
 
 
+def archive_order_sgtin(raw_order: Dict[str, Any]) -> str:
+    """
+    КИЗ, прикрепленный к заказу архива WB, или пустая строка.
+
+    WB отдает metaDetails списком записей {"key": "sgtin", "value": "...", "decision": "..."}.
+    Старый вид словаря {"sgtin": "..."} тоже принимается.
+    """
+    meta = raw_order.get("metaDetails")
+    value: Any = None
+    if isinstance(meta, dict):
+        value = meta.get("sgtin")
+    elif isinstance(meta, list):
+        value = next(
+            (m.get("value") for m in meta if isinstance(m, dict) and m.get("key") == "sgtin" and m.get("value")),
+            None,
+        )
+    if isinstance(value, list):
+        value = next((v for v in value if v), None)
+    return str(value or "").strip()
+
+
 def get_recent_months(
     months_count: int = 3,
     base_date: Optional[datetime] = None,
@@ -123,8 +144,7 @@ async def _upsert_archive_order(
     wb_status = str(status_block.get("wbStatus") or "").strip()
     supplier_status = str(status_block.get("supplierStatus") or "").strip()
     
-    meta_details = raw_order.get("metaDetails") or {}
-    kiz_code = str(meta_details.get("sgtin") or "").strip()
+    kiz_code = archive_order_sgtin(raw_order)
     clean_cis = parse_kiz_code(kiz_code).get("clean_cis") if kiz_code else None
 
     price_rub = wb_order_price_rub(raw_order)
@@ -272,11 +292,7 @@ async def sync_seller_archive_orders_recent_months(
                 for o in res_orders.scalars().all():
                     existing_orders_map[o.id] = o
 
-            kiz_codes = [
-                str((o.get("metaDetails") or {}).get("sgtin") or "").strip()
-                for o in archive_orders
-                if (o.get("metaDetails") or {}).get("sgtin")
-            ]
+            kiz_codes = [kiz for kiz in (archive_order_sgtin(o) for o in archive_orders) if kiz]
             existing_kinfo_map: Dict[str, KizProductInfo] = {}
             if kiz_codes:
                 stmt_kinfo = select(KizProductInfo).where(
@@ -290,7 +306,7 @@ async def sync_seller_archive_orders_recent_months(
                 if not raw.get("id"):
                     continue
                 oid = int(raw["id"])
-                kiz = str((raw.get("metaDetails") or {}).get("sgtin") or "").strip()
+                kiz = archive_order_sgtin(raw)
                 
                 existing_ord = existing_orders_map.get(oid)
                 existing_k = existing_kinfo_map.get(kiz)

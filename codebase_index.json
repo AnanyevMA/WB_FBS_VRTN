@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "system": "WB FBS Manager Codebase Symbol Index",
-  "updated_at": "2026-11-22T14:47:08.206913+00:00",
+  "updated_at": "2026-11-26T14:39:44.586400+00:00",
   "description": "Two-tier AST-generated code index. Agents query this index to pinpoint exact functions/classes before reading full files.",
   "total_files": 209,
   "files": [
@@ -7723,10 +7723,19 @@
     {
       "file": "app/services/wb_archive_service.py",
       "layer": "services",
-      "hash": "732511316a9d",
+      "hash": "908508efd2c0",
       "docstring": "WB Archive API Service — синхронизация архивных сборочных заданий WB (созданных более 3 месяцев назад).",
       "classes": [],
       "functions": [
+        {
+          "name": "archive_order_sgtin",
+          "is_async": false,
+          "args": [
+            "raw_order"
+          ],
+          "decorators": [],
+          "docstring": "КИЗ, прикрепленный к заказу архива WB, или пустая строка."
+        },
         {
           "name": "get_recent_months",
           "is_async": false,
@@ -16842,7 +16851,7 @@
     {
       "file": "tests/test_wb_archive_api.py",
       "layer": "tests",
-      "hash": "6b2e4ecc8fc9",
+      "hash": "8484662f037b",
       "docstring": "Tests for WB Archive API Integration:",
       "classes": [],
       "functions": [
@@ -16861,6 +16870,13 @@
           "args": [],
           "decorators": [],
           "docstring": "Проверяет корректность расчета месяцев, включая переход через границу года."
+        },
+        {
+          "name": "test_archive_order_sgtin_reads_wb_list_format",
+          "is_async": false,
+          "args": [],
+          "decorators": [],
+          "docstring": ""
         },
         {
           "name": "test_resolve_order_status",

@@ -20,6 +20,7 @@ from app.models.seller import Seller
 from app.services.auth_service import ensure_initial_admin
 from app.services.unified_kiz_batch_service import create_unified_kiz_signature_batch
 from app.services.wb_archive_service import (
+    archive_order_sgtin,
     get_recent_months,
     resolve_order_status,
     sync_seller_archive_orders_recent_months,
@@ -49,6 +50,21 @@ def test_get_recent_months_calculation():
     # 1 месяц
     res3 = get_recent_months(months_count=1, base_date=dt1)
     assert res3 == [(2026, 10)]
+
+
+def test_archive_order_sgtin_reads_wb_list_format():
+    # WB returns metaDetails as a list of {key, value, decision} records
+    kiz = "0104630199252612215*I)EeruudhW6"
+    raw = {"metaDetails": [
+        {"key": "customsDeclaration", "value": "", "decision": "optional"},
+        {"key": "sgtin", "value": kiz, "decision": "sgtinIntroduced"},
+    ]}
+    assert archive_order_sgtin(raw) == kiz
+    assert archive_order_sgtin({"metaDetails": [{"key": "sgtin", "value": [kiz]}]}) == kiz
+    assert archive_order_sgtin({"metaDetails": {"sgtin": kiz}}) == kiz
+    assert archive_order_sgtin({"metaDetails": [{"key": "customsDeclaration", "value": ""}]}) == ""
+    assert archive_order_sgtin({"metaDetails": []}) == ""
+    assert archive_order_sgtin({}) == ""
 
 
 def test_resolve_order_status():
@@ -143,7 +159,10 @@ async def test_sync_seller_archive_orders_creates_and_updates():
                 "priceInfo": {"price": 180000},
                 "product": {"article": "ART-01", "name": "Товар 1"},
                 "status": {"supplierStatus": "complete", "wbStatus": "canceled_by_client"},
-                "metaDetails": {"sgtin": kiz_for_new_order, "gtin": "04630199252612"},
+                "metaDetails": [
+                    {"key": "customsDeclaration", "value": "", "decision": "optional"},
+                    {"key": "sgtin", "value": kiz_for_new_order, "decision": "sgtinIntroduced"},
+                ],
             },
             # 2. Существующий заказ, который был отменен
             {
@@ -152,7 +171,7 @@ async def test_sync_seller_archive_orders_creates_and_updates():
                 "priceInfo": {"price": 250000},
                 "product": {"article": "ART-02", "name": "Товар 2"},
                 "status": {"supplierStatus": "complete", "wbStatus": "declined_by_client"},
-                "metaDetails": {"sgtin": "0104630199252612215*EXISTING_01"},
+                "metaDetails": [{"key": "sgtin", "value": "0104630199252612215*EXISTING_01", "decision": "sgtinIntroduced"}],
             },
         ]
 

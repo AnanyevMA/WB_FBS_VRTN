@@ -155,12 +155,10 @@ Authorization: Bearer <WB_TOKEN>
       },
       "stickerId": "123456789",
       "warehouseId": 1234,
-      "metaDetails": {
-        "sgtin": "0104630199252612215*I)EeruudhW6",
-        "gtin": "04630199252612",
-        "uin": "",
-        "imei": ""
-      }
+      "metaDetails": [
+        {"key": "customsDeclaration", "value": "", "decision": "optional"},
+        {"key": "sgtin", "value": "0104630199252612215*I)EeruudhW6", "decision": "sgtinIntroduced"}
+      ]
     }
   ],
   "next": 0
@@ -174,8 +172,9 @@ Authorization: Bearer <WB_TOKEN>
 - **`status.supplierStatus`**:
   - `"cancel"` — отменено продавцом;
   - `"complete"` — собрано и передано в доставку.
-- **`metaDetails.sgtin`**:
-  - Содержит прикрепленный к заказу **код маркировки (КИЗ)**.
+- **`metaDetails`** — список записей `{key, value, decision}` (проверено на живом API 2026-11-26):
+  - запись с `key = "sgtin"` содержит в `value` прикрепленный к заказу **код маркировки (КИЗ)**;
+  - разбор: `archive_order_sgtin()` в `app/services/wb_archive_service.py`.
 
 #### Архитектурная роль в системе (Триада источников архива):
 1. **API архива (`GET /api/marketplace/v3/fbs/orders/archive`)**:
